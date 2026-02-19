@@ -81,26 +81,60 @@ function getToken() {
 
 async function apiGet(url) {
   const token = getToken();
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) throw new Error("Token abgelaufen → bitte neu verbinden");
-  return res.json();
+  if (!token) throw new Error("Kein Token vorhanden (bitte neu verbinden).");
+
+  let res;
+  try {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (e) {
+    throw new Error("Netzwerkfehler beim Fetch (evtl. Tracking-Blocker/WLAN/DNS): " + e.message);
+  }
+
+  const text = await res.text(); // wichtig: erst text, dann JSON parse
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
+    throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
+  }
+
+  return data;
 }
+
 
 async function loadPlaylists() {
   setPlaylistStatus("Lade…");
-  const data = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
+  setDebug("");
 
-  playlistSelect.innerHTML = "";
-  data.items.forEach(pl => {
-    const opt = document.createElement("option");
-    opt.value = pl.id;
-    opt.textContent = `${pl.name} (${pl.tracks.total} Tracks)`;
-    playlistSelect.appendChild(opt);
-  });
+  try {
+    const data = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
 
-  playlistsUI.style.display = "block";
-  setPlaylistStatus("✅ Playlists geladen");
+    const items = data.items || [];
+    playlistSelect.innerHTML = "";
+
+    if (!items.length) {
+      setPlaylistStatus("⚠️ Keine Playlists gefunden (oder keine gespeichert).");
+      setDebug(JSON.stringify(data, null, 2));
+      return;
+    }
+
+    items.forEach(pl => {
+      const opt = document.createElement("option");
+      opt.value = pl.id;
+      opt.textContent = `${pl.name} (${pl.tracks.total} Tracks)`;
+      playlistSelect.appendChild(opt);
+    });
+
+    playlistsUI.style.display = "block";
+    setPlaylistStatus(`✅ ${items.length} Playlists geladen`);
+    setDebug(JSON.stringify(items.map(p => ({name:p.name,id:p.id,total:p.tracks.total})), null, 2));
+  } catch (e) {
+    setPlaylistStatus("❌ " + e.message);
+    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+  }
 }
+
 
 async function loadTracksFromPlaylist() {
   const id = playlistSelect.value;
