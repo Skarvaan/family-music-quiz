@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spotify Callback</title>
+</head>
+<body>
+  <h1>Spotify Callback</h1>
+  <p>Wenn du das siehst, hat Spotify zurückgeleitet. Du kannst gleich zurück zur Startseite.</p>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const error = params.get("error");
+
+  if (error) {
+    document.body.insertAdjacentHTML("beforeend", `<pre>❌ Fehler: ${error}</pre>`);
+  } else if (code) {
+    localStorage.setItem("spotify_auth_code", code);
+    document.body.insertAdjacentHTML("beforeend", `<pre>✅ Code gespeichert. Geh zurück zur Startseite.</pre>`);
+  } else {
+    document.body.insertAdjacentHTML("beforeend", `<pre>❌ Kein Code gefunden.</pre>`);
+  }
+
+  // Komfort: automatisch zurück nach 2 Sekunden
+  setTimeout(() => {
+    window.location.href = "./";
+  }, 2000);
+</script>
+</body>
+</html>
