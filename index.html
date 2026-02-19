@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Family Music Quiz</title>
+</head>
+<body>
+  <h1>Family Music Quiz</h1>
+  <p>1) Mit Spotify verbinden → 2) Danach testen wir die Playlist-Abfrage.</p>
+
+  <button id="loginBtn">Mit Spotify verbinden</button>
+
+  <pre id="status"></pre>
+
+<script>
+  // ✅ NUR DAS HIER anpassen:
+  const clientId = "HIER_DEINE_CLIENT_ID";
+
+  // ✅ passt zu deinem Repo-Namen "family-music-quiz":
+  const redirectUri = "https://Skarvaan.github.io/family-music-quiz/callback.html";
+
+  // Scopes: Lesen + Playback steuern (Premium-Host)
+  const scope = [
+    "playlist-read-private",
+    "playlist-read-collaborative",
+    "user-read-playback-state",
+    "user-modify-playback-state"
+  ].join(" ");
+
+  function setStatus(msg) {
+    document.getElementById("status").textContent = msg;
+  }
+
+  function randomString(len) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let s = "";
+    for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+
+  async function pkceChallengeFromVerifier(v) {
+    const data = new TextEncoder().encode(v);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  }
+
+  async function login() {
+    if (!clientId || clientId.includes("HIER_DEINE_CLIENT_ID")) {
+      setStatus("❌ Bitte in index.html zuerst die clientId eintragen (Client ID aus Spotify Dashboard).");
+      return;
+    }
+
+    const verifier = randomString(64);
+    const challenge = await pkceChallengeFromVerifier(verifier);
+
+    localStorage.setItem("pkce_verifier", verifier);
+
+    const authUrl = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      scope,
+      redirect_uri: redirectUri,
+      code_challenge_method: "S256",
+      code_challenge: challenge
+    });
+
+    window.location.href = authUrl;
+  }
+
+  document.getElementById("loginBtn").addEventListener("click", login);
+
+  // Debug: zeigt, ob ein Code vom Callback vorhanden ist
+  const code = localStorage.getItem("spotify_auth_code");
+  if (code) {
+    setStatus("✅ Spotify Code ist da (Login hat geklappt). Nächster Schritt: Token tauschen.");
+  } else {
+    setStatus("Noch nicht verbunden.");
+  }
+</script>
+</body>
+</html>
