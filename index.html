@@ -37,52 +37,117 @@
 </div>
 
 <div class="box">
-  <h2>3) Debug</h2>
-  <pre id="debug"></pre>
+  <h2>3) Runde</h2>
+  <button onclick="drawRandomSong()">🎲 Zufälligen Song ziehen</button>
+  <button onclick="revealSong()">👀 Reveal</button>
+  <p id="drawStatus"></p>
+  <div id="revealBox" style="display:none; margin-top:10px;"></div>
 </div>
 
+
 <script>
-  // ✅ NUR DAS hier prüfen:
-  const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
-  const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
+const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
+const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
 
-  const scope = [
-    "playlist-read-private",
-    "playlist-read-collaborative",
-    "user-read-playback-state",
-    "user-modify-playback-state"
-  ].join(" ");
+const scope = [
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "user-read-playback-state",
+  "user-modify-playback-state"
+].join(" ");
 
-  const connStatus = document.getElementById("connStatus");
-  const debugEl = document.getElementById("debug");
-  const playlistStatus = document.getElementById("playlistStatus");
-  const playlistsUI = document.getElementById("playlistsUI");
-  const playlistSelect = document.getElementById("playlistSelect");
+const connStatus = document.getElementById("connStatus");
+const debugEl = document.getElementById("debug");
+const playlistStatus = document.getElementById("playlistStatus");
+const playlistsUI = document.getElementById("playlistsUI");
+const playlistSelect = document.getElementById("playlistSelect");
 
-  function setDebug(msg) { debugEl.textContent = msg; }
-  function setConn(html) { connStatus.innerHTML = html; }
-  function setPlaylistStatus(html) { playlistStatus.innerHTML = html; }
+let currentTracks = [];
+let currentSong = null;
 
-  function randomString(len) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let s = "";
-    for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
-    return s;
+function setDebug(msg) { debugEl.textContent = msg; }
+function setConn(html) { connStatus.innerHTML = html; }
+function setPlaylistStatus(html) { playlistStatus.innerHTML = html; }
+
+function getToken() {
+  return localStorage.getItem("spotify_access_token");
+}
+
+async function apiGet(url) {
+  const token = getToken();
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) throw new Error("Token abgelaufen → bitte neu verbinden");
+  return res.json();
+}
+
+async function loadPlaylists() {
+  setPlaylistStatus("Lade…");
+  const data = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
+
+  playlistSelect.innerHTML = "";
+  data.items.forEach(pl => {
+    const opt = document.createElement("option");
+    opt.value = pl.id;
+    opt.textContent = `${pl.name} (${pl.tracks.total} Tracks)`;
+    playlistSelect.appendChild(opt);
+  });
+
+  playlistsUI.style.display = "block";
+  setPlaylistStatus("✅ Playlists geladen");
+}
+
+async function loadTracksFromPlaylist() {
+  const id = playlistSelect.value;
+  setPlaylistStatus("Lade Tracks…");
+
+  const data = await apiGet(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=100`);
+
+  currentTracks = data.items
+    .map(x => x.track)
+    .filter(t => t && t.name);
+
+  setPlaylistStatus(`✅ ${currentTracks.length} Tracks geladen`);
+  setDebug(JSON.stringify(currentTracks.slice(0,5), null, 2));
+}
+
+function drawRandomSong() {
+  if (!currentTracks.length) {
+    alert("Erst Tracks laden!");
+    return;
   }
 
-  async function pkceChallengeFromVerifier(v) {
-    const data = new TextEncoder().encode(v);
-    const digest = await crypto.subtle.digest("SHA-256", data);
-    return btoa(String.fromCharCode(...new Uint8Array(digest)))
-      .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  }
+  const index = Math.floor(Math.random() * currentTracks.length);
+  currentSong = currentTracks[index];
 
-  async function login() {
-    const verifier = randomString(64);
-    localStorage.setItem("pkce_verifier", verifier);
-    const challenge = await pkceChallengeFromVerifier(verifier);
+  document.getElementById("revealBox").style.display = "none";
+  document.getElementById("drawStatus").textContent =
+    "🎵 Song gewählt – jetzt raten!";
+}
 
-    const authUrl = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+function revealSong() {
+  if (!currentSong) return;
+
+  const year = currentSong.album.release_date?.slice(0,4) || "?";
+
+  document.getElementById("revealBox").innerHTML = `
+    <b>${currentSong.name}</b><br>
+    ${currentSong.artists.map(a=>a.name).join(", ")}<br>
+    Jahr: ${year}
+  `;
+  document.getElementById("revealBox").style.display = "block";
+}
+
+function login() {
+  const verifier = [...crypto.getRandomValues(new Uint8Array(64))]
+    .map(x => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[x % 62])
+    .join("");
+  localStorage.setItem("pkce_verifier", verifier);
+
+  crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)).then(buf => {
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
+
+    const url = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
       response_type: "code",
       client_id: clientId,
       scope,
@@ -91,114 +156,23 @@
       code_challenge: challenge
     });
 
-    window.location.href = authUrl;
+    window.location = url;
+  });
+}
+
+function refreshConnStatus(){
+  if(getToken()){
+    setConn("✅ Verbunden");
+  }else{
+    setConn("Nicht verbunden");
   }
+}
 
-  function logout() {
-    localStorage.removeItem("spotify_access_token");
-    localStorage.removeItem("spotify_auth_code");
-    localStorage.removeItem("pkce_verifier");
-    setConn('<span class="bad">Token gelöscht.</span>');
-    playlistsUI.style.display = "none";
-    playlistSelect.innerHTML = "";
-    setPlaylistStatus("");
-    setDebug("");
-  }
+document.getElementById("loginBtn").onclick = login;
+document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
+document.getElementById("showTracksBtn").onclick = loadTracksFromPlaylist;
 
-  function getToken() {
-    return localStorage.getItem("spotify_access_token");
-  }
-
-  async function apiGet(url) {
-    const token = getToken();
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    // Wenn Token abgelaufen: 401
-    if (res.status === 401) {
-      throw new Error("401 (Token abgelaufen) – bitte erneut 'Mit Spotify verbinden' klicken.");
-    }
-    const data = await res.json();
-    return { status: res.status, data };
-  }
-
-  // Spotify liefert Playlists paginiert. Wir holen erstmal nur die ersten 50.
-  async function loadPlaylists() {
-    const token = getToken();
-    if (!token) {
-      setPlaylistStatus('<span class="bad">❌ Kein Token. Bitte zuerst verbinden.</span>');
-      return;
-    }
-    setPlaylistStatus("Lade…");
-
-    try {
-      const { data } = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
-      const items = data.items || [];
-
-      if (!items.length) {
-        setPlaylistStatus('<span class="bad">Keine Playlists gefunden.</span>');
-        return;
-      }
-
-      playlistSelect.innerHTML = "";
-      for (const pl of items) {
-        const opt = document.createElement("option");
-        opt.value = pl.id;
-        opt.textContent = `${pl.name} (${pl.tracks?.total ?? "?"} Tracks)`;
-        playlistSelect.appendChild(opt);
-      }
-
-      playlistsUI.style.display = "block";
-      setPlaylistStatus(`<span class="ok">✅ ${items.length} Playlists geladen.</span>`);
-      setDebug(JSON.stringify({loadedPlaylists: items.map(p => ({name:p.name,id:p.id,total:p.tracks?.total}))}, null, 2));
-    } catch (e) {
-      setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
-    }
-  }
-
-  async function showTracksInSelectedPlaylist() {
-    const plId = playlistSelect.value;
-    if (!plId) return;
-
-    setPlaylistStatus("Lade Tracks…");
-
-    try {
-      const { data } = await apiGet(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=20`);
-      const items = data.items || [];
-      const simplified = items.map(x => {
-        const t = x.track;
-        return {
-          title: t?.name,
-          artists: (t?.artists || []).map(a => a.name).join(", "),
-          album: t?.album?.name,
-          release_date: t?.album?.release_date
-        };
-      });
-
-      setPlaylistStatus(`<span class="ok">✅ Zeige 20 Tracks (Test).</span>`);
-      setDebug(JSON.stringify(simplified, null, 2));
-    } catch (e) {
-      setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
-    }
-  }
-
-  function refreshConnStatus() {
-    const token = getToken();
-    if (token) {
-      setConn('<span class="ok">✅ Verbunden (Token vorhanden)</span>');
-    } else {
-      setConn('<span class="bad">Nicht verbunden.</span>');
-    }
-  }
-
-  // Buttons
-  document.getElementById("loginBtn").addEventListener("click", login);
-  document.getElementById("logoutBtn").addEventListener("click", logout);
-  document.getElementById("loadPlaylistsBtn").addEventListener("click", loadPlaylists);
-  document.getElementById("showTracksBtn").addEventListener("click", showTracksInSelectedPlaylist);
-
-  refreshConnStatus();
+refreshConnStatus();
 </script>
 
 </body>
