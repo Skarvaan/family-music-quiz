@@ -120,15 +120,25 @@ async function loadPlaylists() {
     }
 
     items.forEach(pl => {
-      const opt = document.createElement("option");
-      opt.value = pl.id;
-      opt.textContent = `${pl.name} (${pl.tracks.total} Tracks)`;
-      playlistSelect.appendChild(opt);
-    });
+  const opt = document.createElement("option");
+  opt.value = pl.id;
+
+  const total = (pl.tracks && typeof pl.tracks.total === "number") ? pl.tracks.total : "?";
+  const name = pl.name || "(ohne Namen)";
+
+  opt.textContent = `${name} (${total} Tracks)`;
+  playlistSelect.appendChild(opt);
+});
+
 
     playlistsUI.style.display = "block";
     setPlaylistStatus(`✅ ${items.length} Playlists geladen`);
-    setDebug(JSON.stringify(items.map(p => ({name:p.name,id:p.id,total:p.tracks.total})), null, 2));
+    setDebug(JSON.stringify(items.map(p => ({
+  name: p.name,
+  id: p.id,
+  total: p.tracks?.total ?? null
+})), null, 2));
+
   } catch (e) {
     setPlaylistStatus("❌ " + e.message);
     setDebug("Fehler-Details:\n" + (e.stack || e.message));
