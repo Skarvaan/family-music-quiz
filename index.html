@@ -148,17 +148,43 @@ async function loadPlaylists() {
 
 async function loadTracksFromPlaylist() {
   const id = playlistSelect.value;
+  if (!id) {
+    setPlaylistStatus("❌ Keine Playlist ausgewählt.");
+    return;
+  }
+
   setPlaylistStatus("Lade Tracks…");
+  setDebug("");
 
-  const data = await apiGet(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=100`);
+  try {
+    const data = await apiGet(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=100`);
 
-  currentTracks = data.items
-    .map(x => x.track)
-    .filter(t => t && t.name);
+    const items = data.items || [];
 
-  setPlaylistStatus(`✅ ${currentTracks.length} Tracks geladen`);
-  setDebug(JSON.stringify(currentTracks.slice(0,5), null, 2));
+    // robust filtern: manche Einträge haben track=null
+    currentTracks = items
+      .map(x => x && x.track ? x.track : null)
+      .filter(t => t && t.name && t.album && t.artists && t.artists.length);
+
+    if (!currentTracks.length) {
+      setPlaylistStatus("⚠️ Keine Tracks gefunden (oder alle sind nicht verfügbar).");
+      setDebug(JSON.stringify(data, null, 2));
+      return;
+    }
+
+    setPlaylistStatus(`✅ ${currentTracks.length} Tracks geladen`);
+    setDebug(JSON.stringify(currentTracks.slice(0, 10).map(t => ({
+      name: t.name,
+      artists: t.artists.map(a => a.name).join(", "),
+      release_date: t.album?.release_date
+    })), null, 2));
+
+  } catch (e) {
+    setPlaylistStatus("❌ " + e.message);
+    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+  }
 }
+
 
 function drawRandomSong() {
   if (!currentTracks.length) {
