@@ -45,6 +45,7 @@
   <button id="drawBtn">🎲 Zufälligen Song ziehen</button>
   <button id="revealBtn">👀 Reveal</button>
   <button id="playBtn">▶️ Play in Spotify</button>
+  <button id="stopBtn">⏸️ Stop</button>
   <p id="drawStatus"></p>
   <div id="revealBox" style="display:none; margin-top:10px;"></div>
   <div class="muted">Hinweis: Erst “Items laden”, dann ziehen.</div>
@@ -320,6 +321,7 @@ async function loadItemsFromPlaylist() {
 
 /*** Game: draw + reveal ***/
 function drawRandomSong() {
+  pausePlayback().catch(()=>{});
   if (!currentTracks.length) {
     alert("Erst Items/Tracks laden!");
     return;
@@ -332,8 +334,16 @@ function drawRandomSong() {
   drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
 }
 
-function revealSong() {
+async function revealSong() {
   if (!currentSong) return;
+
+  // 🔥 automatisch stoppen (aber leise, wenn es nicht geht)
+  try {
+    await pausePlayback();
+  } catch (e) {
+    // nicht hart abbrechen – Reveal soll trotzdem gehen
+    setDebug("Pause beim Reveal fehlgeschlagen:\n" + (e.stack || e.message));
+  }
 
   const year = (currentSong.album?.release_date || "").slice(0, 4) || "?";
   const artists = (currentSong.artists || []).map(a => a.name).join(", ");
@@ -376,6 +386,27 @@ if (!uri) {
   return;
 }
 
+  async function pausePlayback() {
+  const deviceId = await getActiveDeviceId();
+  if (!deviceId) {
+    // wenn kein Device aktiv ist, einfach still failen (oder Meldung)
+    setPlaylistStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden.");
+    return;
+  }
+
+  const res = await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}` }
+  });
+
+  if (!res.ok && res.status !== 204) {
+    const t = await res.text();
+    throw new Error(`Stop/Pause fehlgeschlagen (${res.status}): ${t}`);
+  }
+
+  setPlaylistStatus("⏸️ Pausiert.");
+}
+
   // optional: erst Gerät aktiv setzen
   await fetch(`https://api.spotify.com/v1/me/player`, {
     method: "PUT",
@@ -409,6 +440,12 @@ document.getElementById("drawBtn").onclick = drawRandomSong;
 document.getElementById("revealBtn").onclick = revealSong;
   document.getElementById("playBtn").onclick = () => {
   playCurrentSong().catch(e => {
+    setPlaylistStatus("❌ " + e.message);
+    setDebug(e.stack || e.message);
+  });
+};
+document.getElementById("stopBtn").onclick = () => {
+  pausePlayback().catch(e => {
     setPlaylistStatus("❌ " + e.message);
     setDebug(e.stack || e.message);
   });
