@@ -44,6 +44,7 @@
   <h2>3) Runde</h2>
   <button id="drawBtn">🎲 Zufälligen Song ziehen</button>
   <button id="revealBtn">👀 Reveal</button>
+  <button id="playBtn">▶️ Play in Spotify</button>
   <p id="drawStatus"></p>
   <div id="revealBox" style="display:none; margin-top:10px;"></div>
   <div class="muted">Hinweis: Erst “Items laden”, dann ziehen.</div>
@@ -62,7 +63,9 @@ const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html"
 /*** Scopes (erstmal nur Playlists, Playback später) ***/
 const scope = [
   "playlist-read-private",
-  "playlist-read-collaborative"
+  "playlist-read-collaborative",
+  "user-read-playback-state",
+  "user-modify-playback-state"
 ].join(" ");
 
 /*** UI refs ***/
@@ -340,6 +343,62 @@ function revealSong() {
   revealBox.style.display = "block";
 }
 
+  async function getActiveDeviceId() {
+  const data = await apiGet("https://api.spotify.com/v1/me/player/devices");
+  const devices = data.devices || [];
+
+  // bevorzugt: aktives Gerät
+  const active = devices.find(d => d.is_active);
+  if (active) return active.id;
+
+  // sonst: irgendeins nehmen
+  if (devices.length) return devices[0].id;
+
+  return null;
+}
+
+async function playCurrentSong() {
+  if (!currentSong) {
+    alert("Erst einen Song ziehen!");
+    return;
+  }
+
+  // Spotify muss irgendwo offen sein (App/Webplayer), sonst gibt’s 404/403
+  const deviceId = await getActiveDeviceId();
+  if (!deviceId) {
+    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App oder Webplayer) und starte irgendeinen Song, dann nochmal.");
+    return;
+  }
+
+  // Track-URI ist nötig (z.B. "spotify:track:...")
+  const uri = currentSong.uri;
+  if (!uri) {
+    alert("Track hat keine URI (unerwartet).");
+    return;
+  }
+
+  // optional: erst Gerät aktiv setzen
+  await fetch(`https://api.spotify.com/v1/me/player`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ device_ids: [deviceId], play: true })
+  });
+
+  // dann Track abspielen
+  const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ uris: [uri] })
+  });
+
+  if (!res.ok && res.status !== 204) {
+    const t = await res.text();
+    throw new Error(`Play fehlgeschlagen (${res.status}): ${t}`);
+  }
+
+  setPlaylistStatus("▶️ Spielt in Spotify…");
+}
+
 /*** wire up ***/
 document.getElementById("loginBtn").onclick = login;
 document.getElementById("logoutBtn").onclick = logout;
@@ -349,6 +408,12 @@ document.getElementById("testPlaylistBtn").onclick = testPlaylistAccess;
 document.getElementById("loadItemsBtn").onclick = loadItemsFromPlaylist;
 document.getElementById("drawBtn").onclick = drawRandomSong;
 document.getElementById("revealBtn").onclick = revealSong;
+  document.getElementById("playBtn").onclick = () => {
+  playCurrentSong().catch(e => {
+    setPlaylistStatus("❌ " + e.message);
+    setDebug(e.stack || e.message);
+  });
+};
 
 refreshConnStatus();
 </script>
