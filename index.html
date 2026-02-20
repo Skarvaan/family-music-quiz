@@ -282,10 +282,9 @@ async function loadItemsFromPlaylist() {
 
   // Minimaler & stabiler Request (Felder reduzieren)
   const url =
-    `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
-    `?limit=100&market=from_token` +
-    `&fields=items(item(type,name,artists(name),album(release_date))),total`;
-
+  `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
+  `?limit=100&market=from_token` +
+  `&fields=items(item(type,uri,id,name,artists(name),album(release_date))),total`;
   setDebug("Items-URL:\n" + url);
 
   try {
@@ -371,11 +370,11 @@ async function playCurrentSong() {
   }
 
   // Track-URI ist nötig (z.B. "spotify:track:...")
-  const uri = currentSong.uri;
-  if (!uri) {
-    alert("Track hat keine URI (unerwartet).");
-    return;
-  }
+  const uri = currentSong.uri || (currentSong.id ? `spotify:track:${currentSong.id}` : null);
+if (!uri) {
+  alert("Track hat keine URI/ID – bitte Items neu laden.");
+  return;
+}
 
   // optional: erst Gerät aktiv setzen
   await fetch(`https://api.spotify.com/v1/me/player`, {
