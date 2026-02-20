@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Family Music Quiz</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 920px; margin: 24px auto; padding: 0 12px; }
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 12px; }
     button { padding: 10px 12px; margin: 6px 6px 6px 0; cursor:pointer; }
     select, input { padding: 8px; margin: 6px 6px 6px 0; }
     .box { border: 1px solid #ddd; padding: 12px; border-radius: 10px; margin-top: 12px; }
@@ -13,6 +13,12 @@
     .bad { color: #b00020; }
     .muted { color:#666; font-size: 12px; }
     pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:8px; }
+    .row { display:flex; gap:10px; flex-wrap: wrap; align-items: center; }
+    .playerRow { display:flex; gap:10px; flex-wrap: wrap; align-items:center; margin: 8px 0; padding: 8px; border: 1px dashed #ddd; border-radius: 10px; }
+    .playerRow input { width: 180px; }
+    .playerRow select { min-width: 320px; }
+    .hidden { display:none !important; }
+    .big { font-size: 22px; font-weight: 700; margin: 8px 0; }
   </style>
 </head>
 <body>
@@ -26,33 +32,50 @@
   <div id="connStatus"></div>
 </div>
 
-<div class="box">
-  <h2>2) Playlists</h2>
-  <button id="loadPlaylistsBtn">Meine Playlists laden</button>
-  <button id="testMeBtn">/me testen</button>
-  <div id="playlistStatus"></div>
+<!-- SETUP SCREEN -->
+<div id="setupScreen" class="box">
+  <h2>2) Setup</h2>
 
-  <div id="playlistsUI" style="display:none;">
-    <p><b>Gefundene Playlists:</b></p>
-    <select id="playlistSelect" style="min-width: 340px;"></select>
-    <button id="testPlaylistBtn">Zugriff testen</button>
-    <button id="loadItemsBtn">Items in Playlist laden</button>
+  <div class="row">
+    <button id="loadPlaylistsBtn">Meine Playlists laden</button>
+    <button id="testMeBtn">/me testen</button>
+  </div>
+
+  <div id="setupStatus"></div>
+
+  <div class="row" style="margin-top:10px;">
+    <label><b>Anzahl Spieler:</b></label>
+    <input id="numPlayers" type="number" min="1" max="12" value="3" />
+    <button id="buildPlayersBtn">Spielerfelder erstellen</button>
+  </div>
+
+  <div id="playersForm"></div>
+
+  <div class="row" style="margin-top:12px;">
+    <button id="startGameBtn">Spiel starten</button>
+    <span class="muted">Start lädt automatisch alle gewählten Playlists vollständig.</span>
   </div>
 </div>
 
-<div class="box">
+<!-- GAME SCREEN -->
+<div id="gameScreen" class="box hidden">
   <h2>3) Runde</h2>
-  <button id="drawBtn">🎲 Zufälligen Song ziehen</button>
-  <button id="revealBtn">👀 Reveal</button>
-  <button id="playBtn">▶️ Play in Spotify</button>
-  <button id="stopBtn">⏸️ Stop</button>
-  <p id="drawStatus"></p>
-  <div id="revealBox" style="display:none; margin-top:10px;"></div>
-  <div class="muted">Hinweis: Erst “Items laden”, dann ziehen.</div>
+
+  <div id="turnPrompt" class="big"></div>
+
+  <div id="turnButtons" class="row">
+    <button id="readyBtn">✅ Bereit</button>
+    <button id="revealBtn" class="hidden">👀 Reveal</button>
+    <button id="nextBtn" class="hidden">➡️ Weiter</button>
+    <button id="stopBtn">⏸️ Stop</button>
+  </div>
+
+  <div id="gameStatus" class="muted"></div>
+  <div id="revealBox" class="box hidden" style="margin-top:10px;"></div>
 </div>
 
 <div class="box">
-  <h2>4) Debug</h2>
+  <h2>Debug</h2>
   <pre id="debug"></pre>
 </div>
 
@@ -70,50 +93,43 @@ const scope = [
 
 /*** UI refs ***/
 const connStatus = document.getElementById("connStatus");
-const playlistStatus = document.getElementById("playlistStatus");
 const debugEl = document.getElementById("debug");
-const playlistsUI = document.getElementById("playlistsUI");
-const playlistSelect = document.getElementById("playlistSelect");
-const drawStatus = document.getElementById("drawStatus");
+
+const setupScreen = document.getElementById("setupScreen");
+const setupStatus = document.getElementById("setupStatus");
+const playersForm = document.getElementById("playersForm");
+
+const gameScreen = document.getElementById("gameScreen");
+const turnPrompt = document.getElementById("turnPrompt");
+const gameStatus = document.getElementById("gameStatus");
 const revealBox = document.getElementById("revealBox");
 
+const readyBtn = document.getElementById("readyBtn");
+const revealBtn = document.getElementById("revealBtn");
+const nextBtn = document.getElementById("nextBtn");
+const stopBtn = document.getElementById("stopBtn");
+
 /*** State ***/
-let currentTracks = [];
+// Playlists from Spotify:
+let playlistList = []; // [{id,name,total}]
+
+// Players:
+let players = []; // [{name, playlistId, tracks:[], bag:[]}]
+let currentPlayerIndex = 0;
 let currentSong = null;
 
 /*** helpers ***/
 function setDebug(msg) { debugEl.textContent = msg || ""; }
 function setConn(html) { connStatus.innerHTML = html; }
-function setPlaylistStatus(html) { playlistStatus.innerHTML = html; }
+function setSetupStatus(html) { setupStatus.innerHTML = html; }
+function setGameStatus(msg) { gameStatus.textContent = msg || ""; }
 
 function getToken() { return localStorage.getItem("spotify_access_token"); }
 function getScope() { return localStorage.getItem("spotify_scope") || ""; }
 
-/*** global error to debug box ***/
 window.onerror = function(message, source, lineno, colno) {
   setDebug("JS ERROR:\n" + message + "\n" + source + ":" + lineno + ":" + colno);
 };
-
-/*** auth/ui ***/
-function logout() {
-  localStorage.removeItem("spotify_access_token");
-  localStorage.removeItem("spotify_scope");
-  localStorage.removeItem("pkce_verifier");
-  localStorage.removeItem("spotify_auth_code");
-
-  currentTracks = [];
-  currentSong = null;
-
-  playlistsUI.style.display = "none";
-  playlistSelect.innerHTML = "";
-  drawStatus.textContent = "";
-  revealBox.style.display = "none";
-  revealBox.innerHTML = "";
-
-  setPlaylistStatus("🔒 Token gelöscht.");
-  setDebug("");
-  refreshConnStatus();
-}
 
 function refreshConnStatus() {
   const s = getScope();
@@ -123,8 +139,39 @@ function refreshConnStatus() {
   );
 }
 
+function logout() {
+  localStorage.removeItem("spotify_access_token");
+  localStorage.removeItem("spotify_scope");
+  localStorage.removeItem("pkce_verifier");
+  localStorage.removeItem("spotify_auth_code");
+
+  players = [];
+  playlistList = [];
+  currentPlayerIndex = 0;
+  currentSong = null;
+
+  playersForm.innerHTML = "";
+  setSetupStatus("🔒 Token gelöscht.");
+  setGameStatus("");
+  revealBox.classList.add("hidden");
+  revealBox.innerHTML = "";
+  setDebug("");
+  showSetup();
+  refreshConnStatus();
+}
+
+function showSetup(){
+  setupScreen.classList.remove("hidden");
+  gameScreen.classList.add("hidden");
+}
+
+function showGame(){
+  setupScreen.classList.add("hidden");
+  gameScreen.classList.remove("hidden");
+}
+
 /*** fetch helper ***/
-async function apiGet(url, timeoutMs = 12000) {
+async function apiGet(url, timeoutMs = 15000) {
   const token = getToken();
   if (!token) throw new Error("Kein Token vorhanden (bitte neu verbinden).");
 
@@ -147,7 +194,7 @@ async function apiGet(url, timeoutMs = 12000) {
     }
     return data;
   } catch (e) {
-    if (e.name === "AbortError") throw new Error("Timeout: Spotify antwortet nicht (12s).");
+    if (e.name === "AbortError") throw new Error("Timeout: Spotify antwortet nicht (15s).");
     throw e;
   } finally {
     clearTimeout(timer);
@@ -186,102 +233,75 @@ async function login() {
   window.location = url;
 }
 
-/*** API actions ***/
+/*** Spotify calls ***/
 async function testMe() {
-  setPlaylistStatus("Teste /me …");
-  setDebug("");
+  setSetupStatus("Teste /me …");
   try {
     const me = await apiGet("https://api.spotify.com/v1/me");
-    setPlaylistStatus(`<span class="ok">✅ /me ok: ${me.display_name}</span>`);
+    setSetupStatus(`<span class="ok">✅ /me ok: ${me.display_name}</span>`);
     setDebug(JSON.stringify(me, null, 2));
   } catch (e) {
-    setPlaylistStatus(`<span class="bad">❌ /me Fehler: ${e.message}</span>`);
+    setSetupStatus(`<span class="bad">❌ ${e.message}</span>`);
     setDebug(e.stack || e.message);
   }
 }
 
 async function loadPlaylists() {
-  setPlaylistStatus("Lade Playlists…");
+  setSetupStatus("Lade Playlists…");
   setDebug("");
 
   try {
     const data = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
     const items = data.items || [];
-    playlistSelect.innerHTML = "";
 
-    if (!items.length) {
-      setPlaylistStatus("⚠️ Keine Playlists gefunden.");
-      setDebug(JSON.stringify(data, null, 2));
-      return;
-    }
+    playlistList = items.map(pl => ({
+      id: (pl.id || "").trim(),
+      name: pl.name || "(ohne Namen)",
+      total: (typeof pl.items?.total === "number") ? pl.items.total :
+             (typeof pl.tracks?.total === "number") ? pl.tracks.total :
+             null
+    })).filter(p => p.id);
 
-    items.forEach(pl => {
-      const opt = document.createElement("option");
-      opt.value = (pl.id || "").trim();
-
-      const total =
-        (typeof pl.items?.total === "number") ? pl.items.total :
-        (typeof pl.tracks?.total === "number") ? pl.tracks.total :
-        "?";
-
-      const name = pl.name || "(ohne Namen)";
-      opt.textContent = `${name} (${total} Tracks)`;
-      playlistSelect.appendChild(opt);
-    });
-
-    if (playlistSelect.options.length > 0) playlistSelect.selectedIndex = 0;
-
-    playlistsUI.style.display = "block";
-    setPlaylistStatus(`<span class="ok">✅ ${items.length} Playlists geladen</span>`);
+    setSetupStatus(`<span class="ok">✅ ${playlistList.length} Playlists geladen</span>`);
+    setDebug(JSON.stringify(playlistList.slice(0, 20), null, 2));
   } catch (e) {
-    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setSetupStatus(`<span class="bad">❌ ${e.message}</span>`);
     setDebug(e.stack || e.message);
   }
 }
 
-async function loadItemsFromPlaylist() {
-  const id = (playlistSelect.value || "").trim();
-  if (!id) {
-    setPlaylistStatus("❌ Keine Playlist ausgewählt.");
-    return;
-  }
+/*** Load ALL playlist items (pagination) ***/
+async function loadAllTracksForPlaylist(playlistId) {
+  const limit = 100;
+  let offset = 0;
+  let all = [];
 
-  setPlaylistStatus("Lade Items…");
-  setDebug("");
+  while (true) {
+    const url =
+      `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items` +
+      `?limit=${limit}&offset=${offset}&market=from_token` +
+      `&fields=items(item(type,uri,id,name,artists(name),album(release_date))),total,next`;
 
-  const url =
-    `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
-    `?limit=100&market=from_token` +
-    `&fields=items(item(type,uri,id,name,artists(name),album(release_date))),total`;
-
-  setDebug("Items-URL:\n" + url);
-
-  try {
     const data = await apiGet(url);
     const items = data.items || [];
 
-    currentTracks = items
+    const tracks = items
       .map(x => x?.item ?? x?.track ?? null)
       .filter(t => t && t.type === "track")
       .filter(t => t.name && t.album?.release_date && t.artists?.length);
 
-    if (!currentTracks.length) {
-      setPlaylistStatus("⚠️ Keine Tracks gefunden.");
-      setDebug(JSON.stringify({ total: data.total, sample: items.slice(0,5) }, null, 2));
-      return;
-    }
+    all.push(...tracks);
 
-    setPlaylistStatus(`<span class="ok">✅ ${currentTracks.length} Tracks geladen</span>`);
-    setDebug(JSON.stringify(currentTracks.slice(0, 10).map(t => ({
-      name: t.name,
-      artists: t.artists.map(a => a.name).join(", "),
-      year: (t.album.release_date || "").slice(0,4),
-      uri: t.uri
-    })), null, 2));
-  } catch (e) {
-    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
-    setDebug(e.stack || e.message);
+    // Pagination: wenn weniger als limit zurückkommt -> Ende
+    if (items.length < limit) break;
+
+    offset += limit;
+
+    // Sicherheitsbremse (falls Spotify spinnt)
+    if (offset > 10000) break;
   }
+
+  return all;
 }
 
 /*** Playback control ***/
@@ -296,42 +316,30 @@ async function getActiveDeviceId() {
 
 async function pausePlayback() {
   const deviceId = await getActiveDeviceId();
-  if (!deviceId) {
-    setPlaylistStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden.");
-    return;
-  }
+  if (!deviceId) { setGameStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden."); return; }
 
   const res = await fetch(
     `https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`,
     { method: "PUT", headers: { Authorization: `Bearer ${getToken()}` } }
   );
-
   if (!res.ok && res.status !== 204) {
     const t = await res.text();
     throw new Error(`Stop/Pause fehlgeschlagen (${res.status}): ${t}`);
   }
-
-  setPlaylistStatus("⏸️ Pausiert.");
+  setGameStatus("⏸️ Pausiert.");
 }
 
-async function playCurrentSong() {
-  if (!currentSong) {
-    alert("Erst einen Song ziehen!");
-    return;
-  }
-
+async function playTrack(track) {
   const deviceId = await getActiveDeviceId();
   if (!deviceId) {
     alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz einen Song, dann nochmal.");
     return;
   }
 
-  const uri = currentSong.uri || (currentSong.id ? `spotify:track:${currentSong.id}` : null);
-  if (!uri) {
-    alert("Track hat keine URI/ID – bitte Items neu laden.");
-    return;
-  }
+  const uri = track.uri || (track.id ? `spotify:track:${track.id}` : null);
+  if (!uri) { alert("Track hat keine URI/ID – bitte Playlist neu laden."); return; }
 
+  // optional: Gerät aktiv setzen
   await fetch(`https://api.spotify.com/v1/me/player`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
@@ -348,53 +356,196 @@ async function playCurrentSong() {
     const t = await res.text();
     throw new Error(`Play fehlgeschlagen (${res.status}): ${t}`);
   }
-
-  setPlaylistStatus("▶️ Spielt in Spotify…");
 }
 
-/*** Game: draw + reveal ***/
-function drawRandomSong() {
-  if (!currentTracks.length) {
-    alert("Erst Items/Tracks laden!");
+/*** Setup UI ***/
+function buildPlayersForm() {
+  const n = Math.max(1, Math.min(12, Number(document.getElementById("numPlayers").value || 1)));
+  playersForm.innerHTML = "";
+
+  if (!playlistList.length) {
+    setSetupStatus(`<span class="bad">❌ Bitte zuerst "Meine Playlists laden".</span>`);
     return;
   }
 
-  // optional: vorher pausieren
-  pausePlayback().catch(()=>{});
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement("div");
+    row.className = "playerRow";
+    row.innerHTML = `
+      <b>Spieler ${i+1}</b>
+      <input type="text" placeholder="Name" value="${i===0 ? "Papa" : i===1 ? "Mama" : "Spieler "+(i+1)}" data-field="name"/>
+      <select data-field="playlist"></select>
+    `;
 
-  const index = Math.floor(Math.random() * currentTracks.length);
-  currentSong = currentTracks[index];
+    const sel = row.querySelector('select[data-field="playlist"]');
+    playlistList.forEach(pl => {
+      const opt = document.createElement("option");
+      opt.value = pl.id;
+      opt.textContent = pl.name;
+      sel.appendChild(opt);
+    });
 
-  revealBox.style.display = "none";
-  revealBox.innerHTML = "";
-  drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
+    playersForm.appendChild(row);
+  }
+
+  setSetupStatus(`<span class="ok">✅ Spielerfelder erstellt. Wähle pro Spieler eine Playlist.</span>`);
 }
 
-async function revealSong() {
+function readPlayersFromForm() {
+  const rows = Array.from(playersForm.querySelectorAll(".playerRow"));
+  const out = rows.map(r => {
+    const name = (r.querySelector('input[data-field="name"]').value || "").trim() || "Spieler";
+    const playlistId = r.querySelector('select[data-field="playlist"]').value;
+    return { name, playlistId, tracks: [], bag: [] };
+  });
+
+  // Basic validity
+  if (!out.length) throw new Error("Keine Spieler definiert.");
+  if (out.some(p => !p.playlistId)) throw new Error("Mindestens ein Spieler hat keine Playlist.");
+
+  return out;
+}
+
+/*** Shuffle-bag: sorgt dafür, dass nicht ständig derselbe Song kommt ***/
+function refillBag(player) {
+  // bag = Array von Indizes, gemischt
+  const idx = Array.from({ length: player.tracks.length }, (_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  player.bag = idx;
+}
+
+function drawSongForPlayer(player) {
+  if (!player.tracks.length) throw new Error(`Playlist von ${player.name} hat keine Tracks.`);
+  if (!player.bag.length) refillBag(player);
+  const i = player.bag.pop();
+  return player.tracks[i];
+}
+
+/*** Game flow ***/
+function resetTurnUI() {
+  revealBox.classList.add("hidden");
+  revealBox.innerHTML = "";
+  revealBtn.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+  readyBtn.classList.remove("hidden");
+}
+
+function showTurnPrompt() {
+  const p = players[currentPlayerIndex];
+  turnPrompt.textContent = `🎤 ${p.name} ist dran. Bereit?`;
+  setGameStatus("");
+  resetTurnUI();
+}
+
+async function onReady() {
+  const p = players[currentPlayerIndex];
+  currentSong = drawSongForPlayer(p);
+
+  // Start song (hidden as much as possible)
+  try {
+    await playTrack(currentSong);
+  } catch (e) {
+    setGameStatus("❌ " + e.message);
+    setDebug(e.stack || e.message);
+    return;
+  }
+
+  // UI: now only Reveal
+  readyBtn.classList.add("hidden");
+  revealBtn.classList.remove("hidden");
+  setGameStatus("🎵 Läuft… (nur Reveal zum Auflösen)");
+}
+
+async function onReveal() {
   if (!currentSong) return;
 
-  // beim Reveal automatisch pausieren
   try { await pausePlayback(); } catch {}
 
   const year = (currentSong.album?.release_date || "").slice(0, 4) || "?";
   const artists = (currentSong.artists || []).map(a => a.name).join(", ");
 
   revealBox.innerHTML = `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}`;
-  revealBox.style.display = "block";
+  revealBox.classList.remove("hidden");
+
+  revealBtn.classList.add("hidden");
+  nextBtn.classList.remove("hidden");
+  setGameStatus("➡️ Weiter für nächsten Spieler");
+}
+
+function onNext() {
+  currentSong = null;
+  currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+  showTurnPrompt();
+}
+
+/*** Start game: load all chosen playlists automatically ***/
+async function startGame() {
+  if (!getToken()) {
+    setSetupStatus(`<span class="bad">❌ Bitte zuerst mit Spotify verbinden.</span>`);
+    return;
+  }
+  if (!playlistList.length) {
+    setSetupStatus(`<span class="bad">❌ Bitte zuerst "Meine Playlists laden".</span>`);
+    return;
+  }
+
+  let chosen;
+  try {
+    chosen = readPlayersFromForm();
+  } catch (e) {
+    setSetupStatus(`<span class="bad">❌ ${e.message}</span>`);
+    return;
+  }
+
+  setSetupStatus("⏳ Lade alle Playlists vollständig… (kann je nach Größe kurz dauern)");
+  setDebug("");
+
+  // Load each playlist fully and attach tracks
+  try {
+    for (let i = 0; i < chosen.length; i++) {
+      const p = chosen[i];
+      setSetupStatus(`⏳ Lade Playlist für <b>${p.name}</b>…`);
+      const tracks = await loadAllTracksForPlaylist(p.playlistId);
+      p.tracks = tracks;
+      p.bag = [];
+      setDebug(`Geladen für ${p.name}: ${tracks.length} Tracks\n` + (debugEl.textContent || ""));
+    }
+  } catch (e) {
+    setSetupStatus(`<span class="bad">❌ Laden fehlgeschlagen: ${e.message}</span>`);
+    setDebug(e.stack || e.message);
+    return;
+  }
+
+  // Done
+  players = chosen;
+  currentPlayerIndex = 0;
+  currentSong = null;
+
+  setSetupStatus(`<span class="ok">✅ Fertig. Spiel startet!</span>`);
+  showGame();
+  showTurnPrompt();
 }
 
 /*** wire up ***/
 document.getElementById("loginBtn").onclick = login;
 document.getElementById("logoutBtn").onclick = logout;
+
 document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
 document.getElementById("testMeBtn").onclick = testMe;
-document.getElementById("loadItemsBtn").onclick = loadItemsFromPlaylist;
-document.getElementById("drawBtn").onclick = drawRandomSong;
-document.getElementById("revealBtn").onclick = () => revealSong();
-document.getElementById("playBtn").onclick = () => playCurrentSong().catch(e => { setPlaylistStatus("❌ " + e.message); setDebug(e.stack || e.message); });
-document.getElementById("stopBtn").onclick = () => pausePlayback().catch(e => { setPlaylistStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+document.getElementById("buildPlayersBtn").onclick = buildPlayersForm;
+document.getElementById("startGameBtn").onclick = startGame;
+
+readyBtn.onclick = () => onReady().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+revealBtn.onclick = () => onReveal().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+nextBtn.onclick = onNext;
+
+stopBtn.onclick = () => pausePlayback().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
 
 refreshConnStatus();
+showSetup();
 </script>
 
 </body>
