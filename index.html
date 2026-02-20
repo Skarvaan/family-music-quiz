@@ -28,6 +28,7 @@
 
 <div class="box">
   <h2>2) Playlists laden</h2>
+  <button onclick="testPlaylistAccess()">Zugriff auf Playlist testen</button>
   <button id="loadPlaylistsBtn">Meine Playlists laden</button>
   <div id="playlistStatus"></div>
   <div id="playlistsUI" style="display:none;">
@@ -57,9 +58,7 @@ const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html"
 
 const scope = [
   "playlist-read-private",
-  "playlist-read-collaborative",
-  "user-read-playback-state",
-  "user-modify-playback-state"
+  "playlist-read-collaborative"
 ].join(" ");
 
 const connStatus = document.getElementById("connStatus");
@@ -112,7 +111,20 @@ async function apiGet(url, timeoutMs = 12000) {
   }
 }
 
-
+async function testPlaylistAccess() {
+  const id = playlistSelect.value;
+  const url = `https://api.spotify.com/v1/playlists/${id}?market=from_token`;
+  setPlaylistStatus("Teste Zugriff…");
+  try {
+    const data = await apiGet(url);
+    setPlaylistStatus(`✅ Zugriff ok: ${data.name}`);
+    setDebug(JSON.stringify({name:data.name, owner:data.owner?.display_name, public:data.public}, null, 2));
+  } catch (e) {
+    setPlaylistStatus("❌ " + e.message);
+    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+  }
+}
+  
 async function loadPlaylists() {
   setPlaylistStatus("Lade…");
   setDebug("");
