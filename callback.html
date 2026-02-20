@@ -51,6 +51,8 @@ async function exchangeToken() {
     document.body.innerHTML += "<pre>❌ Token Fehler: "+JSON.stringify(data,null,2)+"</pre>";
   }
 }
+  localStorage.setItem("spotify_scope", data.scope || "");
+  document.body.innerHTML += "<pre>Scopes: " + (data.scope || "(none)") + "</pre>";
 
 if(code){
   exchangeToken();
