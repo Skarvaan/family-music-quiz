@@ -58,6 +58,27 @@
     .scoreboard { display:flex; gap:10px; flex-wrap:wrap; }
     .scorechip { border:1px solid #ddd; border-radius:999px; padding:6px 10px; background:#fff; }
     .scorechip.active { border-color:#111; }
+
+    .badgeQ {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      border: 2px solid #ddd;
+      display:flex; align-items:center; justify-content:center;
+      font-size: 24px;
+      background: #fff;
+    }
+
+    .checkrow { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+    .checkrow label { display:flex; gap:8px; align-items:center; }
+
+    /* BIG BUTTONS */
+    .bigBtn{
+      font-size: 26px;
+      padding: 18px 22px;
+      border-radius: 16px;
+    }
+    .primaryBtn{ font-weight: 800; }
+    .wideBtn{ min-width: 220px; }
   </style>
 </head>
 <body>
@@ -83,7 +104,11 @@
   <div id="setupStatus"></div>
 
   <div class="box" style="margin-top:10px;">
-    <b>Hinweis zu geteilten Playlists:</b>
+    <b>Modus wählen:</b>
+    <div class="row" style="margin-top:6px;">
+      <label><input type="radio" name="mode" value="standard" checked> Standardmodus (Timeline, 10 richtige)</label>
+      <label><input type="radio" name="mode" value="guess"> Song erraten (Titel/Interpret/Jahr → Punkte)</label>
+    </div>
     <div class="muted">
       Geteilte/„Shared“ Playlists erscheinen hier, wenn du sie in Spotify <b>folgst / speicherst</b>
       oder wenn es eine <b>collaborative Playlist</b> ist.
@@ -114,15 +139,20 @@
   </div>
 
   <div id="turnButtons" class="row">
-    <button id="readyBtn">✅ Bereit</button>
-    <button id="revealBtn" class="hidden">👀 Reveal</button>
+    <button id="readyBtn" class="bigBtn primaryBtn wideBtn">✅ BEREIT!</button>
+    <button id="revealBtn" class="bigBtn primaryBtn wideBtn hidden">👀 REVEAL!</button>
+
+    <button id="applyPointsBtn" class="hidden">✅ Punkte übernehmen</button>
     <button id="nextBtn" class="hidden">➡️ Weiter</button>
+
     <button id="stopBtn">⏸️ Stop</button>
+    <button id="endGameBtn" class="hidden">🏁 Spiel beenden</button>
   </div>
 
   <div id="gameStatus" class="muted"></div>
 
-  <div id="timelineArea" class="box" style="margin-top:10px;">
+  <!-- STANDARD MODE: Timeline -->
+  <div id="timelineArea" class="box hidden" style="margin-top:10px;">
     <div class="muted">Timeline (für den aktuellen Spieler):</div>
     <div class="timelineWrap">
       <div id="timelineRow" class="timeline"></div>
@@ -130,23 +160,39 @@
 
     <div class="row" id="placeControls" style="margin-top:10px;">
       <button id="leftBtn">⬅️</button>
-      <div class="box" style="flex:1; margin:0;">
-        <b>Neue Karte (verdeckt):</b>
-        <div id="candidateCard" class="muted" style="margin-top:6px;">–</div>
-        <div class="muted">Einfügeposition: <span id="posLabel"></span></div>
-        <div class="muted">Tipp: Klicke auf eine gestrichelte Linie (Slot), um die Position zu ändern.</div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="badgeQ" title="Neue Karte (verdeckt)">❓</div>
+        <div class="muted">
+          Wähle die Einfügeposition über die gestrichelten Linien (Slots) oder ⬅️/➡️.<br>
+          Du kannst die Position bis zum Reveal jederzeit ändern.
+        </div>
       </div>
       <button id="rightBtn">➡️</button>
+      <div class="muted">Pos: <span id="posLabel"></span></div>
     </div>
 
     <div id="revealBox" class="box hidden" style="margin-top:10px;"></div>
   </div>
+
+  <!-- GUESS MODE -->
+  <div id="guessArea" class="box hidden" style="margin-top:10px;">
+    <div class="muted">Song erraten (nach Reveal auswählen, was richtig war):</div>
+    <div id="guessRevealBox" class="box hidden" style="margin-top:10px;"></div>
+
+    <div id="guessChecks" class="checkrow hidden">
+      <label><input type="checkbox" id="chkTitle"> Songtitel</label>
+      <label><input type="checkbox" id="chkArtist"> Interpret</label>
+      <label><input type="checkbox" id="chkYear"> Jahr</label>
+      <span class="muted">(1 Punkt pro Haken)</span>
+    </div>
+  </div>
 </div>
 
-<!-- WINNER SCREEN -->
+<!-- WINNER / END SCREEN -->
 <div id="winnerScreen" class="box hidden">
   <h2>🏁 Spiel beendet</h2>
   <div id="winnerText" class="big"></div>
+  <div id="rankingBox" class="box"></div>
   <button id="restartBtn">Neues Spiel (Setup)</button>
 </div>
 
@@ -159,7 +205,7 @@
 /*** ✅ KONFIG ***/
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
 const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
-const WIN_SCORE = 10;
+const WIN_SCORE_STANDARD = 10;
 
 const scope = [
   "playlist-read-private",
@@ -179,37 +225,44 @@ const playersForm = document.getElementById("playersForm");
 const gameScreen = document.getElementById("gameScreen");
 const winnerScreen = document.getElementById("winnerScreen");
 const winnerText = document.getElementById("winnerText");
+const rankingBox = document.getElementById("rankingBox");
 
 const turnPrompt = document.getElementById("turnPrompt");
 const gameStatus = document.getElementById("gameStatus");
 const scoreboardEl = document.getElementById("scoreboard");
 
-const timelineRow = document.getElementById("timelineRow");
-const candidateCard = document.getElementById("candidateCard");
-const posLabel = document.getElementById("posLabel");
-
-const revealBox = document.getElementById("revealBox");
-const placeControls = document.getElementById("placeControls");
-
 const readyBtn = document.getElementById("readyBtn");
 const revealBtn = document.getElementById("revealBtn");
+const applyPointsBtn = document.getElementById("applyPointsBtn");
 const nextBtn = document.getElementById("nextBtn");
 const stopBtn = document.getElementById("stopBtn");
+const endGameBtn = document.getElementById("endGameBtn");
+
+const timelineArea = document.getElementById("timelineArea");
+const timelineRow = document.getElementById("timelineRow");
+const placeControls = document.getElementById("placeControls");
+const posLabel = document.getElementById("posLabel");
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
+const revealBox = document.getElementById("revealBox");
+
+const guessArea = document.getElementById("guessArea");
+const guessRevealBox = document.getElementById("guessRevealBox");
+const guessChecks = document.getElementById("guessChecks");
+const chkTitle = document.getElementById("chkTitle");
+const chkArtist = document.getElementById("chkArtist");
+const chkYear = document.getElementById("chkYear");
 
 /*** State ***/
-// Playlists from Spotify:
-let playlistList = []; // [{id,name,total}]
-
-// Players:
+let mode = "standard"; // "standard" | "guess"
+let playlistList = [];
 let players = []; // [{name, playlistId, tracks:[], bag:[], timeline:[], score:number}]
 let currentPlayerIndex = 0;
 
-// Candidate (current round):
-let currentSong = null;      // track object
-let insertPos = 0;           // 0..timeline.length
-let phase = "idle";          // "idle" | "placing" | "revealed"
+let currentSong = null;
+let insertPos = 0;     // only in standard mode
+let phase = "idle";    // "idle" | "placing" | "revealed"
+let isPlaying = false; // for stop/play toggle
 
 /*** helpers ***/
 function setDebug(msg) { debugEl.textContent = msg || ""; }
@@ -223,6 +276,8 @@ function getScope() { return localStorage.getItem("spotify_scope") || ""; }
 window.onerror = function(message, source, lineno, colno) {
   setDebug("JS ERROR:\n" + message + "\n" + source + ":" + lineno + ":" + colno);
 };
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 function refreshConnStatus() {
   const s = getScope();
@@ -244,11 +299,16 @@ function showGame(){
   winnerScreen.classList.add("hidden");
 }
 
-function showWinner(name){
+function showWinner(title, rankingHtml){
   setupScreen.classList.add("hidden");
   gameScreen.classList.add("hidden");
   winnerScreen.classList.remove("hidden");
-  winnerText.textContent = `🏆 Gewinner: ${name} (10 richtige Karten)`;
+  winnerText.textContent = title;
+  rankingBox.innerHTML = rankingHtml || "";
+}
+
+function updateStopPlayBtn(){
+  stopBtn.textContent = isPlaying ? "⏸️ Stop" : "▶️ Play";
 }
 
 function logout() {
@@ -264,14 +324,14 @@ function logout() {
   currentSong = null;
   insertPos = 0;
   phase = "idle";
+  isPlaying = false;
+  updateStopPlayBtn();
 
   playersForm.innerHTML = "";
   setSetupStatus("🔒 Token gelöscht.");
   setGameStatus("");
-  revealBox.classList.add("hidden");
-  revealBox.innerHTML = "";
-  timelineRow.innerHTML = "";
   setDebug("");
+
   showSetup();
   refreshConnStatus();
 }
@@ -398,8 +458,7 @@ async function loadAllTracksForPlaylist(playlistId) {
 
     if (items.length < limit) break;
     offset += limit;
-
-    if (offset > 20000) break; // safety
+    if (offset > 20000) break;
   }
 
   return all;
@@ -417,7 +476,7 @@ async function getActiveDeviceId() {
 
 async function pausePlayback() {
   const deviceId = await getActiveDeviceId();
-  if (!deviceId) { setGameStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden."); return; }
+  if (!deviceId) return;
 
   const res = await fetch(
     `https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`,
@@ -427,7 +486,29 @@ async function pausePlayback() {
     const t = await res.text();
     throw new Error(`Stop/Pause fehlgeschlagen (${res.status}): ${t}`);
   }
-  setGameStatus("⏸️ Pausiert.");
+  isPlaying = false;
+  updateStopPlayBtn();
+}
+
+async function resumePlayback() {
+  const deviceId = await getActiveDeviceId();
+  if (!deviceId) {
+    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz einen Song, dann nochmal.");
+    return;
+  }
+
+  const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}` }
+  });
+
+  if (!res.ok && res.status !== 204) {
+    const t = await res.text();
+    throw new Error(`Resume fehlgeschlagen (${res.status}): ${t}`);
+  }
+
+  isPlaying = true;
+  updateStopPlayBtn();
 }
 
 async function playTrack(track) {
@@ -457,9 +538,17 @@ async function playTrack(track) {
     const t = await res.text();
     throw new Error(`Play fehlgeschlagen (${res.status}): ${t}`);
   }
+
+  isPlaying = true;
+  updateStopPlayBtn();
 }
 
 /*** Setup UI ***/
+function getSelectedMode(){
+  const el = document.querySelector('input[name="mode"]:checked');
+  return el ? el.value : "standard";
+}
+
 function buildPlayersForm() {
   const n = Math.max(1, Math.min(12, Number(document.getElementById("numPlayers").value || 1)));
   playersForm.innerHTML = "";
@@ -506,7 +595,7 @@ function readPlayersFromForm() {
   return out;
 }
 
-/*** Shuffle-bag (gegen Wiederholungen) ***/
+/*** Shuffle-bag ***/
 function refillBag(player) {
   const idx = Array.from({ length: player.tracks.length }, (_, i) => i);
   for (let i = idx.length - 1; i > 0; i--) {
@@ -521,33 +610,44 @@ function drawSongForPlayer(player) {
   return player.tracks[player.bag.pop()];
 }
 
-/*** Timeline + placement UI ***/
-function hiddenCandidateText() {
-  // Wenn du lieber Titel/Artist zeigen willst (wie Hitster), ändere das hier.
-  return "🎵 Unbekannter Song (verdeckt)";
-}
-
+/*** Scoreboard ***/
 function renderScoreboard() {
   scoreboardEl.innerHTML = "";
   players.forEach((p, idx) => {
     const chip = document.createElement("div");
     chip.className = "scorechip" + (idx === currentPlayerIndex ? " active" : "");
-    chip.textContent = `${p.name}: ${p.score}/${WIN_SCORE}`;
+    const suffix = (mode === "standard") ? `(${p.score}/${WIN_SCORE_STANDARD})` : `(${p.score} Punkte)`;
+    chip.textContent = `${p.name} ${suffix}`;
     scoreboardEl.appendChild(chip);
   });
+}
+
+/*** STANDARD MODE timeline UI ***/
+function yearOf(song) {
+  const y = Number((song.album?.release_date || "").slice(0,4));
+  return Number.isFinite(y) ? y : null;
+}
+
+function isPlacementCorrect(candidateSong, timeline, pos) {
+  const y = yearOf(candidateSong);
+  if (y === null) return false;
+
+  const left = (pos - 1 >= 0) ? yearOf(timeline[pos - 1].song) : null;
+  const right = (pos < timeline.length) ? yearOf(timeline[pos].song) : null;
+
+  const okLeft = (left === null) ? true : (left <= y);
+  const okRight = (right === null) ? true : (y <= right);
+  return okLeft && okRight;
 }
 
 function renderTimeline() {
   const p = players[currentPlayerIndex];
   timelineRow.innerHTML = "";
 
-  const entries = p.timeline; // revealed entries only
-
-  // slots count = entries.length + 1
+  const entries = p.timeline;
   const slotCount = entries.length + 1;
 
   for (let s = 0; s < slotCount; s++) {
-    // slot
     const slot = document.createElement("div");
     slot.className = "slot" + (phase === "placing" && s === insertPos ? " active" : "");
     const btn = document.createElement("button");
@@ -562,7 +662,6 @@ function renderTimeline() {
     slot.appendChild(btn);
     timelineRow.appendChild(slot);
 
-    // card after slot, except after last slot
     if (s < entries.length) {
       const e = entries[s];
       const card = document.createElement("div");
@@ -570,13 +669,10 @@ function renderTimeline() {
       if (e.result === true) card.classList.add("ok");
       if (e.result === false) card.classList.add("bad");
 
-      if (!e.revealed) {
-        card.innerHTML = `<b>${hiddenCandidateText()}</b><br><span class="muted">(verdeckt)</span>`;
-      } else {
-        const year = (e.song.album.release_date || "").slice(0,4) || "?";
-        const artists = e.song.artists.map(a=>a.name).join(", ");
-        card.innerHTML = `<b>${e.song.name}</b><br>${artists}<br>Jahr: ${year}`;
-      }
+      const year = (e.song.album.release_date || "").slice(0,4) || "?";
+      const artists = e.song.artists.map(a=>a.name).join(", ");
+      card.innerHTML = `<b>${e.song.name}</b><br>${artists}<br>Jahr: ${year}`;
+
       timelineRow.appendChild(card);
     }
   }
@@ -584,16 +680,13 @@ function renderTimeline() {
 
 function renderPlacementPanel() {
   const p = players[currentPlayerIndex];
-
   if (phase === "placing") {
     placeControls.classList.remove("hidden");
-    candidateCard.textContent = hiddenCandidateText();
     posLabel.textContent = `${insertPos} / ${p.timeline.length}`;
     leftBtn.disabled = insertPos <= 0;
     rightBtn.disabled = insertPos >= p.timeline.length;
   } else {
     placeControls.classList.add("hidden");
-    candidateCard.textContent = "–";
     posLabel.textContent = "";
   }
 }
@@ -608,58 +701,62 @@ function moveInsert(dir) {
   renderPlacementPanel();
 }
 
-/*** Placement correctness ***/
-function yearOf(song) {
-  const y = Number((song.album?.release_date || "").slice(0,4));
-  return Number.isFinite(y) ? y : null;
-}
-
-function isPlacementCorrect(candidateSong, timeline, pos) {
-  // timeline = revealed entries only
-  // pos = insertion index (0..timeline.length)
-
-  const y = yearOf(candidateSong);
-  if (y === null) return false;
-
-  const left = (pos - 1 >= 0) ? yearOf(timeline[pos - 1].song) : null;
-  const right = (pos < timeline.length) ? yearOf(timeline[pos].song) : null;
-
-  // Gleichheit erlaubt => <=
-  const okLeft = (left === null) ? true : (left <= y);
-  const okRight = (right === null) ? true : (y <= right);
-
-  return okLeft && okRight;
+/*** GUESS MODE UI ***/
+function resetGuessChecks(){
+  chkTitle.checked = false;
+  chkArtist.checked = false;
+  chkYear.checked = false;
 }
 
 /*** Game flow ***/
 function resetTurnUI() {
-  revealBox.classList.add("hidden");
-  revealBox.innerHTML = "";
-  readyBtn.classList.remove("hidden");
-  revealBtn.classList.add("hidden");
-  nextBtn.classList.add("hidden");
-  phase = "idle";
   currentSong = null;
   insertPos = 0;
-  renderTimeline();
-  renderPlacementPanel();
+  phase = "idle";
+  isPlaying = false;
+  updateStopPlayBtn();
+
+  setGameStatus("");
+  revealBox.classList.add("hidden");
+  revealBox.innerHTML = "";
+
+  guessRevealBox.classList.add("hidden");
+  guessRevealBox.innerHTML = "";
+  guessChecks.classList.add("hidden");
+  resetGuessChecks();
+
+  readyBtn.classList.remove("hidden");
+  revealBtn.classList.add("hidden");
+  applyPointsBtn.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+
+  timelineArea.classList.toggle("hidden", mode !== "standard");
+  guessArea.classList.toggle("hidden", mode !== "guess");
+
+  if (mode === "standard") {
+    renderTimeline();
+    renderPlacementPanel();
+  }
+
+  endGameBtn.classList.toggle("hidden", mode !== "guess");
   renderScoreboard();
 }
 
 function showTurnPrompt() {
   const p = players[currentPlayerIndex];
   turnPrompt.textContent = `🎤 ${p.name} ist dran. Bereit?`;
-  setGameStatus("");
   resetTurnUI();
 }
 
+/*** Smooth start on Ready ***/
 async function onReady() {
   const p = players[currentPlayerIndex];
-
-  // Song ziehen
   currentSong = drawSongForPlayer(p);
 
-  // Song starten
+  // Smooth: pause old first, tiny delay, then play new
+  await pausePlayback().catch(()=>{});
+  await sleep(180);
+
   try {
     await playTrack(currentSong);
   } catch (e) {
@@ -668,85 +765,109 @@ async function onReady() {
     return;
   }
 
-  // Placement: erster Song "frei" => wir lassen ihn platzieren, aber Position irrelevant
-  phase = "placing";
-  insertPos = p.timeline.length; // default: ans Ende (kann per Slot geändert werden)
-
-  renderTimeline();
-  renderPlacementPanel();
+  if (mode === "standard") {
+    phase = "placing";
+    insertPos = p.timeline.length;
+    renderTimeline();
+    renderPlacementPanel();
+    setGameStatus("🎵 Läuft… Position wählen (Slots/⬅️➡️), dann REVEAL!");
+  } else {
+    setGameStatus("🎵 Läuft… erraten: Titel / Interpret / Jahr. Dann REVEAL!");
+  }
 
   readyBtn.classList.add("hidden");
   revealBtn.classList.remove("hidden");
-  nextBtn.classList.add("hidden");
-
-  setGameStatus("🎵 Läuft… wähle die Position (Slots oder ⬅️/➡️), dann Reveal.");
 }
 
+/*** Reveal ***/
 async function onReveal() {
   const p = players[currentPlayerIndex];
   if (!currentSong) return;
 
-  // stop
   try { await pausePlayback(); } catch {}
 
-  // Prüfen
-  let correct;
-  if (p.timeline.length === 0) {
-    // erster Song zählt immer als richtig
-    correct = true;
-  } else {
-    correct = isPlacementCorrect(currentSong, p.timeline, insertPos);
-  }
-
-  if (correct) {
-    // Karte bleibt: wir fügen sie an insertPos ein
-    const entry = { song: currentSong, revealed: true, result: true };
-    p.timeline.splice(insertPos, 0, entry);
-    p.score += 1;
-
-    // Winner?
-    if (p.score >= WIN_SCORE) {
-      renderScoreboard();
-      showWinner(p.name);
-      return;
-    }
-
-    setGameStatus("✅ Richtig! ➡️ Weiter");
-  } else {
-    // Karte wird entfernt/verworfen
-    setGameStatus("❌ Falsch (Karte verworfen). ➡️ Weiter");
-  }
-
-  // Reveal Box anzeigen
   const year = (currentSong.album.release_date || "").slice(0,4) || "?";
   const artists = currentSong.artists.map(a=>a.name).join(", ");
-  revealBox.innerHTML =
-    `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}<br><br>` +
-    (correct ? `<span class="ok">✅ Richtig platziert</span>` : `<span class="bad">❌ Falsch platziert</span>`);
-  revealBox.classList.remove("hidden");
 
-  // UI
-  phase = "revealed";
-  revealBtn.classList.add("hidden");
-  nextBtn.classList.remove("hidden");
-  placeControls.classList.add("hidden");
+  if (mode === "standard") {
+    let correct = (p.timeline.length === 0) ? true : isPlacementCorrect(currentSong, p.timeline, insertPos);
 
-  renderTimeline();
+    if (correct) {
+      p.timeline.splice(insertPos, 0, { song: currentSong, result: true });
+      p.score += 1;
+
+      if (p.score >= WIN_SCORE_STANDARD) {
+        renderScoreboard();
+        showWinner(`🏆 Gewinner: ${p.name} (10 richtig)`, renderRankingHtml());
+        return;
+      }
+      setGameStatus("✅ Richtig! ➡️ Weiter");
+    } else {
+      setGameStatus("❌ Falsch (Karte verworfen). ➡️ Weiter");
+    }
+
+    revealBox.innerHTML =
+      `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}<br><br>` +
+      (correct ? `<span class="ok">✅ Richtig platziert</span>` : `<span class="bad">❌ Falsch platziert</span>`);
+    revealBox.classList.remove("hidden");
+
+    phase = "revealed";
+    renderTimeline();
+    renderPlacementPanel();
+
+    revealBtn.classList.add("hidden");
+    nextBtn.classList.remove("hidden");
+  } else {
+    guessRevealBox.innerHTML = `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}`;
+    guessRevealBox.classList.remove("hidden");
+    guessChecks.classList.remove("hidden");
+
+    revealBtn.classList.add("hidden");
+    applyPointsBtn.classList.remove("hidden");
+    setGameStatus("Wähle aus, was richtig war, dann Punkte übernehmen.");
+  }
+
   renderScoreboard();
 }
 
+/*** Apply points (guess mode) ***/
+function onApplyPoints() {
+  const p = players[currentPlayerIndex];
+  if (mode !== "guess") return;
+
+  const pts = (chkTitle.checked ? 1 : 0) + (chkArtist.checked ? 1 : 0) + (chkYear.checked ? 1 : 0);
+  p.score += pts;
+
+  setGameStatus(`✅ ${pts} Punkt(e) vergeben. ➡️ Weiter`);
+  applyPointsBtn.classList.add("hidden");
+  nextBtn.classList.remove("hidden");
+  renderScoreboard();
+}
+
+/*** Next ***/
 function onNext() {
   currentSong = null;
   insertPos = 0;
   phase = "idle";
-  revealBox.classList.add("hidden");
-  revealBox.innerHTML = "";
+  isPlaying = false;
+  updateStopPlayBtn();
 
   currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
   showTurnPrompt();
 }
 
-/*** Start game: load all chosen playlists automatically ***/
+/*** Ranking/End game ***/
+function renderRankingHtml(){
+  const sorted = [...players].sort((a,b)=>b.score-a.score);
+  const rows = sorted.map((p,i)=> `<div><b>${i+1}.</b> ${p.name} — ${p.score} ${mode==="standard"?"richtig":"Punkte"}</div>`).join("");
+  return `<div>${rows}</div>`;
+}
+
+function endGame() {
+  showWinner("🏁 Spiel beendet – Punktewertung", renderRankingHtml());
+}
+
+/*** Start game ***/
 async function startGame() {
   if (!getToken()) {
     setSetupStatus(`<span class="bad">❌ Bitte zuerst mit Spotify verbinden.</span>`);
@@ -757,6 +878,8 @@ async function startGame() {
     return;
   }
 
+  mode = getSelectedMode();
+
   let chosen;
   try {
     chosen = readPlayersFromForm();
@@ -765,7 +888,7 @@ async function startGame() {
     return;
   }
 
-  setSetupStatus("⏳ Lade alle Playlists vollständig… (bei großen Playlists dauert es etwas)");
+  setSetupStatus("⏳ Lade alle Playlists vollständig…");
   setDebug("");
 
   try {
@@ -790,6 +913,8 @@ async function startGame() {
   currentSong = null;
   insertPos = 0;
   phase = "idle";
+  isPlaying = false;
+  updateStopPlayBtn();
 
   setSetupStatus(`<span class="ok">✅ Fertig. Spiel startet!</span>`);
   showGame();
@@ -808,29 +933,38 @@ document.getElementById("startGameBtn").onclick = startGame;
 
 readyBtn.onclick = () => onReady().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
 revealBtn.onclick = () => onReveal().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+
+applyPointsBtn.onclick = onApplyPoints;
 nextBtn.onclick = onNext;
 
-stopBtn.onclick = () => pausePlayback().catch(e => { setGameStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+stopBtn.onclick = () => {
+  const p = isPlaying ? pausePlayback : resumePlayback;
+  p().catch(e => {
+    setGameStatus("❌ " + e.message);
+    setDebug(e.stack || e.message);
+  });
+};
 
 leftBtn.onclick = () => moveInsert(-1);
 rightBtn.onclick = () => moveInsert(+1);
 
+endGameBtn.onclick = endGame;
+
 document.getElementById("restartBtn").onclick = () => {
-  // Spiel reset, aber Token behalten
   players = [];
   currentSong = null;
   phase = "idle";
   insertPos = 0;
   currentPlayerIndex = 0;
+  isPlaying = false;
+  updateStopPlayBtn();
   showSetup();
   setGameStatus("");
-  revealBox.classList.add("hidden");
-  revealBox.innerHTML = "";
-  timelineRow.innerHTML = "";
-  renderScoreboard();
+  setDebug("");
 };
 
 refreshConnStatus();
+updateStopPlayBtn();
 showSetup();
 </script>
 
