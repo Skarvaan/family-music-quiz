@@ -79,27 +79,37 @@ function getToken() {
   return localStorage.getItem("spotify_access_token");
 }
 
-async function apiGet(url) {
+async function apiGet(url, timeoutMs = 12000) {
   const token = getToken();
   if (!token) throw new Error("Kein Token vorhanden (bitte neu verbinden).");
 
-  let res;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
   try {
-    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: ctrl.signal
+    });
+
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch {}
+
+    if (!res.ok) {
+      const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
+      throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
+    }
+
+    return data;
   } catch (e) {
-    throw new Error("Netzwerkfehler beim Fetch (evtl. Tracking-Blocker/WLAN/DNS): " + e.message);
+    if (e.name === "AbortError") {
+      throw new Error("Timeout: Spotify antwortet nicht (12s). Oft Blocker/Netzwerk/DNS.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const text = await res.text(); // wichtig: erst text, dann JSON parse
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { /* ignore */ }
-
-  if (!res.ok) {
-    const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
-    throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
-  }
-
-  return data;
 }
 
 
@@ -156,19 +166,24 @@ async function loadTracksFromPlaylist() {
   setPlaylistStatus("Lade Tracks…");
   setDebug("");
 
-  try {
-    const data = await apiGet(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=100`);
+  // Wichtig: market=from_token reduziert track=null Fälle
+  const url = `https://api.spotify.com/v1/playlists/${id}/tracks?limit=100&market=from_token`;
+  setDebug("Tracks-URL:\n" + url);
 
+  try {
+    const data = await apiGet(url);
     const items = data.items || [];
 
-    // robust filtern: manche Einträge haben track=null
     currentTracks = items
-      .map(x => x && x.track ? x.track : null)
-      .filter(t => t && t.name && t.album && t.artists && t.artists.length);
+      .map(x => x?.track ?? null)
+      .filter(t => t && t.name && t.album && t.album.release_date && t.artists && t.artists.length);
 
     if (!currentTracks.length) {
-      setPlaylistStatus("⚠️ Keine Tracks gefunden (oder alle sind nicht verfügbar).");
-      setDebug(JSON.stringify(data, null, 2));
+      setPlaylistStatus("⚠️ Keine verfügbaren Tracks gefunden (evtl. alles track=null).");
+      setDebug("Antwort (gekürzt):\n" + JSON.stringify({
+        total: data.total,
+        items_sample: items.slice(0, 5)
+      }, null, 2));
       return;
     }
 
@@ -176,7 +191,7 @@ async function loadTracksFromPlaylist() {
     setDebug(JSON.stringify(currentTracks.slice(0, 10).map(t => ({
       name: t.name,
       artists: t.artists.map(a => a.name).join(", "),
-      release_date: t.album?.release_date
+      year: (t.album.release_date || "").slice(0,4)
     })), null, 2));
 
   } catch (e) {
