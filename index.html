@@ -320,15 +320,18 @@ async function loadItemsFromPlaylist() {
 }
 
 /*** Game: draw + reveal ***/
-function drawRandomSong() {
+async function drawRandomSong() {
   if (!currentTracks.length) {
     alert("Erst Items/Tracks laden!");
     return;
-  
   }
+
+  // falls noch was läuft: pausieren (ohne hart zu scheitern)
+  pausePlayback().catch(()=>{});
+
   const index = Math.floor(Math.random() * currentTracks.length);
   currentSong = currentTracks[index];
-  pausePlayback().catch(()=>{});
+
   revealBox.style.display = "none";
   revealBox.innerHTML = "";
   drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
@@ -356,14 +359,32 @@ async function revealSong() {
   const data = await apiGet("https://api.spotify.com/v1/me/player/devices");
   const devices = data.devices || [];
 
-  // bevorzugt: aktives Gerät
   const active = devices.find(d => d.is_active);
   if (active) return active.id;
 
-  // sonst: irgendeins nehmen
   if (devices.length) return devices[0].id;
 
   return null;
+}
+
+async function pausePlayback() {
+  const deviceId = await getActiveDeviceId();
+  if (!deviceId) {
+    setPlaylistStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden.");
+    return;
+  }
+
+  const res = await fetch(
+    `https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`,
+    { method: "PUT", headers: { Authorization: `Bearer ${getToken()}` } }
+  );
+
+  if (!res.ok && res.status !== 204) {
+    const t = await res.text();
+    throw new Error(`Stop/Pause fehlgeschlagen (${res.status}): ${t}`);
+  }
+
+  setPlaylistStatus("⏸️ Pausiert.");
 }
 
 async function playCurrentSong() {
@@ -372,12 +393,39 @@ async function playCurrentSong() {
     return;
   }
 
-  // Spotify muss irgendwo offen sein (App/Webplayer), sonst gibt’s 404/403
   const deviceId = await getActiveDeviceId();
   if (!deviceId) {
     alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App oder Webplayer) und starte irgendeinen Song, dann nochmal.");
     return;
   }
+
+  const uri = currentSong.uri || (currentSong.id ? `spotify:track:${currentSong.id}` : null);
+  if (!uri) {
+    alert("Track hat keine URI/ID – bitte Items neu laden.");
+    return;
+  }
+
+  // Gerät aktiv setzen (optional)
+  await fetch(`https://api.spotify.com/v1/me/player`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ device_ids: [deviceId], play: true })
+  });
+
+  // Track abspielen
+  const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ uris: [uri] })
+  });
+
+  if (!res.ok && res.status !== 204) {
+    const t = await res.text();
+    throw new Error(`Play fehlgeschlagen (${res.status}): ${t}`);
+  }
+
+  setPlaylistStatus("▶️ Spielt in Spotify…");
+}
 
   // Track-URI ist nötig (z.B. "spotify:track:...")
   const uri = currentSong.uri || (currentSong.id ? `spotify:track:${currentSong.id}` : null);
@@ -436,7 +484,7 @@ document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
 document.getElementById("testMeBtn").onclick = testMe;
 document.getElementById("testPlaylistBtn").onclick = testPlaylistAccess;
 document.getElementById("loadItemsBtn").onclick = loadItemsFromPlaylist;
-document.getElementById("drawBtn").onclick = drawRandomSong;
+document.getElementById("drawBtn").onclick = () => drawRandomSong();
 document.getElementById("revealBtn").onclick = revealSong;
   document.getElementById("playBtn").onclick = () => {
   playCurrentSong().catch(e => {
