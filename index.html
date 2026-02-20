@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Family Music Quiz</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 820px; margin: 24px auto; padding: 0 12px; }
-    button { padding: 10px 12px; margin: 6px 6px 6px 0; }
+    body { font-family: Arial, sans-serif; max-width: 920px; margin: 24px auto; padding: 0 12px; }
+    button { padding: 10px 12px; margin: 6px 6px 6px 0; cursor:pointer; }
     select, input { padding: 8px; margin: 6px 6px 6px 0; }
     .box { border: 1px solid #ddd; padding: 12px; border-radius: 10px; margin-top: 12px; }
     .ok { color: #0a7a0a; }
     .bad { color: #b00020; }
-    pre { white-space: pre-wrap; word-break: break-word; }
+    .muted { color:#666; font-size: 12px; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:8px; }
   </style>
 </head>
 <body>
-
 
 <h1>Family Music Quiz</h1>
 
@@ -27,58 +27,94 @@
 </div>
 
 <div class="box">
-  <h2>2) Playlists laden</h2>
-  <button onclick="testPlaylistAccess()">Zugriff auf Playlist testen</button>
+  <h2>2) Playlists</h2>
   <button id="loadPlaylistsBtn">Meine Playlists laden</button>
-  <button onclick="testMe()">Testung durchführen</button>
+  <button id="testMeBtn">/me testen</button>
   <div id="playlistStatus"></div>
+
   <div id="playlistsUI" style="display:none;">
     <p><b>Gefundene Playlists:</b></p>
-    <select id="playlistSelect" style="min-width: 320px;"></select>
-    <button id="showTracksBtn">Tracks in dieser Playlist anzeigen</button>
+    <select id="playlistSelect" style="min-width: 340px;"></select>
+    <button id="testPlaylistBtn">Zugriff testen</button>
+    <button id="loadItemsBtn">Items in Playlist laden</button>
   </div>
 </div>
 
 <div class="box">
   <h2>3) Runde</h2>
-  <button onclick="drawRandomSong()">🎲 Zufälligen Song ziehen</button>
-  <button onclick="revealSong()">👀 Reveal</button>
+  <button id="drawBtn">🎲 Zufälligen Song ziehen</button>
+  <button id="revealBtn">👀 Reveal</button>
   <p id="drawStatus"></p>
   <div id="revealBox" style="display:none; margin-top:10px;"></div>
+  <div class="muted">Hinweis: Erst “Items laden”, dann ziehen.</div>
 </div>
 
-  <div class="box">
+<div class="box">
   <h2>4) Debug</h2>
   <pre id="debug"></pre>
 </div>
 
-
 <script>
+/*** ✅ KONFIG ***/
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
 const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
 
+/*** Scopes (erstmal nur Playlists, Playback später) ***/
 const scope = [
   "playlist-read-private",
   "playlist-read-collaborative"
 ].join(" ");
 
+/*** UI refs ***/
 const connStatus = document.getElementById("connStatus");
-const debugEl = document.getElementById("debug");
 const playlistStatus = document.getElementById("playlistStatus");
+const debugEl = document.getElementById("debug");
 const playlistsUI = document.getElementById("playlistsUI");
 const playlistSelect = document.getElementById("playlistSelect");
+const drawStatus = document.getElementById("drawStatus");
+const revealBox = document.getElementById("revealBox");
 
+/*** State ***/
 let currentTracks = [];
 let currentSong = null;
 
-function setDebug(msg) { debugEl.textContent = msg; }
+/*** helpers ***/
+function setDebug(msg) { debugEl.textContent = msg || ""; }
 function setConn(html) { connStatus.innerHTML = html; }
 function setPlaylistStatus(html) { playlistStatus.innerHTML = html; }
 
-function getToken() {
-  return localStorage.getItem("spotify_access_token");
+function getToken() { return localStorage.getItem("spotify_access_token"); }
+function getScope() { return localStorage.getItem("spotify_scope") || ""; }
+
+function logout() {
+  localStorage.removeItem("spotify_access_token");
+  localStorage.removeItem("spotify_scope");
+  localStorage.removeItem("pkce_verifier");
+  localStorage.removeItem("spotify_auth_code");
+
+  currentTracks = [];
+  currentSong = null;
+
+  playlistsUI.style.display = "none";
+  playlistSelect.innerHTML = "";
+  drawStatus.textContent = "";
+  revealBox.style.display = "none";
+  revealBox.innerHTML = "";
+
+  setPlaylistStatus("🔒 Token gelöscht.");
+  setDebug("");
+  refreshConnStatus();
 }
 
+function refreshConnStatus() {
+  const s = getScope();
+  setConn(getToken()
+    ? `<span class="ok">✅ Verbunden (Token vorhanden)</span><br><small>Scopes: ${s || "(unbekannt)"}</small>`
+    : `<span class="bad">❌ Nicht verbunden</span>`
+  );
+}
+
+/*** fetch with timeout + error detail ***/
 async function apiGet(url, timeoutMs = 12000) {
   const token = getToken();
   if (!token) throw new Error("Kein Token vorhanden (bitte neu verbinden).");
@@ -100,214 +136,219 @@ async function apiGet(url, timeoutMs = 12000) {
       const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
       throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
     }
-
     return data;
   } catch (e) {
-    if (e.name === "AbortError") {
-      throw new Error("Timeout: Spotify antwortet nicht (12s). Oft Blocker/Netzwerk/DNS.");
-    }
+    if (e.name === "AbortError") throw new Error("Timeout: Spotify antwortet nicht (12s).");
     throw e;
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function testPlaylistAccess() {
-  const id = playlistSelect.value;
-  const url = `https://api.spotify.com/v1/playlists/${id}?market=from_token`;
-  setPlaylistStatus("Teste Zugriff…");
+/*** PKCE login ***/
+function randomVerifier() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(64));
+  return Array.from(bytes, b => chars[b % chars.length]).join("");
+}
+
+async function sha256Base64Url(verifier) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+async function login() {
+  const verifier = randomVerifier();
+  localStorage.setItem("pkce_verifier", verifier);
+  const challenge = await sha256Base64Url(verifier);
+
+  const url = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    scope,
+    redirect_uri: redirectUri,
+    code_challenge_method: "S256",
+    code_challenge: challenge,
+    show_dialog: "true"   // erzwingt Consent Screen
+  });
+
+  setDebug("Authorize URL:\n" + url);
+  window.location = url;
+}
+
+/*** API actions ***/
+async function testMe() {
+  setPlaylistStatus("Teste /me …");
+  setDebug("");
   try {
-    const data = await apiGet(url);
-    setPlaylistStatus(`✅ Zugriff ok: ${data.name}`);
-    setDebug(JSON.stringify({name:data.name, owner:data.owner?.display_name, public:data.public}, null, 2));
+    const me = await apiGet("https://api.spotify.com/v1/me");
+    setPlaylistStatus(`<span class="ok">✅ /me ok: ${me.display_name}</span>`);
+    setDebug(JSON.stringify(me, null, 2));
   } catch (e) {
-    setPlaylistStatus("❌ " + e.message);
-    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+    setPlaylistStatus(`<span class="bad">❌ /me Fehler: ${e.message}</span>`);
+    setDebug(e.stack || e.message);
   }
 }
 
-  async function testMe() {
-  setPlaylistStatus("Teste /me …");
-  try {
-    const me = await apiGet("https://api.spotify.com/v1/me");
-    setPlaylistStatus("✅ /me ok: " + me.display_name);
-    setDebug(JSON.stringify(me, null, 2));
-  } catch (e) {
-    setPlaylistStatus("❌ /me Fehler: " + e.message);
-  }
-}
-  
 async function loadPlaylists() {
-  setPlaylistStatus("Lade…");
+  setPlaylistStatus("Lade Playlists…");
   setDebug("");
 
   try {
     const data = await apiGet("https://api.spotify.com/v1/me/playlists?limit=50");
-
     const items = data.items || [];
     playlistSelect.innerHTML = "";
 
     if (!items.length) {
-      setPlaylistStatus("⚠️ Keine Playlists gefunden (oder keine gespeichert).");
+      setPlaylistStatus("⚠️ Keine Playlists gefunden.");
       setDebug(JSON.stringify(data, null, 2));
       return;
     }
 
     items.forEach(pl => {
-  const opt = document.createElement("option");
-  opt.value = pl.id;
+      const opt = document.createElement("option");
 
-  const total = (pl.tracks && typeof pl.tracks.total === "number") ? pl.tracks.total : "?";
-  const name = pl.name || "(ohne Namen)";
+      // ID: robust (zur Sicherheit)
+      opt.value = (pl.id || "").trim();
 
-  opt.textContent = `${name} (${total} Tracks)`;
-  playlistSelect.appendChild(opt);
-});
+      // total: manche Accounts liefern tracks oder items oder gar nichts
+      const total =
+        (typeof pl.items?.total === "number") ? pl.items.total :
+        (typeof pl.tracks?.total === "number") ? pl.tracks.total :
+        "?";
 
+      const name = pl.name || "(ohne Namen)";
+      opt.textContent = `${name} (${total} Tracks)`;
+
+      // falls vorhanden, tracks-href merken (manchmal stabiler)
+      opt.dataset.tracksHref = pl.tracks?.href || "";
+      opt.dataset.itemsHref  = pl.items?.href  || "";
+
+      playlistSelect.appendChild(opt);
+    });
+
+    if (playlistSelect.options.length > 0) playlistSelect.selectedIndex = 0;
 
     playlistsUI.style.display = "block";
-    setPlaylistStatus(`✅ ${items.length} Playlists geladen`);
-    setDebug(JSON.stringify(items.map(p => ({
-  name: p.name,
-  id: p.id,
-  total: p.tracks?.total ?? null
-})), null, 2));
-
+    setPlaylistStatus(`<span class="ok">✅ ${items.length} Playlists geladen</span>`);
+    setDebug(JSON.stringify(items.map(p => ({name:p.name, id:p.id, tracks_total:p.tracks?.total, items_total:p.items?.total})), null, 2));
   } catch (e) {
-    setPlaylistStatus("❌ " + e.message);
-    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setDebug(e.stack || e.message);
   }
 }
 
+async function testPlaylistAccess() {
+  const id = (playlistSelect.value || "").trim();
+  setDebug("Ausgewählte Playlist-ID:\n" + id);
 
-async function loadTracksFromPlaylist() {
-  const id = playlistSelect.value;
   if (!id) {
     setPlaylistStatus("❌ Keine Playlist ausgewählt.");
     return;
   }
 
-  setPlaylistStatus("Lade Tracks…");
+  const url = `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?market=from_token`;
+  setPlaylistStatus("Teste Playlist-Zugriff…");
+
+  try {
+    const data = await apiGet(url);
+    setPlaylistStatus(`<span class="ok">✅ Zugriff ok: ${data.name}</span>`);
+    setDebug(JSON.stringify({
+      name: data.name,
+      owner: data.owner?.display_name,
+      public: data.public,
+      tracks_total: data.tracks?.total
+    }, null, 2));
+  } catch (e) {
+    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setDebug(e.stack || e.message);
+  }
+}
+
+/*** 핵 Fix: Playlist-Inhalte über /items laden (nicht /tracks) ***/
+async function loadItemsFromPlaylist() {
+  const id = (playlistSelect.value || "").trim();
+  if (!id) {
+    setPlaylistStatus("❌ Keine Playlist ausgewählt.");
+    return;
+  }
+
+  setPlaylistStatus("Lade Items…");
   setDebug("");
 
-  // Wichtig: market=from_token reduziert track=null Fälle
-  const url = `https://api.spotify.com/v1/playlists/${id}/tracks?limit=100&market=from_token`;
-  setDebug("Tracks-URL:\n" + url);
+  // Minimaler & stabiler Request (Felder reduzieren)
+  const url =
+    `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
+    `?limit=100&market=from_token` +
+    `&fields=items(item(type,name,artists(name),album(release_date))),total`;
+
+  setDebug("Items-URL:\n" + url);
 
   try {
     const data = await apiGet(url);
     const items = data.items || [];
 
+    // kompatibel: item (neu), track (alt)
     currentTracks = items
-      .map(x => x?.track ?? null)
-      .filter(t => t && t.name && t.album && t.album.release_date && t.artists && t.artists.length);
+      .map(x => x?.item ?? x?.track ?? null)
+      .filter(t => t && t.type === "track")
+      .filter(t => t.name && t.album?.release_date && t.artists?.length);
 
     if (!currentTracks.length) {
-      setPlaylistStatus("⚠️ Keine verfügbaren Tracks gefunden (evtl. alles track=null).");
+      setPlaylistStatus("⚠️ Keine Tracks gefunden (evtl. nur Podcasts/leer/track=null).");
       setDebug("Antwort (gekürzt):\n" + JSON.stringify({
         total: data.total,
-        items_sample: items.slice(0, 5)
+        sample: items.slice(0, 5)
       }, null, 2));
       return;
     }
 
-    setPlaylistStatus(`✅ ${currentTracks.length} Tracks geladen`);
+    setPlaylistStatus(`<span class="ok">✅ ${currentTracks.length} Tracks geladen</span>`);
     setDebug(JSON.stringify(currentTracks.slice(0, 10).map(t => ({
       name: t.name,
       artists: t.artists.map(a => a.name).join(", "),
       year: (t.album.release_date || "").slice(0,4)
     })), null, 2));
-
   } catch (e) {
-    setPlaylistStatus("❌ " + e.message);
-    setDebug("Fehler-Details:\n" + (e.stack || e.message));
+    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setDebug(e.stack || e.message);
   }
 }
 
-
+/*** Game: draw + reveal ***/
 function drawRandomSong() {
   if (!currentTracks.length) {
-    alert("Erst Tracks laden!");
+    alert("Erst Items/Tracks laden!");
     return;
   }
-
   const index = Math.floor(Math.random() * currentTracks.length);
   currentSong = currentTracks[index];
 
-  document.getElementById("revealBox").style.display = "none";
-  document.getElementById("drawStatus").textContent =
-    "🎵 Song gewählt – jetzt raten!";
+  revealBox.style.display = "none";
+  revealBox.innerHTML = "";
+  drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
 }
 
 function revealSong() {
   if (!currentSong) return;
 
-  const year = currentSong.album.release_date?.slice(0,4) || "?";
+  const year = (currentSong.album?.release_date || "").slice(0, 4) || "?";
+  const artists = (currentSong.artists || []).map(a => a.name).join(", ");
 
-  document.getElementById("revealBox").innerHTML = `
-    <b>${currentSong.name}</b><br>
-    ${currentSong.artists.map(a=>a.name).join(", ")}<br>
-    Jahr: ${year}
-  `;
-  document.getElementById("revealBox").style.display = "block";
+  revealBox.innerHTML = `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}`;
+  revealBox.style.display = "block";
 }
 
-function login() {
-  const verifier = [...crypto.getRandomValues(new Uint8Array(64))]
-    .map(x => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[x % 62])
-    .join("");
-  localStorage.setItem("pkce_verifier", verifier);
-
-  crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)).then(buf => {
-    const challenge = btoa(String.fromCharCode(...new Uint8Array(buf)))
-      .replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
-
-    const url = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
-      response_type: "code",
-      client_id: clientId,
-      scope,
-      redirect_uri: redirectUri,
-      code_challenge_method: "S256",
-      code_challenge: challenge
-    });
-
-    window.location = url;
-  });
-}
-
-  function logout() {
-  localStorage.removeItem("spotify_access_token");
-  localStorage.removeItem("spotify_auth_code");
-  localStorage.removeItem("pkce_verifier");
-
-  // UI zurücksetzen
-  currentTracks = [];
-  currentSong = null;
-  playlistsUI.style.display = "none";
-  playlistSelect.innerHTML = "";
-  document.getElementById("drawStatus").textContent = "";
-  document.getElementById("revealBox").style.display = "none";
-  document.getElementById("revealBox").innerHTML = "";
-
-  setPlaylistStatus("🔒 Token gelöscht.");
-  refreshConnStatus();
-}
-
-
-function refreshConnStatus(){
-  const s = localStorage.getItem("spotify_scope") || "";
-  setConn(getToken()
-    ? `✅ Verbunden (Token vorhanden)<br><small>Scopes: ${s}</small>`
-    : "❌ Nicht verbunden"
-  );
-}
-
-
+/*** wire up ***/
 document.getElementById("loginBtn").onclick = login;
-document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
-document.getElementById("showTracksBtn").onclick = loadTracksFromPlaylist;
 document.getElementById("logoutBtn").onclick = logout;
-
+document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
+document.getElementById("testMeBtn").onclick = testMe;
+document.getElementById("testPlaylistBtn").onclick = testPlaylistAccess;
+document.getElementById("loadItemsBtn").onclick = loadItemsFromPlaylist;
+document.getElementById("drawBtn").onclick = drawRandomSong;
+document.getElementById("revealBtn").onclick = revealSong;
 
 refreshConnStatus();
 </script>
