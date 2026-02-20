@@ -30,6 +30,7 @@
   <h2>2) Playlists laden</h2>
   <button onclick="testPlaylistAccess()">Zugriff auf Playlist testen</button>
   <button id="loadPlaylistsBtn">Meine Playlists laden</button>
+  <button onclick="testMe()">Testung durchführen</button>
   <div id="playlistStatus"></div>
   <div id="playlistsUI" style="display:none;">
     <p><b>Gefundene Playlists:</b></p>
@@ -122,6 +123,17 @@ async function testPlaylistAccess() {
   } catch (e) {
     setPlaylistStatus("❌ " + e.message);
     setDebug("Fehler-Details:\n" + (e.stack || e.message));
+  }
+}
+
+  async function testMe() {
+  setPlaylistStatus("Teste /me …");
+  try {
+    const me = await apiGet("https://api.spotify.com/v1/me");
+    setPlaylistStatus("✅ /me ok: " + me.display_name);
+    setDebug(JSON.stringify(me, null, 2));
+  } catch (e) {
+    setPlaylistStatus("❌ /me Fehler: " + e.message);
   }
 }
   
