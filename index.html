@@ -321,14 +321,14 @@ async function loadItemsFromPlaylist() {
 
 /*** Game: draw + reveal ***/
 function drawRandomSong() {
-  pausePlayback().catch(()=>{});
   if (!currentTracks.length) {
     alert("Erst Items/Tracks laden!");
     return;
+  
   }
   const index = Math.floor(Math.random() * currentTracks.length);
   currentSong = currentTracks[index];
-
+  pausePlayback().catch(()=>{});
   revealBox.style.display = "none";
   revealBox.innerHTML = "";
   drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
