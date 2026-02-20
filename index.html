@@ -300,6 +300,11 @@ function refreshConnStatus(){
   }else{
     setConn("❌ Nicht verbunden");
   }
+  const s = localStorage.getItem("spotify_scope") || "";
+setConn(getToken()
+  ? `✅ Verbunden (Token vorhanden)<br><small>Scopes: ${s}</small>`
+  : "❌ Nicht verbunden"
+);
 }
 
 
