@@ -57,12 +57,10 @@
 </div>
 
 <script>
-  alert("JS läuft ✅");
 /*** ✅ KONFIG ***/
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
 const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
 
-/*** Scopes (erstmal nur Playlists, Playback später) ***/
 const scope = [
   "playlist-read-private",
   "playlist-read-collaborative",
@@ -91,6 +89,12 @@ function setPlaylistStatus(html) { playlistStatus.innerHTML = html; }
 function getToken() { return localStorage.getItem("spotify_access_token"); }
 function getScope() { return localStorage.getItem("spotify_scope") || ""; }
 
+/*** global error to debug box ***/
+window.onerror = function(message, source, lineno, colno) {
+  setDebug("JS ERROR:\n" + message + "\n" + source + ":" + lineno + ":" + colno);
+};
+
+/*** auth/ui ***/
 function logout() {
   localStorage.removeItem("spotify_access_token");
   localStorage.removeItem("spotify_scope");
@@ -119,7 +123,7 @@ function refreshConnStatus() {
   );
 }
 
-/*** fetch with timeout + error detail ***/
+/*** fetch helper ***/
 async function apiGet(url, timeoutMs = 12000) {
   const token = getToken();
   if (!token) throw new Error("Kein Token vorhanden (bitte neu verbinden).");
@@ -175,7 +179,7 @@ async function login() {
     redirect_uri: redirectUri,
     code_challenge_method: "S256",
     code_challenge: challenge,
-    show_dialog: "true"   // erzwingt Consent Screen
+    show_dialog: "true"
   });
 
   setDebug("Authorize URL:\n" + url);
@@ -213,11 +217,8 @@ async function loadPlaylists() {
 
     items.forEach(pl => {
       const opt = document.createElement("option");
-
-      // ID: robust (zur Sicherheit)
       opt.value = (pl.id || "").trim();
 
-      // total: manche Accounts liefern tracks oder items oder gar nichts
       const total =
         (typeof pl.items?.total === "number") ? pl.items.total :
         (typeof pl.tracks?.total === "number") ? pl.tracks.total :
@@ -225,11 +226,6 @@ async function loadPlaylists() {
 
       const name = pl.name || "(ohne Namen)";
       opt.textContent = `${name} (${total} Tracks)`;
-
-      // falls vorhanden, tracks-href merken (manchmal stabiler)
-      opt.dataset.tracksHref = pl.tracks?.href || "";
-      opt.dataset.itemsHref  = pl.items?.href  || "";
-
       playlistSelect.appendChild(opt);
     });
 
@@ -237,41 +233,12 @@ async function loadPlaylists() {
 
     playlistsUI.style.display = "block";
     setPlaylistStatus(`<span class="ok">✅ ${items.length} Playlists geladen</span>`);
-    setDebug(JSON.stringify(items.map(p => ({name:p.name, id:p.id, tracks_total:p.tracks?.total, items_total:p.items?.total})), null, 2));
   } catch (e) {
     setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
     setDebug(e.stack || e.message);
   }
 }
 
-async function testPlaylistAccess() {
-  const id = (playlistSelect.value || "").trim();
-  setDebug("Ausgewählte Playlist-ID:\n" + id);
-
-  if (!id) {
-    setPlaylistStatus("❌ Keine Playlist ausgewählt.");
-    return;
-  }
-
-  const url = `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?market=from_token`;
-  setPlaylistStatus("Teste Playlist-Zugriff…");
-
-  try {
-    const data = await apiGet(url);
-    setPlaylistStatus(`<span class="ok">✅ Zugriff ok: ${data.name}</span>`);
-    setDebug(JSON.stringify({
-      name: data.name,
-      owner: data.owner?.display_name,
-      public: data.public,
-      tracks_total: data.tracks?.total
-    }, null, 2));
-  } catch (e) {
-    setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
-    setDebug(e.stack || e.message);
-  }
-}
-
-/*** 핵 Fix: Playlist-Inhalte über /items laden (nicht /tracks) ***/
 async function loadItemsFromPlaylist() {
   const id = (playlistSelect.value || "").trim();
   if (!id) {
@@ -282,29 +249,25 @@ async function loadItemsFromPlaylist() {
   setPlaylistStatus("Lade Items…");
   setDebug("");
 
-  // Minimaler & stabiler Request (Felder reduzieren)
   const url =
-  `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
-  `?limit=100&market=from_token` +
-  `&fields=items(item(type,uri,id,name,artists(name),album(release_date))),total`;
+    `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/items` +
+    `?limit=100&market=from_token` +
+    `&fields=items(item(type,uri,id,name,artists(name),album(release_date))),total`;
+
   setDebug("Items-URL:\n" + url);
 
   try {
     const data = await apiGet(url);
     const items = data.items || [];
 
-    // kompatibel: item (neu), track (alt)
     currentTracks = items
       .map(x => x?.item ?? x?.track ?? null)
       .filter(t => t && t.type === "track")
       .filter(t => t.name && t.album?.release_date && t.artists?.length);
 
     if (!currentTracks.length) {
-      setPlaylistStatus("⚠️ Keine Tracks gefunden (evtl. nur Podcasts/leer/track=null).");
-      setDebug("Antwort (gekürzt):\n" + JSON.stringify({
-        total: data.total,
-        sample: items.slice(0, 5)
-      }, null, 2));
+      setPlaylistStatus("⚠️ Keine Tracks gefunden.");
+      setDebug(JSON.stringify({ total: data.total, sample: items.slice(0,5) }, null, 2));
       return;
     }
 
@@ -312,7 +275,8 @@ async function loadItemsFromPlaylist() {
     setDebug(JSON.stringify(currentTracks.slice(0, 10).map(t => ({
       name: t.name,
       artists: t.artists.map(a => a.name).join(", "),
-      year: (t.album.release_date || "").slice(0,4)
+      year: (t.album.release_date || "").slice(0,4),
+      uri: t.uri
     })), null, 2));
   } catch (e) {
     setPlaylistStatus(`<span class="bad">❌ ${e.message}</span>`);
@@ -320,51 +284,13 @@ async function loadItemsFromPlaylist() {
   }
 }
 
-/*** Game: draw + reveal ***/
-async function drawRandomSong() {
-  if (!currentTracks.length) {
-    alert("Erst Items/Tracks laden!");
-    return;
-  }
-
-  // falls noch was läuft: pausieren (ohne hart zu scheitern)
-  pausePlayback().catch(()=>{});
-
-  const index = Math.floor(Math.random() * currentTracks.length);
-  currentSong = currentTracks[index];
-
-  revealBox.style.display = "none";
-  revealBox.innerHTML = "";
-  drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
-}
-
-async function revealSong() {
-  if (!currentSong) return;
-
-  // 🔥 automatisch stoppen (aber leise, wenn es nicht geht)
-  try {
-    await pausePlayback();
-  } catch (e) {
-    // nicht hart abbrechen – Reveal soll trotzdem gehen
-    setDebug("Pause beim Reveal fehlgeschlagen:\n" + (e.stack || e.message));
-  }
-
-  const year = (currentSong.album?.release_date || "").slice(0, 4) || "?";
-  const artists = (currentSong.artists || []).map(a => a.name).join(", ");
-
-  revealBox.innerHTML = `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}`;
-  revealBox.style.display = "block";
-}
-
-  async function getActiveDeviceId() {
+/*** Playback control ***/
+async function getActiveDeviceId() {
   const data = await apiGet("https://api.spotify.com/v1/me/player/devices");
   const devices = data.devices || [];
-
   const active = devices.find(d => d.is_active);
   if (active) return active.id;
-
   if (devices.length) return devices[0].id;
-
   return null;
 }
 
@@ -396,7 +322,7 @@ async function playCurrentSong() {
 
   const deviceId = await getActiveDeviceId();
   if (!deviceId) {
-    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App oder Webplayer) und starte irgendeinen Song, dann nochmal.");
+    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz einen Song, dann nochmal.");
     return;
   }
 
@@ -406,14 +332,12 @@ async function playCurrentSong() {
     return;
   }
 
-  // Gerät aktiv setzen (optional)
   await fetch(`https://api.spotify.com/v1/me/player`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ device_ids: [deviceId], play: true })
   });
 
-  // Track abspielen
   const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
@@ -428,54 +352,35 @@ async function playCurrentSong() {
   setPlaylistStatus("▶️ Spielt in Spotify…");
 }
 
-  // Track-URI ist nötig (z.B. "spotify:track:...")
-  const uri = currentSong.uri || (currentSong.id ? `spotify:track:${currentSong.id}` : null);
-if (!uri) {
-  alert("Track hat keine URI/ID – bitte Items neu laden.");
-  return;
-}
-
-  async function pausePlayback() {
-  const deviceId = await getActiveDeviceId();
-  if (!deviceId) {
-    // wenn kein Device aktiv ist, einfach still failen (oder Meldung)
-    setPlaylistStatus("ℹ️ Kein aktives Spotify-Gerät zum Stoppen gefunden.");
+/*** Game: draw + reveal ***/
+function drawRandomSong() {
+  if (!currentTracks.length) {
+    alert("Erst Items/Tracks laden!");
     return;
   }
 
-  const res = await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${getToken()}` }
-  });
+  // optional: vorher pausieren
+  pausePlayback().catch(()=>{});
 
-  if (!res.ok && res.status !== 204) {
-    const t = await res.text();
-    throw new Error(`Stop/Pause fehlgeschlagen (${res.status}): ${t}`);
-  }
+  const index = Math.floor(Math.random() * currentTracks.length);
+  currentSong = currentTracks[index];
 
-  setPlaylistStatus("⏸️ Pausiert.");
+  revealBox.style.display = "none";
+  revealBox.innerHTML = "";
+  drawStatus.textContent = "🎵 Song gewählt – jetzt raten!";
 }
 
-  // optional: erst Gerät aktiv setzen
-  await fetch(`https://api.spotify.com/v1/me/player`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ device_ids: [deviceId], play: true })
-  });
+async function revealSong() {
+  if (!currentSong) return;
 
-  // dann Track abspielen
-  const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ uris: [uri] })
-  });
+  // beim Reveal automatisch pausieren
+  try { await pausePlayback(); } catch {}
 
-  if (!res.ok && res.status !== 204) {
-    const t = await res.text();
-    throw new Error(`Play fehlgeschlagen (${res.status}): ${t}`);
-  }
+  const year = (currentSong.album?.release_date || "").slice(0, 4) || "?";
+  const artists = (currentSong.artists || []).map(a => a.name).join(", ");
 
-  setPlaylistStatus("▶️ Spielt in Spotify…");
+  revealBox.innerHTML = `<b>${currentSong.name}</b><br>${artists}<br>Jahr: ${year}`;
+  revealBox.style.display = "block";
 }
 
 /*** wire up ***/
@@ -483,22 +388,11 @@ document.getElementById("loginBtn").onclick = login;
 document.getElementById("logoutBtn").onclick = logout;
 document.getElementById("loadPlaylistsBtn").onclick = loadPlaylists;
 document.getElementById("testMeBtn").onclick = testMe;
-document.getElementById("testPlaylistBtn").onclick = testPlaylistAccess;
 document.getElementById("loadItemsBtn").onclick = loadItemsFromPlaylist;
-document.getElementById("drawBtn").onclick = () => drawRandomSong();
-document.getElementById("revealBtn").onclick = revealSong;
-  document.getElementById("playBtn").onclick = () => {
-  playCurrentSong().catch(e => {
-    setPlaylistStatus("❌ " + e.message);
-    setDebug(e.stack || e.message);
-  });
-};
-document.getElementById("stopBtn").onclick = () => {
-  pausePlayback().catch(e => {
-    setPlaylistStatus("❌ " + e.message);
-    setDebug(e.stack || e.message);
-  });
-};
+document.getElementById("drawBtn").onclick = drawRandomSong;
+document.getElementById("revealBtn").onclick = () => revealSong();
+document.getElementById("playBtn").onclick = () => playCurrentSong().catch(e => { setPlaylistStatus("❌ " + e.message); setDebug(e.stack || e.message); });
+document.getElementById("stopBtn").onclick = () => pausePlayback().catch(e => { setPlaylistStatus("❌ " + e.message); setDebug(e.stack || e.message); });
 
 refreshConnStatus();
 </script>
