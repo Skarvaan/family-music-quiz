@@ -18,7 +18,6 @@ const params = new URLSearchParams(window.location.search);
 const code = params.get("code");
 
 async function exchangeToken() {
-
   const verifier = localStorage.getItem("pkce_verifier");
 
   const body = new URLSearchParams({
@@ -31,34 +30,28 @@ async function exchangeToken() {
 
   const response = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: body
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
   });
 
   const data = await response.json();
 
-  if(data.access_token){
+  if (data.access_token) {
     localStorage.setItem("spotify_access_token", data.access_token);
+
+    // ✅ HIER rein:
+    localStorage.setItem("spotify_scope", data.scope || "");
+    document.body.innerHTML += "<pre>Scopes: " + (data.scope || "(none)") + "</pre>";
+
     document.body.innerHTML += "<pre>✅ Token gespeichert – zurück zur App</pre>";
-
-    setTimeout(() => {
-      window.location.href = "./";
-    }, 1500);
-
+    setTimeout(() => window.location.href = "./", 1500);
   } else {
-    document.body.innerHTML += "<pre>❌ Token Fehler: "+JSON.stringify(data,null,2)+"</pre>";
+    document.body.innerHTML += "<pre>❌ Token Fehler: " + JSON.stringify(data, null, 2) + "</pre>";
   }
 }
-  localStorage.setItem("spotify_scope", data.scope || "");
-  document.body.innerHTML += "<pre>Scopes: " + (data.scope || "(none)") + "</pre>";
 
-if(code){
-  exchangeToken();
-}else{
-  document.body.innerHTML += "<pre>❌ Kein Code</pre>";
-}
+if (code) exchangeToken();
+else document.body.innerHTML += "<pre>❌ Kein Code</pre>";
 </script>
 
 </body>
