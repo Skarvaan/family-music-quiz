@@ -17,31 +17,22 @@
     .ok { color:#0a7a0a; }
     .bad { color:#b00020; }
     pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:10px; }
-
     .hidden { display:none; }
-
     .row { display:flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .col { display:flex; flex-direction: column; gap: 8px; }
     .spacer { height: 8px; }
 
-    /* Setup Players */
     .playerCard { border: 1px solid #eee; border-radius: 12px; padding: 10px; background: #fff; }
     .playerCard h3 { margin: 0 0 6px; }
     .playerGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
     @media(min-width: 720px){ .playerGrid { grid-template-columns: 1fr 1fr; } }
 
-    /* Game UI */
-    .bigBanner {
-      text-align:center; font-size: 22px; font-weight: 800;
-      padding: 12px; border-radius: 14px; border: 1px solid #ddd; background: #fcfcfc;
-    }
+    .bigBanner { text-align:center; font-size: 22px; font-weight: 800; padding: 12px; border-radius: 14px; border: 1px solid #ddd; background: #fcfcfc; }
     .bigName { font-size: 28px; font-weight: 900; }
     .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #ddd; background:#fff; font-size: 12px; }
     .scoreBoard { display:flex; flex-wrap: wrap; gap: 8px; }
     .scoreItem { border:1px solid #eee; border-radius: 12px; padding: 8px 10px; background:#fff; }
     .scoreItem.active { border-color:#333; }
 
-    /* Timeline */
     .timelineWrap { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
     .timelineTitle { display:flex; justify-content: space-between; align-items:center; }
     .timeline { display:flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
@@ -55,11 +46,7 @@
     .slot::after { content:"+"; color:#aaa; font-weight:900; font-size: 16px; }
     .slot.selected::after { content:"✓"; color:#333; }
 
-    .card {
-      min-width: 180px; max-width: 240px;
-      border:1px solid #ddd; border-radius: 14px; padding: 10px;
-      background:#fff;
-    }
+    .card { min-width: 180px; max-width: 240px; border:1px solid #ddd; border-radius: 14px; padding: 10px; background:#fff; }
     .card .title { font-weight: 900; font-size: 16px; }
     .card .meta { font-size: 12px; color:#666; margin-top: 4px; }
     .card.unknown { text-align:center; font-weight: 900; font-size: 22px; padding: 18px 10px; }
@@ -69,17 +56,8 @@
     .resultBox { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
     .resultBox .headline { font-weight: 900; }
 
-    /* Winner overlay */
-    .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.45);
-      display:none; align-items: center; justify-content: center; padding: 18px;
-      z-index: 9999;
-    }
-    .overlay .panel {
-      width: min(720px, 100%);
-      background: #fff; border-radius: 16px; padding: 16px;
-      border: 1px solid #ddd;
-    }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display:none; align-items: center; justify-content: center; padding: 18px; z-index: 9999; }
+    .overlay .panel { width: min(720px, 100%); background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #ddd; }
     .overlay h2 { margin: 0 0 8px; }
     .overlay .wlist { margin: 8px 0 12px; padding-left: 18px; }
   </style>
@@ -192,7 +170,6 @@
   </div>
 </div>
 
-<!-- Winner overlay -->
 <div class="overlay" id="winnerOverlay" role="dialog" aria-modal="true">
   <div class="panel">
     <h2>🏁 Spiel beendet</h2>
@@ -227,19 +204,16 @@ let pointsToWin = 15;
 
 let game = {
   currentPlayerIndex: 0,
-  sourceMode: null,
+  sourceMode: null,          // "SAFE" | "WAGNIS" | "REF"
   sourceOwnerIndex: null,
   currentSong: null,
   proposedInsertIndex: 0,
   revealed: false,
   roundStartPlayerIndex: 0,
+  isReferenceSong: false     // ✅ first song per player
 };
 
-let playback = {
-  isPlaying: false,
-  lastDeviceId: null
-};
-
+let playback = { isPlaying: false, lastDeviceId: null };
 let gameOver = false;
 
 /* =========================
@@ -285,13 +259,9 @@ function setSetupStatus(html) { setupStatus.innerHTML = html; }
 
 function escapeHtml(str) {
   return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
-
 function getToken() { return localStorage.getItem("spotify_access_token"); }
 function getScope() { return localStorage.getItem("spotify_scope") || ""; }
 
@@ -405,7 +375,8 @@ function buildPlayerFields() {
       playlistId: "",
       tracks: [],
       timeline: [],
-      points: 0
+      points: 0,
+      hasReference: false // ✅ first song per player
     });
 
     const card = document.createElement("div");
@@ -425,15 +396,13 @@ function buildPlayerFields() {
     playersArea.appendChild(card);
 
     const sel = card.querySelector(`#plist_${i}`);
-    if (allPlaylists.length) {
-      allPlaylists.forEach(pl => {
-        const opt = document.createElement("option");
-        opt.value = pl.id;
-        const total = (typeof pl.tracks?.total === "number") ? pl.tracks.total : "?";
-        opt.textContent = `${pl.name} (${total})`;
-        sel.appendChild(opt);
-      });
-    }
+    allPlaylists.forEach(pl => {
+      const opt = document.createElement("option");
+      opt.value = pl.id;
+      const total = (typeof pl.tracks?.total === "number") ? pl.tracks.total : "?";
+      opt.textContent = `${pl.name} (${total})`;
+      sel.appendChild(opt);
+    });
 
     const nameInput = card.querySelector(`#pname_${i}`);
     nameInput.addEventListener("input", () => {
@@ -457,7 +426,6 @@ function updateStartButtonEnabled() {
     && players.every(p => p.name && p.playlistId)
     && allPlaylists.length > 0
     && !!getToken();
-
   startGameBtn.disabled = !ok;
 }
 
@@ -507,22 +475,14 @@ async function loadAllPlaylistTracks(playlistId, label) {
    Game init + reset
 ========================= */
 function resetToSetup() {
-  // stop playback best-effort
   pausePlayback().catch(()=>{});
-
   gameOver = false;
-
-  // show setup
   winnerOverlay.style.display = "none";
   gameScreen.classList.add("hidden");
   setupScreen.classList.remove("hidden");
-
-  // clear progress text, keep playlists loaded + keep players UI (so you can adjust)
   setDebug("");
   setSetupStatus("Du kannst Einstellungen ändern und erneut starten.");
   loadProgress.textContent = "";
-
-  // re-enable start if valid
   updateStartButtonEnabled();
 }
 
@@ -538,9 +498,10 @@ async function startGame() {
     players[i].tracks = await loadAllPlaylistTracks(plId, label);
     players[i].timeline = [];
     players[i].points = 0;
+    players[i].hasReference = false;
 
     if (players[i].tracks.length < 5) {
-      setSetupStatus(`<span class="bad">❌ Playlist zu klein oder problematisch: ${escapeHtml(players[i].name)}</span>`);
+      setSetupStatus(`<span class="bad">❌ Playlist zu klein/problematisch: ${escapeHtml(players[i].name)}</span>`);
       throw new Error(`Playlist von ${players[i].name} hat zu wenige Tracks.`);
     }
   }
@@ -565,6 +526,7 @@ function resetTurnState() {
   game.currentSong = null;
   game.proposedInsertIndex = 0;
   game.revealed = false;
+  game.isReferenceSong = false;
 
   modePill.textContent = "Wähle SAFE oder WAGNIS";
   playPauseBtn.disabled = true;
@@ -576,10 +538,10 @@ function resetTurnState() {
 
   unknownCard.className = "card unknown";
   unknownCard.textContent = "?";
-  resultText.textContent = "Wähle SAFE/WAGNIS, platziere per Slot, dann Play → Reveal.";
+  resultText.textContent = "Wähle SAFE/WAGNIS → Song startet sofort. Dann platzieren → Reveal.";
 
   playback.isPlaying = false;
-  playPauseBtn.textContent = "▶️ Play";
+  playPauseBtn.textContent = "⏸️ Stop";
 }
 
 /* =========================
@@ -597,7 +559,7 @@ async function getActiveDeviceId() {
 async function playUri(uri) {
   const deviceId = await getActiveDeviceId();
   if (!deviceId) {
-    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App oder Webplayer) und starte irgendeinen Song, dann nochmal.");
+    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte irgendwas, dann nochmal.");
     return;
   }
 
@@ -625,16 +587,59 @@ async function pausePlayback() {
 }
 
 /* =========================
-   Game: choose source + draw song
+   Game: source selection + immediate play
 ========================= */
 function pickRandomFromArray(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function chooseSource(mode) {
+/** ✅ Reference song: first song of each player is inserted freely, no points, no SAFE/WAGNIS */
+async function startReferenceSongForCurrentPlayer() {
+  const idx = game.currentPlayerIndex;
+  const p = players[idx];
+  if (p.hasReference) return; // already done
+
+  // pick a random song from own playlist
+  game.sourceMode = "REF";
+  game.sourceOwnerIndex = idx;
+  game.currentSong = pickRandomFromArray(p.tracks);
+  game.isReferenceSong = true;
+
+  modePill.textContent = "Referenzsong (kostenlos, immer richtig)";
+  resultText.textContent = "Referenz: einfach anhören → Reveal → wird automatisch eingeordnet. Keine Punkte.";
+  safeBtn.disabled = true;
+  riskBtn.disabled = true;
+
+  // place at end by default
+  game.proposedInsertIndex = p.timeline.length;
+
+  // autoplay immediately
+  playPauseBtn.disabled = false;
+  revealBtn.disabled = false;
+  nextBtn.disabled = true;
+
+  unknownCard.className = "card unknown";
+  unknownCard.textContent = "?";
+
+  renderTimeline();
+
+  try { await playUri(game.currentSong.uri); } catch(e) {}
+}
+
+async function chooseSource(mode) {
   if (gameOver) return;
 
   const current = game.currentPlayerIndex;
+  const currentPlayer = players[current];
+
+  // ✅ if player has no reference yet, force reference flow
+  if (!currentPlayer.hasReference) {
+    await startReferenceSongForCurrentPlayer();
+    return;
+  }
+
+  // if something is playing, stop first for cleaner transition
+  try { await pausePlayback(); } catch {}
 
   if (mode === "SAFE") {
     game.sourceMode = "SAFE";
@@ -648,13 +653,15 @@ function chooseSource(mode) {
   const sourcePlayer = players[game.sourceOwnerIndex];
   game.currentSong = pickRandomFromArray(sourcePlayer.tracks);
 
-  game.proposedInsertIndex = players[current].timeline.length;
+  game.proposedInsertIndex = currentPlayer.timeline.length;
   game.revealed = false;
+  game.isReferenceSong = false;
 
   modePill.textContent = `${game.sourceMode} → Song aus Playlist von: ${players[game.sourceOwnerIndex].name}`;
 
+  // ✅ immediate autoplay when choosing SAFE/WAGNIS
   playPauseBtn.disabled = false;
-  revealBtn.disabled = true;
+  revealBtn.disabled = false;
   nextBtn.disabled = true;
 
   safeBtn.disabled = true;
@@ -662,8 +669,11 @@ function chooseSource(mode) {
 
   unknownCard.className = "card unknown";
   unknownCard.textContent = "?";
-  resultText.textContent = "Platziere per Slot. Dann Play → Reveal.";
+  resultText.textContent = "Platziere per Slot (du kannst ändern) → Reveal.";
+
   renderTimeline();
+
+  try { await playUri(game.currentSong.uri); } catch (e) {}
 }
 
 async function onPlayPause() {
@@ -676,7 +686,6 @@ async function onPlayPause() {
     return;
   }
   await playUri(game.currentSong.uri);
-  revealBtn.disabled = false;
 }
 
 /* =========================
@@ -687,7 +696,6 @@ function renderTimeline() {
   const timeline = p.timeline;
 
   timelineEl.innerHTML = "";
-
   const slotsCount = timeline.length + 1;
 
   for (let i = 0; i < slotsCount; i++) {
@@ -777,37 +785,49 @@ async function reveal() {
 
   const isCorrect = (chosen >= minIdx && chosen <= maxIdx);
 
-  // scoring
-  if (game.sourceMode === "SAFE") {
-    if (isCorrect) p.points += 1;
-  } else {
-    if (isCorrect) p.points += 2;
-    else p.points -= 1;
-    if (p.points < 0) p.points = 0;
+  // ✅ Reference: always insert, no points, no correctness check needed
+  let countedCorrect = isCorrect;
+  if (game.isReferenceSong) countedCorrect = true;
+
+  // scoring (only if not reference)
+  if (!game.isReferenceSong) {
+    if (game.sourceMode === "SAFE") {
+      if (countedCorrect) p.points += 1;
+    } else if (game.sourceMode === "WAGNIS") {
+      if (countedCorrect) p.points += 2;
+      else p.points -= 1;
+      if (p.points < 0) p.points = 0;
+    }
   }
 
-  // timeline insert only if correct
-  if (isCorrect) {
+  // timeline insert
+  if (game.isReferenceSong || countedCorrect) {
     const card = { year, name: game.currentSong.name, artists: game.currentSong.artists };
     timeline.splice(chosen, 0, card);
   }
 
-  // ✅ Always show revealed song prominently (even if wrong)
+  // show revealed song always
   const artists = (game.currentSong.artists || []).join(", ");
   const sourceName = players[game.sourceOwnerIndex]?.name || "—";
 
-  unknownCard.className = "card " + (isCorrect ? "good" : "bad");
+  unknownCard.className = "card " + (countedCorrect ? "good" : "bad");
   unknownCard.innerHTML = `
     <div class="title">${escapeHtml(game.currentSong.name)}</div>
     <div class="meta">${escapeHtml(artists)}</div>
     <div class="meta">Jahr: <b>${escapeHtml(year)}</b> · Quelle: ${escapeHtml(sourceName)}</div>
-    <div class="meta">${isCorrect ? "✅ Richtig platziert" : "❌ Falsch platziert"}</div>
+    <div class="meta">${game.isReferenceSong ? "⭐ Referenzsong (immer richtig)" : (countedCorrect ? "✅ Richtig platziert" : "❌ Falsch platziert")}</div>
   `;
-  resultText.innerHTML = `Gültige Slots: <b>${minIdx+1}</b> bis <b>${maxIdx+1}</b> · Punkte: <b>${escapeHtml(p.name)} = ${p.points}</b>`;
+
+  if (game.isReferenceSong) {
+    resultText.innerHTML = `Referenz gesetzt. Keine Punkte.`;
+    p.hasReference = true;
+  } else {
+    resultText.innerHTML = `Gültige Slots: <b>${minIdx+1}</b> bis <b>${maxIdx+1}</b> · Punkte: <b>${escapeHtml(p.name)} = ${p.points}</b>`;
+  }
 
   game.revealed = true;
 
-  // lock playback after reveal
+  // lock playback after reveal (no looping)
   playPauseBtn.disabled = true;
   playPauseBtn.textContent = "▶️ Play";
   playback.isPlaying = false;
@@ -822,25 +842,17 @@ async function reveal() {
 /* =========================
    Winner handling (end of round)
 ========================= */
-function endOfRoundReached(nextIndex) {
-  return nextIndex === game.roundStartPlayerIndex;
-}
-
-function winnersNow() {
-  return players.filter(p => p.points >= pointsToWin);
-}
+function endOfRoundReached(nextIndex) { return nextIndex === game.roundStartPlayerIndex; }
+function winnersNow() { return players.filter(p => p.points >= pointsToWin); }
 
 function showWinnerOverlay(winners) {
   gameOver = true;
-
-  // disable controls
   safeBtn.disabled = true;
   riskBtn.disabled = true;
   playPauseBtn.disabled = true;
   revealBtn.disabled = true;
   nextBtn.disabled = true;
 
-  // overlay content
   winnerText.textContent = `Ziel erreicht: ≥ ${pointsToWin} Punkte (Siegprüfung am Ende der Runde).`;
   winnerList.innerHTML = "";
   winners.forEach(w => {
@@ -861,19 +873,22 @@ function nextTurn() {
 
   game.currentPlayerIndex = next;
 
-  // end-of-round winner check
   if (endRound) {
     const winners = winnersNow();
-    if (winners.length) {
-      showWinnerOverlay(winners);
-      return;
-    }
+    if (winners.length) { showWinnerOverlay(winners); return; }
   }
 
   resetTurnState();
   renderScoreboard();
   renderTurnBanner();
   renderTimeline();
+
+  // ✅ automatically trigger reference for players that don't have it yet
+  const p = players[game.currentPlayerIndex];
+  if (!p.hasReference) {
+    // small delay so UI updates first
+    setTimeout(() => { startReferenceSongForCurrentPlayer().catch(()=>{}); }, 150);
+  }
 }
 
 /* =========================
@@ -883,47 +898,29 @@ document.getElementById("loginBtn").onclick = () => login();
 document.getElementById("logoutBtn").onclick = () => logout();
 
 document.getElementById("loadPlaylistsBtn").onclick = async () => {
-  try {
-    await loadPlaylists();
-    updateStartButtonEnabled();
-  } catch (e) {
-    setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`);
-    setDebug(e.stack || e.message);
-  }
+  try { await loadPlaylists(); updateStartButtonEnabled(); }
+  catch (e) { setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`); setDebug(e.stack || e.message); }
 };
-
-document.getElementById("buildPlayersBtn").onclick = () => {
-  buildPlayerFields();
-  updateStartButtonEnabled();
-};
+document.getElementById("buildPlayersBtn").onclick = () => { buildPlayerFields(); updateStartButtonEnabled(); };
 
 startGameBtn.onclick = async () => {
   try { await startGame(); }
-  catch (e) {
-    setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`);
-    setDebug(e.stack || e.message);
-  }
+  catch (e) { setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`); setDebug(e.stack || e.message); }
 };
 
-safeBtn.onclick = () => chooseSource("SAFE");
-riskBtn.onclick = () => chooseSource("WAGNIS");
+// ✅ SAFE/WAGNIS now auto-start music
+safeBtn.onclick = () => chooseSource("SAFE").catch(()=>{});
+riskBtn.onclick = () => chooseSource("WAGNIS").catch(()=>{});
 
 playPauseBtn.onclick = () => {
-  onPlayPause().catch(e => {
-    setDebug(e.stack || e.message);
-    alert(e.message);
-  });
+  onPlayPause().catch(e => { setDebug(e.stack || e.message); alert(e.message); });
 };
 
 revealBtn.onclick = () => {
-  reveal().catch(e => {
-    setDebug(e.stack || e.message);
-    alert(e.message);
-  });
+  reveal().catch(e => { setDebug(e.stack || e.message); alert(e.message); });
 };
 
 nextBtn.onclick = () => nextTurn();
-
 endBtn.onclick = () => resetToSetup();
 
 refreshConnStatus();
