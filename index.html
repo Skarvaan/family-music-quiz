@@ -47,7 +47,7 @@
     .timeline { display:flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 
     .slot {
-      width: 18px; height: 62px; border-radius: 12px;
+      width: 18px; height: 70px; border-radius: 12px;
       border: 2px dashed #bbb; display:flex; align-items:center; justify-content:center;
       cursor: pointer; background: #fafafa;
     }
@@ -56,11 +56,11 @@
     .slot.selected::after { content:"✓"; color:#333; }
 
     .card {
-      min-width: 160px; max-width: 220px;
+      min-width: 180px; max-width: 240px;
       border:1px solid #ddd; border-radius: 14px; padding: 10px;
       background:#fff;
     }
-    .card .title { font-weight: 800; }
+    .card .title { font-weight: 900; font-size: 16px; }
     .card .meta { font-size: 12px; color:#666; margin-top: 4px; }
     .card.unknown { text-align:center; font-weight: 900; font-size: 22px; padding: 18px 10px; }
     .card.good { border-color:#0a7a0a; box-shadow: 0 0 0 2px rgba(10,122,10,.08) inset; }
@@ -68,8 +68,6 @@
 
     .resultBox { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
     .resultBox .headline { font-weight: 900; }
-
-    .footerButtons { display:flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -158,7 +156,7 @@
 
   <div class="timelineWrap">
     <div class="timelineTitle">
-      <div><b>Timeline</b> <span class="muted">(nur Jahre sichtbar)</span></div>
+      <div><b>Timeline</b> <span class="muted">(Jahr + Titel/Interpret nach Reveal)</span></div>
       <div class="muted" id="timelineInfo"></div>
     </div>
     <div id="timeline" class="timeline"></div>
@@ -167,7 +165,7 @@
   <div class="spacer"></div>
 
   <div class="resultBox">
-    <div class="headline">Aktueller Song</div>
+    <div class="headline">Status</div>
     <div id="unknownCard" class="card unknown">?</div>
     <div id="resultText" class="muted" style="margin-top:8px;"></div>
   </div>
@@ -232,7 +230,6 @@ const gameScreen = document.getElementById("gameScreen");
 const scoreBoard = document.getElementById("scoreBoard");
 const currentPlayerNameEl = document.getElementById("currentPlayerName");
 const modePill = document.getElementById("modePill");
-const turnBanner = document.getElementById("turnBanner");
 
 const safeBtn = document.getElementById("safeBtn");
 const riskBtn = document.getElementById("riskBtn");
@@ -254,13 +251,22 @@ function setDebug(msg) { debugEl.textContent = msg || ""; }
 function setConn(html) { connStatus.innerHTML = html; }
 function setSetupStatus(html) { setupStatus.innerHTML = html; }
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getToken() { return localStorage.getItem("spotify_access_token"); }
 function getScope() { return localStorage.getItem("spotify_scope") || ""; }
 
 function refreshConnStatus() {
   const s = getScope();
   setConn(getToken()
-    ? `<span class="ok">✅ Verbunden</span> <span class="muted">Scopes: ${s || "(unbekannt)"}</span>`
+    ? `<span class="ok">✅ Verbunden</span> <span class="muted">Scopes: ${escapeHtml(s || "(unbekannt)")}</span>`
     : `<span class="bad">❌ Nicht verbunden</span>`
   );
 }
@@ -375,7 +381,7 @@ function buildPlayerFields() {
     card.innerHTML = `
       <h3>Spieler ${i+1}</h3>
       <div class="row">
-        <input type="text" id="pname_${i}" placeholder="Name" style="min-width:180px;" value="${players[i].name}">
+        <input type="text" id="pname_${i}" placeholder="Name" style="min-width:180px;" value="${escapeHtml(players[i].name)}">
       </div>
       <div class="row">
         <select id="plist_${i}" style="min-width: 320px;">
@@ -387,7 +393,6 @@ function buildPlayerFields() {
     playersArea.appendChild(card);
 
     const sel = card.querySelector(`#plist_${i}`);
-    // Fill playlists if already loaded
     if (allPlaylists.length) {
       allPlaylists.forEach(pl => {
         const opt = document.createElement("option");
@@ -398,18 +403,16 @@ function buildPlayerFields() {
       });
     }
 
-    // Bind events
     const nameInput = card.querySelector(`#pname_${i}`);
     nameInput.addEventListener("input", () => {
       players[i].name = nameInput.value.trim() || `Spieler ${i+1}`;
       updateStartButtonEnabled();
     });
 
-    sel.addEventListener("change", async () => {
+    sel.addEventListener("change", () => {
       players[i].playlistId = sel.value;
       const info = card.querySelector(`#pinfo_${i}`);
-      if (!sel.value) info.textContent = "Noch keine Playlist ausgewählt.";
-      else info.textContent = "Playlist ausgewählt. (Wird beim Start geladen)";
+      info.textContent = sel.value ? "Playlist ausgewählt. (Wird beim Start geladen)" : "Noch keine Playlist ausgewählt.";
       updateStartButtonEnabled();
     });
   }
@@ -430,10 +433,10 @@ function updateStartButtonEnabled() {
    Load ALL tracks for a playlist (pagination)
 ========================= */
 async function loadAllPlaylistTracks(playlistId, label) {
-  // Using /playlists/{id}/items with fields to reduce payload
   const limit = 100;
   let offset = 0;
   let all = [];
+
   while (true) {
     const url =
       `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items` +
@@ -463,7 +466,6 @@ async function loadAllPlaylistTracks(playlistId, label) {
     if (!data.next || items.length === 0) break;
   }
 
-  // Deduplicate by uri
   const map = new Map();
   all.forEach(t => map.set(t.uri, t));
   return Array.from(map.values());
@@ -478,7 +480,6 @@ async function startGame() {
   setSetupStatus("Lade alle Tracks für alle Spieler…");
   loadProgress.textContent = "";
 
-  // Load each player's playlist fully
   for (let i = 0; i < players.length; i++) {
     const plId = players[i].playlistId;
     const label = `${players[i].name}`;
@@ -487,18 +488,16 @@ async function startGame() {
     players[i].points = 0;
 
     if (players[i].tracks.length < 5) {
-      setSetupStatus(`<span class="bad">❌ Playlist zu klein oder problematisch: ${players[i].name}</span>`);
+      setSetupStatus(`<span class="bad">❌ Playlist zu klein oder problematisch: ${escapeHtml(players[i].name)}</span>`);
       throw new Error(`Playlist von ${players[i].name} hat zu wenige Tracks.`);
     }
   }
 
   loadProgress.textContent = "✅ Tracks geladen.";
 
-  // Switch screens
   setupScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 
-  // Init game state
   game.currentPlayerIndex = 0;
   game.roundStartPlayerIndex = 0;
   resetTurnState();
@@ -516,7 +515,6 @@ function resetTurnState() {
   game.revealed = false;
   game.played = false;
 
-  // UI
   modePill.textContent = "Wähle SAFE oder WAGNIS";
   playPauseBtn.disabled = true;
   revealBtn.disabled = true;
@@ -527,7 +525,7 @@ function resetTurnState() {
 
   unknownCard.className = "card unknown";
   unknownCard.textContent = "?";
-  resultText.textContent = "";
+  resultText.textContent = "Wähle SAFE/WAGNIS, platziere per Slot, dann Play → Reveal.";
 
   playback.isPlaying = false;
   playPauseBtn.textContent = "▶️ Play";
@@ -552,7 +550,6 @@ async function playUri(uri) {
     return;
   }
 
-  // Switch directly to track = usually smoothest
   await apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -591,22 +588,20 @@ function chooseSource(mode) {
     game.sourceOwnerIndex = current;
   } else {
     game.sourceMode = "WAGNIS";
-    // pick random other player
     const others = players.map((_, idx) => idx).filter(idx => idx !== current);
     game.sourceOwnerIndex = pickRandomFromArray(others);
   }
 
-  // pick song from that owner's playlist
   const sourcePlayer = players[game.sourceOwnerIndex];
   game.currentSong = pickRandomFromArray(sourcePlayer.tracks);
 
-  // reset placement to end by default
   game.proposedInsertIndex = players[current].timeline.length;
 
   game.revealed = false;
   game.played = false;
 
   modePill.textContent = `${game.sourceMode} → Song aus Playlist von: ${players[game.sourceOwnerIndex].name}`;
+
   playPauseBtn.disabled = false;
   revealBtn.disabled = true;
   nextBtn.disabled = true;
@@ -614,15 +609,14 @@ function chooseSource(mode) {
   safeBtn.disabled = true;
   riskBtn.disabled = true;
 
-  // show unknown card small
   unknownCard.className = "card unknown";
   unknownCard.textContent = "?";
-
-  resultText.textContent = "Platziere den Song über die Slot-Linien in deiner Timeline. Dann Play → dann Reveal.";
+  resultText.textContent = "Platziere per Slot. Dann Play → Reveal.";
   renderTimeline();
 }
 
 async function onPlayPause() {
+  if (game.revealed) return;         // ✅ Bugfix: nach Reveal nicht wieder abspielen
   if (!game.currentSong) return;
 
   if (playback.isPlaying) {
@@ -639,41 +633,37 @@ async function onPlayPause() {
 ========================= */
 function renderTimeline() {
   const p = players[game.currentPlayerIndex];
-  const timeline = p.timeline; // revealed cards
+  const timeline = p.timeline;
 
   timelineEl.innerHTML = "";
 
-  // slots count = cards + 1
   const slotsCount = timeline.length + 1;
 
   for (let i = 0; i < slotsCount; i++) {
-    // slot
     const slot = document.createElement("div");
     slot.className = "slot" + (game.proposedInsertIndex === i && game.currentSong && !game.revealed ? " selected" : "");
     slot.title = "Hier platzieren";
     slot.addEventListener("click", () => {
       if (!game.currentSong) return;
-      if (game.revealed) return; // after reveal lock
+      if (game.revealed) return;
       game.proposedInsertIndex = i;
       renderTimeline();
     });
     timelineEl.appendChild(slot);
 
-    // card (after slot except last)
     if (i < timeline.length) {
       const c = timeline[i];
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
-        <div class="title">${c.year}</div>
-        <div class="meta">${c.name ? "—" : ""}</div>
+        <div class="title">${escapeHtml(c.year)}</div>
+        <div class="meta"><b>${escapeHtml(c.name || "")}</b></div>
+        <div class="meta">${escapeHtml((c.artists || []).join(", "))}</div>
       `;
-      // keep only year visible in timeline (for your “nicht sehen dürfen” requirement)
       timelineEl.appendChild(card);
     }
   }
 
-  // If a song is chosen and not revealed, show a small preview label
   if (game.currentSong && !game.revealed) {
     timelineInfo.textContent = `Platzierung gewählt: Slot #${game.proposedInsertIndex + 1} von ${slotsCount}`;
   } else if (game.currentSong && game.revealed) {
@@ -695,7 +685,7 @@ function renderScoreboard() {
   players.forEach((p, idx) => {
     const el = document.createElement("div");
     el.className = "scoreItem" + (idx === game.currentPlayerIndex ? " active" : "");
-    el.innerHTML = `<b>${p.name}</b><div class="muted">${p.points} Punkte</div>`;
+    el.innerHTML = `<b>${escapeHtml(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
     scoreBoard.appendChild(el);
   });
 }
@@ -704,49 +694,25 @@ function renderScoreboard() {
    Reveal: judge placement + scoring
 ========================= */
 function correctInsertRangeForYear(timeline, year) {
-  // returns [minIndex, maxIndex] inclusive where placement is considered correct
-  // rule: must be between neighbors; equal years allow either side
   const y = parseInt(year, 10);
   if (!Number.isFinite(y)) return [0, 0];
 
-  // timeline is array of cards already placed (each has year string)
   const years = timeline.map(c => parseInt(c.year, 10)).filter(Number.isFinite);
-
-  // if empty: only index 0
   if (!years.length) return [0, 0];
 
-  // find left boundary: last index where year >=?
-  // We'll compute the normal correct index = first position where y < years[pos]
-  let idx = 0;
-  while (idx < years.length && y > years[idx]) idx++;
-
-  // Now idx is insertion point to keep non-decreasing order.
-  // Allow equal-year flexibility:
-  // If y equals some years, it can be inserted anywhere within that equal block.
-  let min = idx;
-  let max = idx;
-
-  // Expand to include equal years around insertion point:
-  // If inserting before a year equal block, min should be start of that block.
-  // If inserting after equal block, max should be end+1.
-  // We'll find all positions where insertion keeps non-decreasing order.
-  // Equivalent: any insertion index i such that leftYear <= y <= rightYear, where missing side = -inf/inf.
-  // We'll compute min/max valid by scanning slots:
-  min = 0; max = years.length;
   let valid = [];
   for (let i = 0; i <= years.length; i++) {
     const left = (i === 0) ? -Infinity : years[i-1];
     const right = (i === years.length) ? Infinity : years[i];
     if (left <= y && y <= right) valid.push(i);
   }
-  if (!valid.length) return [idx, idx];
+  if (!valid.length) return [0, 0];
   return [Math.min(...valid), Math.max(...valid)];
 }
 
 async function reveal() {
   if (!game.currentSong) return;
 
-  // stop playback automatically
   try { await pausePlayback(); } catch {}
 
   const p = players[game.currentPlayerIndex];
@@ -758,7 +724,6 @@ async function reveal() {
 
   const isCorrect = (chosen >= minIdx && chosen <= maxIdx);
 
-  // scoring
   if (game.sourceMode === "SAFE") {
     if (isCorrect) p.points += 1;
   } else {
@@ -767,9 +732,7 @@ async function reveal() {
     if (p.points < 0) p.points = 0;
   }
 
-  // if correct: insert card into timeline; if wrong: discard (do not insert)
   if (isCorrect) {
-    // insert a revealed card into timeline (but timeline view shows only year)
     const card = {
       year,
       name: game.currentSong.name,
@@ -779,25 +742,20 @@ async function reveal() {
     timeline.splice(chosen, 0, card);
   }
 
-  // show reveal info in result box (not in timeline)
-  const artists = (game.currentSong.artists || []).join(", ");
-  const sourceName = players[game.sourceOwnerIndex].name;
-
+  // Status box (klein, Timeline ist jetzt die "Quelle der Wahrheit")
   unknownCard.className = "card " + (isCorrect ? "good" : "bad");
-  unknownCard.innerHTML = `
-    <div class="title">${game.currentSong.name}</div>
-    <div class="meta">${artists}</div>
-    <div class="meta">Jahr: <b>${year}</b> · Quelle: ${sourceName}</div>
-  `;
-
-  resultText.innerHTML = isCorrect
-    ? `<span class="ok"><b>Richtig!</b></span> (gültige Slots: ${minIdx+1} bis ${maxIdx+1})`
-    : `<span class="bad"><b>Falsch.</b></span> (gültige Slots: ${minIdx+1} bis ${maxIdx+1})`;
+  unknownCard.innerHTML = `<div class="title">${isCorrect ? "✅ Richtig" : "❌ Falsch"}</div>
+                           <div class="meta">Gültige Slots: ${minIdx+1} bis ${maxIdx+1}</div>
+                           <div class="meta">Punkte: ${escapeHtml(players[game.currentPlayerIndex].name)} = ${p.points}</div>`;
+  resultText.innerHTML = `${game.sourceMode} · Quelle: ${escapeHtml(players[game.sourceOwnerIndex].name)} · Jahr: <b>${escapeHtml(year)}</b>`;
 
   game.revealed = true;
 
-  // update buttons
-  playPauseBtn.disabled = false;
+  // ✅ Bugfix: nach Reveal Play deaktivieren (kein Loop mit gleichem Song)
+  playPauseBtn.disabled = true;
+  playPauseBtn.textContent = "▶️ Play";
+  playback.isPlaying = false;
+
   revealBtn.disabled = true;
   nextBtn.disabled = false;
 
@@ -809,30 +767,26 @@ async function reveal() {
    Next turn + end-of-round winner check
 ========================= */
 function endOfRoundReached(nextIndex) {
-  // when we are about to start the player that equals roundStartPlayerIndex
   return nextIndex === game.roundStartPlayerIndex;
 }
 
 function checkWinnerEndOfRound() {
-  const winners = players.filter(p => p.points >= pointsToWin);
-  return winners;
+  return players.filter(p => p.points >= pointsToWin);
 }
 
 function nextTurn() {
-  // advance player
   const prev = game.currentPlayerIndex;
   const next = (prev + 1) % players.length;
   const endRound = endOfRoundReached(next);
 
   game.currentPlayerIndex = next;
 
-  // if round ended: check winners now
   if (endRound) {
     const winners = checkWinnerEndOfRound();
     if (winners.length) {
       const names = winners.map(w => w.name).join(", ");
       alert(`🏁 Runde beendet!\nGewinner: ${names}\n(≥ ${pointsToWin} Punkte)`);
-      // You can stop here; if you want, keep playing:
+      // optional: hier könntest du automatisch stoppen
       // return;
     }
   }
@@ -854,7 +808,7 @@ document.getElementById("loadPlaylistsBtn").onclick = async () => {
     await loadPlaylists();
     updateStartButtonEnabled();
   } catch (e) {
-    setSetupStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`);
     setDebug(e.stack || e.message);
   }
 };
@@ -868,7 +822,7 @@ startGameBtn.onclick = async () => {
   try {
     await startGame();
   } catch (e) {
-    setSetupStatus(`<span class="bad">❌ ${e.message}</span>`);
+    setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`);
     setDebug(e.stack || e.message);
   }
 };
