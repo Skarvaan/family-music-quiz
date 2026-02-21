@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Spotify Callback</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Spotify Callback</title>
 </head>
 <body>
-  <h1>Spotify Callback</h1>
-  <p>Verbinde…</p>
+<h1>Spotify Callback</h1>
+<p>Verbinde…</p>
 
 <script>
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
@@ -15,20 +15,18 @@ const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html"
 
 const params = new URLSearchParams(window.location.search);
 const code = params.get("code");
-const error = params.get("error");
 
 async function exchangeToken() {
   const verifier = localStorage.getItem("pkce_verifier");
-
   if (!verifier) {
-    document.body.insertAdjacentHTML("beforeend", "<pre>❌ pkce_verifier fehlt. Bitte zurück und erneut verbinden.</pre>");
+    document.body.innerHTML += "<pre>❌ pkce_verifier fehlt (bitte neu einloggen).</pre>";
     return;
   }
 
   const body = new URLSearchParams({
     client_id: clientId,
     grant_type: "authorization_code",
-    code: code,
+    code,
     redirect_uri: redirectUri,
     code_verifier: verifier
   });
@@ -44,28 +42,15 @@ async function exchangeToken() {
   if (data.access_token) {
     localStorage.setItem("spotify_access_token", data.access_token);
     localStorage.setItem("spotify_scope", data.scope || "");
-    // optional: refresh_token bekommst du i.d.R. nicht bei PKCE implicit? (je nach Setup)
-    // localStorage.setItem("spotify_refresh_token", data.refresh_token || "");
-
-    document.body.insertAdjacentHTML("beforeend",
-      `<pre>✅ Token gespeichert</pre><pre>Scopes: ${(data.scope || "(none)")}</pre>`
-    );
-
-    setTimeout(() => { window.location.href = "./"; }, 1200);
+    document.body.innerHTML += "<pre>✅ Token gespeichert – zurück zur App</pre>";
+    setTimeout(() => { window.location.href = "./"; }, 800);
   } else {
-    document.body.insertAdjacentHTML("beforeend",
-      "<pre>❌ Token Fehler:\n" + JSON.stringify(data, null, 2) + "</pre>"
-    );
+    document.body.innerHTML += "<pre>❌ Token Fehler: " + JSON.stringify(data, null, 2) + "</pre>";
   }
 }
 
-if (error) {
-  document.body.insertAdjacentHTML("beforeend", "<pre>❌ Spotify error: " + error + "</pre>");
-} else if (code) {
-  exchangeToken();
-} else {
-  document.body.insertAdjacentHTML("beforeend", "<pre>❌ Kein Code in URL.</pre>");
-}
+if (code) exchangeToken();
+else document.body.innerHTML += "<pre>❌ Kein Code</pre>";
 </script>
 </body>
 </html>
