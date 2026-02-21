@@ -68,6 +68,20 @@
 
     .resultBox { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
     .resultBox .headline { font-weight: 900; }
+
+    /* Winner overlay */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display:none; align-items: center; justify-content: center; padding: 18px;
+      z-index: 9999;
+    }
+    .overlay .panel {
+      width: min(720px, 100%);
+      background: #fff; border-radius: 16px; padding: 16px;
+      border: 1px solid #ddd;
+    }
+    .overlay h2 { margin: 0 0 8px; }
+    .overlay .wlist { margin: 8px 0 12px; padding-left: 18px; }
   </style>
 </head>
 <body>
@@ -126,7 +140,7 @@
 
   <div class="spacer"></div>
 
-  <div class="bigBanner" id="turnBanner">
+  <div class="bigBanner">
     <div class="muted">Spieler ist dran:</div>
     <div class="bigName" id="currentPlayerName">—</div>
     <div style="margin-top:8px;">
@@ -165,7 +179,7 @@
   <div class="spacer"></div>
 
   <div class="resultBox">
-    <div class="headline">Status</div>
+    <div class="headline">Auflösung</div>
     <div id="unknownCard" class="card unknown">?</div>
     <div id="resultText" class="muted" style="margin-top:8px;"></div>
   </div>
@@ -175,6 +189,18 @@
   <div class="box">
     <h3 style="margin-top:0;">Debug</h3>
     <pre id="debug"></pre>
+  </div>
+</div>
+
+<!-- Winner overlay -->
+<div class="overlay" id="winnerOverlay" role="dialog" aria-modal="true">
+  <div class="panel">
+    <h2>🏁 Spiel beendet</h2>
+    <div id="winnerText" class="muted"></div>
+    <ul id="winnerList" class="wlist"></ul>
+    <div class="row" style="justify-content:flex-end;">
+      <button id="endBtn" class="primary">Beenden → zurück zum Setup</button>
+    </div>
   </div>
 </div>
 
@@ -195,25 +221,26 @@ const scopes = [
 /* =========================
    STATE
 ========================= */
-let allPlaylists = []; // from /me/playlists
-let players = [];      // {name, playlistId, tracks:[], timeline:[], points:0}
+let allPlaylists = [];
+let players = [];
 let pointsToWin = 15;
 
 let game = {
   currentPlayerIndex: 0,
-  sourceMode: null,          // "SAFE" | "WAGNIS"
-  sourceOwnerIndex: null,    // which player's playlist used for the current song
-  currentSong: null,         // {id, uri, name, artists, year}
-  proposedInsertIndex: 0,    // slot index in current player's timeline
+  sourceMode: null,
+  sourceOwnerIndex: null,
+  currentSong: null,
+  proposedInsertIndex: 0,
   revealed: false,
-  played: false,
-  roundStartPlayerIndex: 0,  // to detect end-of-round
+  roundStartPlayerIndex: 0,
 };
 
 let playback = {
   isPlaying: false,
   lastDeviceId: null
 };
+
+let gameOver = false;
 
 /* =========================
    UI refs
@@ -243,6 +270,11 @@ const timelineInfo = document.getElementById("timelineInfo");
 const unknownCard = document.getElementById("unknownCard");
 const resultText = document.getElementById("resultText");
 const debugEl = document.getElementById("debug");
+
+const winnerOverlay = document.getElementById("winnerOverlay");
+const winnerText = document.getElementById("winnerText");
+const winnerList = document.getElementById("winnerList");
+const endBtn = document.getElementById("endBtn");
 
 /* =========================
    Helpers
@@ -343,7 +375,7 @@ function logout() {
 }
 
 /* =========================
-   Load playlists + build setup
+   Setup: Load playlists + players
 ========================= */
 async function loadPlaylists() {
   setSetupStatus("Lade Playlists…");
@@ -359,7 +391,7 @@ async function loadPlaylists() {
   }
 
   setSetupStatus(`<span class="ok">✅ ${allPlaylists.length} Playlists geladen</span>`);
-  buildPlayerFields(); // refresh dropdowns if already created
+  buildPlayerFields();
 }
 
 function buildPlayerFields() {
@@ -472,8 +504,28 @@ async function loadAllPlaylistTracks(playlistId, label) {
 }
 
 /* =========================
-   Game init
+   Game init + reset
 ========================= */
+function resetToSetup() {
+  // stop playback best-effort
+  pausePlayback().catch(()=>{});
+
+  gameOver = false;
+
+  // show setup
+  winnerOverlay.style.display = "none";
+  gameScreen.classList.add("hidden");
+  setupScreen.classList.remove("hidden");
+
+  // clear progress text, keep playlists loaded + keep players UI (so you can adjust)
+  setDebug("");
+  setSetupStatus("Du kannst Einstellungen ändern und erneut starten.");
+  loadProgress.textContent = "";
+
+  // re-enable start if valid
+  updateStartButtonEnabled();
+}
+
 async function startGame() {
   pointsToWin = parseInt(document.getElementById("pointsToWin").value, 10) || 15;
 
@@ -513,7 +565,6 @@ function resetTurnState() {
   game.currentSong = null;
   game.proposedInsertIndex = 0;
   game.revealed = false;
-  game.played = false;
 
   modePill.textContent = "Wähle SAFE oder WAGNIS";
   playPauseBtn.disabled = true;
@@ -581,6 +632,8 @@ function pickRandomFromArray(arr) {
 }
 
 function chooseSource(mode) {
+  if (gameOver) return;
+
   const current = game.currentPlayerIndex;
 
   if (mode === "SAFE") {
@@ -596,9 +649,7 @@ function chooseSource(mode) {
   game.currentSong = pickRandomFromArray(sourcePlayer.tracks);
 
   game.proposedInsertIndex = players[current].timeline.length;
-
   game.revealed = false;
-  game.played = false;
 
   modePill.textContent = `${game.sourceMode} → Song aus Playlist von: ${players[game.sourceOwnerIndex].name}`;
 
@@ -616,7 +667,8 @@ function chooseSource(mode) {
 }
 
 async function onPlayPause() {
-  if (game.revealed) return;         // ✅ Bugfix: nach Reveal nicht wieder abspielen
+  if (gameOver) return;
+  if (game.revealed) return;
   if (!game.currentSong) return;
 
   if (playback.isPlaying) {
@@ -624,7 +676,6 @@ async function onPlayPause() {
     return;
   }
   await playUri(game.currentSong.uri);
-  game.played = true;
   revealBtn.disabled = false;
 }
 
@@ -644,6 +695,7 @@ function renderTimeline() {
     slot.className = "slot" + (game.proposedInsertIndex === i && game.currentSong && !game.revealed ? " selected" : "");
     slot.title = "Hier platzieren";
     slot.addEventListener("click", () => {
+      if (gameOver) return;
       if (!game.currentSong) return;
       if (game.revealed) return;
       game.proposedInsertIndex = i;
@@ -711,6 +763,7 @@ function correctInsertRangeForYear(timeline, year) {
 }
 
 async function reveal() {
+  if (gameOver) return;
   if (!game.currentSong) return;
 
   try { await pausePlayback(); } catch {}
@@ -724,6 +777,7 @@ async function reveal() {
 
   const isCorrect = (chosen >= minIdx && chosen <= maxIdx);
 
+  // scoring
   if (game.sourceMode === "SAFE") {
     if (isCorrect) p.points += 1;
   } else {
@@ -732,26 +786,28 @@ async function reveal() {
     if (p.points < 0) p.points = 0;
   }
 
+  // timeline insert only if correct
   if (isCorrect) {
-    const card = {
-      year,
-      name: game.currentSong.name,
-      artists: game.currentSong.artists,
-      sourceOwner: players[game.sourceOwnerIndex].name
-    };
+    const card = { year, name: game.currentSong.name, artists: game.currentSong.artists };
     timeline.splice(chosen, 0, card);
   }
 
-  // Status box (klein, Timeline ist jetzt die "Quelle der Wahrheit")
+  // ✅ Always show revealed song prominently (even if wrong)
+  const artists = (game.currentSong.artists || []).join(", ");
+  const sourceName = players[game.sourceOwnerIndex]?.name || "—";
+
   unknownCard.className = "card " + (isCorrect ? "good" : "bad");
-  unknownCard.innerHTML = `<div class="title">${isCorrect ? "✅ Richtig" : "❌ Falsch"}</div>
-                           <div class="meta">Gültige Slots: ${minIdx+1} bis ${maxIdx+1}</div>
-                           <div class="meta">Punkte: ${escapeHtml(players[game.currentPlayerIndex].name)} = ${p.points}</div>`;
-  resultText.innerHTML = `${game.sourceMode} · Quelle: ${escapeHtml(players[game.sourceOwnerIndex].name)} · Jahr: <b>${escapeHtml(year)}</b>`;
+  unknownCard.innerHTML = `
+    <div class="title">${escapeHtml(game.currentSong.name)}</div>
+    <div class="meta">${escapeHtml(artists)}</div>
+    <div class="meta">Jahr: <b>${escapeHtml(year)}</b> · Quelle: ${escapeHtml(sourceName)}</div>
+    <div class="meta">${isCorrect ? "✅ Richtig platziert" : "❌ Falsch platziert"}</div>
+  `;
+  resultText.innerHTML = `Gültige Slots: <b>${minIdx+1}</b> bis <b>${maxIdx+1}</b> · Punkte: <b>${escapeHtml(p.name)} = ${p.points}</b>`;
 
   game.revealed = true;
 
-  // ✅ Bugfix: nach Reveal Play deaktivieren (kein Loop mit gleichem Song)
+  // lock playback after reveal
   playPauseBtn.disabled = true;
   playPauseBtn.textContent = "▶️ Play";
   playback.isPlaying = false;
@@ -764,30 +820,53 @@ async function reveal() {
 }
 
 /* =========================
-   Next turn + end-of-round winner check
+   Winner handling (end of round)
 ========================= */
 function endOfRoundReached(nextIndex) {
   return nextIndex === game.roundStartPlayerIndex;
 }
 
-function checkWinnerEndOfRound() {
+function winnersNow() {
   return players.filter(p => p.points >= pointsToWin);
 }
 
+function showWinnerOverlay(winners) {
+  gameOver = true;
+
+  // disable controls
+  safeBtn.disabled = true;
+  riskBtn.disabled = true;
+  playPauseBtn.disabled = true;
+  revealBtn.disabled = true;
+  nextBtn.disabled = true;
+
+  // overlay content
+  winnerText.textContent = `Ziel erreicht: ≥ ${pointsToWin} Punkte (Siegprüfung am Ende der Runde).`;
+  winnerList.innerHTML = "";
+  winners.forEach(w => {
+    const li = document.createElement("li");
+    li.textContent = `${w.name} – ${w.points} Punkte`;
+    winnerList.appendChild(li);
+  });
+
+  winnerOverlay.style.display = "flex";
+}
+
 function nextTurn() {
+  if (gameOver) return;
+
   const prev = game.currentPlayerIndex;
   const next = (prev + 1) % players.length;
   const endRound = endOfRoundReached(next);
 
   game.currentPlayerIndex = next;
 
+  // end-of-round winner check
   if (endRound) {
-    const winners = checkWinnerEndOfRound();
+    const winners = winnersNow();
     if (winners.length) {
-      const names = winners.map(w => w.name).join(", ");
-      alert(`🏁 Runde beendet!\nGewinner: ${names}\n(≥ ${pointsToWin} Punkte)`);
-      // optional: hier könntest du automatisch stoppen
-      // return;
+      showWinnerOverlay(winners);
+      return;
     }
   }
 
@@ -819,9 +898,8 @@ document.getElementById("buildPlayersBtn").onclick = () => {
 };
 
 startGameBtn.onclick = async () => {
-  try {
-    await startGame();
-  } catch (e) {
+  try { await startGame(); }
+  catch (e) {
     setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`);
     setDebug(e.stack || e.message);
   }
@@ -845,6 +923,8 @@ revealBtn.onclick = () => {
 };
 
 nextBtn.onclick = () => nextTurn();
+
+endBtn.onclick = () => resetToSetup();
 
 refreshConnStatus();
 </script>
