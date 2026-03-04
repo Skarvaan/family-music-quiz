@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Spotify Callback</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spotify Callback</title>
 </head>
 <body>
-<h1>Spotify Callback</h1>
-<p>Verbinde…</p>
+  <h1>Spotify Callback</h1>
+  <p>Verbinde…</p>
 
 <script>
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
@@ -15,11 +15,12 @@ const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html"
 
 const params = new URLSearchParams(window.location.search);
 const code = params.get("code");
+const error = params.get("error");
 
-async function exchangeToken() {
+async function exchangeToken(){
   const verifier = localStorage.getItem("pkce_verifier");
-  if (!verifier) {
-    document.body.innerHTML += "<pre>❌ pkce_verifier fehlt (bitte neu einloggen).</pre>";
+  if(!verifier){
+    document.body.innerHTML += "<pre>❌ Kein PKCE Verifier gefunden (bitte nochmal Login starten).</pre>";
     return;
   }
 
@@ -39,18 +40,23 @@ async function exchangeToken() {
 
   const data = await response.json();
 
-  if (data.access_token) {
+  if(data.access_token){
     localStorage.setItem("spotify_access_token", data.access_token);
     localStorage.setItem("spotify_scope", data.scope || "");
-    document.body.innerHTML += "<pre>✅ Token gespeichert – zurück zur App</pre>";
-    setTimeout(() => { window.location.href = "./"; }, 800);
+    document.body.innerHTML += "<pre>✅ Token gespeichert. Zurück…</pre>";
+    setTimeout(()=>{ window.location.href = "./"; }, 900);
   } else {
-    document.body.innerHTML += "<pre>❌ Token Fehler: " + JSON.stringify(data, null, 2) + "</pre>";
+    document.body.innerHTML += "<pre>❌ Token Fehler:\n" + JSON.stringify(data, null, 2) + "</pre>";
   }
 }
 
-if (code) exchangeToken();
-else document.body.innerHTML += "<pre>❌ Kein Code</pre>";
+if(error){
+  document.body.innerHTML += "<pre>❌ Fehler: " + error + "</pre>";
+} else if(code){
+  exchangeToken();
+} else {
+  document.body.innerHTML += "<pre>❌ Kein Code erhalten.</pre>";
+}
 </script>
 </body>
 </html>
