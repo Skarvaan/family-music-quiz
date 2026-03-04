@@ -23,9 +23,6 @@
 
     .hidden { display:none; }
 
-    .grid2 { display:grid; grid-template-columns: 1fr; gap: 10px; }
-    @media(min-width: 860px){ .grid2 { grid-template-columns: 1fr 1fr; } }
-
     .playerGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
     @media(min-width: 860px){ .playerGrid { grid-template-columns: 1fr 1fr; } }
     .playerCard { border:1px solid #eee; border-radius: 16px; padding: 10px; background:#fff; }
@@ -46,10 +43,6 @@
     .scoreItem { border:1px solid #eee; border-radius: 14px; padding: 8px 10px; background:#fff; }
     .scoreItem.active { border-color:#222; }
 
-    .options { display:flex; flex-wrap: wrap; gap: 10px; justify-content:center; }
-    .optBtn { min-width: 210px; padding: 18px 18px; font-size: 18px; font-weight: 900; border-radius: 18px; border: 2px solid #222; background:#fff; }
-    .optBtn:disabled { opacity: .5; border-color:#aaa; }
-
     .revealBox { border:1px solid #eee; border-radius: 18px; padding: 12px; background:#fff; }
     .revealBox .title { font-weight: 900; font-size: 18px; }
     .revealBox.good { border-color:#0a7a0a; box-shadow: 0 0 0 2px rgba(10,122,10,.08) inset; }
@@ -62,7 +55,7 @@
     .ansRow.bad { border-color:#b00020; }
     .ansRow .name { font-weight: 900; }
 
-    /* Timeline UI */
+    /* Timeline */
     .timelineWrap { margin-top: 10px; }
     .timelineRow { display:flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
     .slotBtn { padding: 10px 10px; border-radius: 14px; border: 2px dashed #bbb; background:#fff; cursor:pointer; min-width: 64px; }
@@ -72,14 +65,17 @@
     .tCard .s { font-size: 13px; color:#333; }
     .tCard .a { font-size: 12px; color:#666; }
 
-    .modeControls { display:flex; flex-wrap: wrap; gap: 10px; justify-content:center; margin-top: 10px; }
-    .modeBtn { padding: 18px 20px; border-radius: 18px; border:2px solid #222; background:#fff; font-weight: 900; font-size: 18px; min-width: 180px; }
-    .modeBtn.active { background:#222; color:#fff; }
-
     .revealBig { transform: scale(1.06); box-shadow: 0 8px 26px rgba(0,0,0,.12); }
 
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding: 18px; z-index: 9999; }
     .overlay .panel { width: min(820px, 100%); background:#fff; border-radius: 20px; padding: 16px; border: 1px solid #ddd; }
+
+    /* Safe / Wagnis */
+    .swWrap { display:flex; gap: 10px; justify-content:center; margin-top: 10px; flex-wrap: wrap; }
+    .swBtn { padding: 18px 18px; border-radius: 18px; border: 2px solid #222; font-weight: 900; font-size: 18px; min-width: 220px; }
+    .swBtn.safe { background:#fff; }
+    .swBtn.wagnis { background:#fff; }
+    .swHint { text-align:center; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -132,67 +128,34 @@
   <div class="box">
     <h3>Spielart</h3>
     <div class="cardChoiceGrid">
-      <div class="choiceCard" id="mode_timeline">
+      <div class="choiceCard active" id="mode_timeline">
         <div class="title">Timeline</div>
-        <div class="desc">Slot wählen → SAFE (eigene Playlist) oder WAGNIS (fremde Playlist) → Song startet sofort → Reveal.</div>
+        <div class="desc">Nach Referenz: pro Zug SAFE (eigene Playlist) oder WAGNIS (zufällig aus anderer Playlist). Slot wählen → Reveal.</div>
       </div>
       <div class="choiceCard" id="mode_meta">
         <div class="title">Song erraten</div>
-        <div class="desc">Solo. (Der Modus ist hier vorbereitet, aber Timeline ist aktuell dein Fokus.)</div>
+        <div class="desc">(Platzhalter) später wieder rein.</div>
       </div>
       <div class="choiceCard" id="mode_timewindow">
         <div class="title">Zeitraum raten</div>
-        <div class="desc">Solo oder Shuffle/Party (vorbereitet).</div>
+        <div class="desc">(Platzhalter) später wieder rein.</div>
       </div>
     </div>
   </div>
 
-  <div class="grid2">
-    <div class="box">
-      <h3>Konstellation</h3>
-      <div class="row">
-        <select id="playStyle">
-          <option value="solo" selected>Solo: jeder für sich (eigene Playlist)</option>
-          <option value="party">Shuffle/Party: Quelle rotiert, alle tippen</option>
-        </select>
-        <span class="muted" id="playStyleHint"></span>
-      </div>
-
-      <div id="timewindowExtra" class="row hidden" style="margin-top:10px;">
-        <label><b>Variante</b></label>
-        <select id="windowSize">
-          <option value="10" selected>Jahrzehnt</option>
-          <option value="5">5-Jahres-Spanne</option>
-          <option value="2">2-Jahres-Spanne</option>
-          <option value="1">Exaktes Jahr</option>
-        </select>
-      </div>
-
-      <div id="timelineExtra" class="row hidden" style="margin-top:10px;">
-        <span class="muted">Timeline ist immer <b>Solo</b>. SAFE/WAGNIS bestimmt die <b>Quelle</b> des Songs.</span>
-      </div>
-
-      <div id="metaExtra" class="row hidden" style="margin-top:10px;">
-        <span class="muted">Song erraten ist immer <b>Solo</b>.</span>
-      </div>
+  <div class="box">
+    <h3>Ziel</h3>
+    <div class="row">
+      <label><b>Runden</b></label>
+      <input id="roundsTotal" type="number" value="5" min="1" max="100" style="width:100px;">
+      <label><b>Punkte-Ziel</b></label>
+      <input id="pointsToWin" type="number" value="15" min="1" max="999" style="width:110px;">
+      <label><input type="checkbox" id="resetPoints" checked> Punkte beim Start zurücksetzen</label>
     </div>
-
-    <div class="box">
-      <h3>Ziel</h3>
-      <div class="row">
-        <label><b>Runden</b></label>
-        <input id="roundsTotal" type="number" value="10" min="1" max="100" style="width:100px;">
-        <label><b>Punkte-Ziel</b></label>
-        <input id="pointsToWin" type="number" value="15" min="1" max="999" style="width:110px;">
-      </div>
-      <div class="muted">Session endet bei Runden-Ende oder wenn jemand das Punkte-Ziel erreicht.</div>
-      <div class="row" style="margin-top:10px;">
-        <label><input type="checkbox" id="resetPoints" checked> Punkte beim Start zurücksetzen</label>
-      </div>
-      <div class="row" style="margin-top:10px;">
-        <button id="startSessionBtn" class="primary">Session starten</button>
-        <button id="backToSetupBtn">← zurück zum Setup</button>
-      </div>
+    <div class="muted">1 Runde = alle waren einmal dran. Referenz zählt nicht als Runde.</div>
+    <div class="row" style="margin-top:10px;">
+      <button id="startSessionBtn" class="primary">Session starten</button>
+      <button id="backToSetupBtn">← zurück zum Setup</button>
     </div>
   </div>
 
@@ -213,7 +176,7 @@
     <div style="margin-top:8px;">
       <span class="pill" id="modePill">—</span>
       <span class="pill" id="roundPill">—</span>
-      <span class="pill" id="sourcePill">—</span>
+      <span class="pill" id="infoPill">—</span>
     </div>
   </div>
 
@@ -224,37 +187,33 @@
   </div>
 
   <div class="muted" style="text-align:center; margin-top:6px;">
-    Hinweis: Spotify muss auf einem Gerät offen sein. Die Web-App steuert nur das Abspielen.
+    Spotify muss offen sein (App/Webplayer). Diese Seite steuert nur.
   </div>
 
-  <div id="panel_timewindow" class="box hidden">
-    <h3>Zeitraum raten</h3>
-    <div class="options" id="optionButtons"></div>
-    <div class="muted" style="text-align:center; margin-top:8px;" id="timewindowHint"></div>
-  </div>
-
-  <div id="panel_meta" class="box hidden">
-    <h3>Song erraten (Solo)</h3>
-    <div class="muted">Vorbereitet.</div>
-    <div id="metaArea" class="answers"></div>
-  </div>
-
+  <!-- Panels -->
   <div id="panel_timeline" class="box hidden">
     <h3>Timeline</h3>
-    <div class="muted">Slot wählen → SAFE oder WAGNIS drücken. Musik startet sofort. Danach nur noch REVEAL.</div>
+    <div class="muted">Nach Referenz: Wähle SAFE oder WAGNIS → Song startet sofort → Slot wählen → Reveal.</div>
+
+    <div id="safeWagnisUI" class="swWrap hidden">
+      <button id="safeBtn" class="swBtn safe">SAFE<br><span class="muted">eigene Playlist<br><b>+1</b> / <b>0</b></span></button>
+      <button id="wagnisBtn" class="swBtn wagnis">WAGNIS<br><span class="muted">andere Playlist<br><b>+2</b> / <b>-1</b></span></button>
+    </div>
+    <div id="safeWagnisHint" class="swHint muted hidden">Musik startet sofort nach deiner Wahl.</div>
 
     <div class="timelineWrap">
       <div class="timelineRow" id="timelineRow"></div>
     </div>
+  </div>
 
-    <div class="modeControls">
-      <button id="safeBtn" class="modeBtn">SAFE (eigene Playlist)</button>
-      <button id="riskBtn" class="modeBtn">WAGNIS (fremde Playlist)</button>
-    </div>
+  <div id="panel_meta" class="box hidden">
+    <h3>Song erraten (Platzhalter)</h3>
+    <div class="muted">Dieser Modus ist noch nicht ausgebaut.</div>
+  </div>
 
-    <div class="muted" style="text-align:center;">
-      SAFE: richtig +1, falsch 0 · WAGNIS: richtig +2, falsch −1
-    </div>
+  <div id="panel_timewindow" class="box hidden">
+    <h3>Zeitraum raten (Platzhalter)</h3>
+    <div class="muted">Dieser Modus ist noch nicht ausgebaut.</div>
   </div>
 
   <div class="revealBox" id="revealBox" style="margin-top:10px;">
@@ -276,7 +235,7 @@
     <ul id="sessionWinners"></ul>
     <div class="row" style="justify-content:flex-end;">
       <button id="againBtn" class="primary">Nochmal gleiche Session</button>
-      <button id="toLobby2Btn">Modus/Konstellation ändern</button>
+      <button id="toLobby2Btn">Modus ändern</button>
       <button id="toSetup2Btn">Zurück zum Setup</button>
     </div>
   </div>
@@ -292,7 +251,6 @@ const scopes = [
   "user-read-playback-state",
   "user-modify-playback-state"
 ].join(" ");
-
 const NOW_YEAR = 2026;
 
 /* ========== UI refs ========== */
@@ -302,14 +260,18 @@ const setupScreen = document.getElementById("setupScreen");
 const lobbyScreen = document.getElementById("lobbyScreen");
 const gameScreen  = document.getElementById("gameScreen");
 
-const debugSetup = document.getElementById("debugSetup");
-const debugLobby = document.getElementById("debugLobby");
-const debugGame  = document.getElementById("debugGame");
-
 const setupStatus = document.getElementById("setupStatus");
 const loadProgress = document.getElementById("loadProgress");
 const playersArea = document.getElementById("playersArea");
 const toLobbyBtn = document.getElementById("toLobbyBtn");
+
+const debugSetup = document.getElementById("debugSetup");
+const debugLobby = document.getElementById("debugLobby");
+const debugGame = document.getElementById("debugGame");
+
+const roundsTotalInp = document.getElementById("roundsTotal");
+const pointsToWinInp = document.getElementById("pointsToWin");
+const resetPointsChk = document.getElementById("resetPoints");
 
 const modeCards = {
   timeline: document.getElementById("mode_timeline"),
@@ -317,42 +279,27 @@ const modeCards = {
   timewindow: document.getElementById("mode_timewindow")
 };
 
-const playStyleSel = document.getElementById("playStyle");
-const playStyleHint = document.getElementById("playStyleHint");
-const timewindowExtra = document.getElementById("timewindowExtra");
-const timelineExtra = document.getElementById("timelineExtra");
-const metaExtra = document.getElementById("metaExtra");
-const windowSizeSel = document.getElementById("windowSize");
-
-const roundsTotalInp = document.getElementById("roundsTotal");
-const pointsToWinInp = document.getElementById("pointsToWin");
-const resetPointsChk = document.getElementById("resetPoints");
-const startSessionBtn = document.getElementById("startSessionBtn");
-const backToSetupBtn = document.getElementById("backToSetupBtn");
-
 const scoreBoard = document.getElementById("scoreBoard");
 const turnHint = document.getElementById("turnHint");
 const turnName = document.getElementById("turnName");
 const modePill = document.getElementById("modePill");
 const roundPill = document.getElementById("roundPill");
-const sourcePill = document.getElementById("sourcePill");
+const infoPill = document.getElementById("infoPill");
 
 const playPauseBtn = document.getElementById("playPauseBtn");
 const revealBtn = document.getElementById("revealBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-const panel_timewindow = document.getElementById("panel_timewindow");
-const panel_meta = document.getElementById("panel_meta");
 const panel_timeline = document.getElementById("panel_timeline");
+const panel_meta = document.getElementById("panel_meta");
+const panel_timewindow = document.getElementById("panel_timewindow");
 
-const optionButtons = document.getElementById("optionButtons");
-const timewindowHint = document.getElementById("timewindowHint");
-
-const metaArea = document.getElementById("metaArea");
 const timelineRow = document.getElementById("timelineRow");
 
+const safeWagnisUI = document.getElementById("safeWagnisUI");
+const safeWagnisHint = document.getElementById("safeWagnisHint");
 const safeBtn = document.getElementById("safeBtn");
-const riskBtn = document.getElementById("riskBtn");
+const wagnisBtn = document.getElementById("wagnisBtn");
 
 const revealBox = document.getElementById("revealBox");
 const revealTitle = document.getElementById("revealTitle");
@@ -374,32 +321,28 @@ const playlistTracksCache = new Map();
 const playlistLoadControllers = new Map();
 const playlistLoadTimers = new Map();
 
-let playback = { isPlaying:false, lastDeviceId:null };
-
 let lobby = {
   mode: "timeline",
-  playStyle: "solo",
-  roundsTotal: 10,
-  pointsToWin: 15,
-  windowSize: 10,
+  roundsTotal: 5,
+  pointsToWin: 15
 };
+
+let playback = { isPlaying:false, lastDeviceId:null };
 
 let game = {
   inIntro: true,
-  sessionRound: 1,
-  answeringPlayerIndex: 0,
+  turnIndex: 0,
+  roundIndex: 1,
+  currentPlayerIndex: 0,
 
   currentSong: null,
   revealed: false,
 
-  // timewindow
-  question: null,
-  answersByPlayerIndex: {},
-
-  // timeline
   pendingInsertIndex: 0,
-  timelinePick: null,        // "safe"|"risk"
-  timelineSourceIndex: null  // which player's playlist used
+
+  // NEW: safe/wagnis state (only for timeline)
+  choice: null,          // "safe" | "wagnis"
+  sourcePlayerIndex: 0   // which playlist produced the song
 };
 
 /* ========== Helpers ========== */
@@ -432,26 +375,23 @@ function pickRandomTrack(tracks){
   return tracks[Math.floor(Math.random() * tracks.length)];
 }
 
-function getModeLabel(){
-  if(lobby.mode === "timeline") return "Timeline";
-  if(lobby.mode === "meta") return "Song erraten";
-  return "Zeitraum raten";
-}
-
-function emphasizeReveal(on){
-  if(on) revealBtn.classList.add("revealBig");
-  else revealBtn.classList.remove("revealBig");
-}
-
 function clearReveal(){
   revealBox.classList.remove("good","bad");
   revealTitle.textContent = "?";
   revealMeta.textContent = "—";
   answersBox.innerHTML = "";
-  emphasizeReveal(false);
+  revealBtn.classList.remove("revealBig");
 }
 
-/* ========== Spotify Fetch ========== */
+function showModePanels(){
+  panel_timeline.classList.toggle("hidden", lobby.mode !== "timeline");
+  panel_meta.classList.toggle("hidden", lobby.mode !== "meta");
+  panel_timewindow.classList.toggle("hidden", lobby.mode !== "timewindow");
+}
+
+function currentPlayer(){ return players[game.currentPlayerIndex]; }
+
+/* ========== Spotify fetch ========== */
 async function apiFetch(url, { method="GET", headers={}, body=null, signal=null } = {}, timeoutMs=15000){
   const token = getToken();
   if(!token) throw new Error("Kein Token – bitte verbinden.");
@@ -562,7 +502,7 @@ async function playUri(uri){
   playPauseBtn.textContent = "⏸️ Stop";
 }
 
-/* ========== Setup Load Playlists/Players ========== */
+/* ========== Setup Load ========== */
 async function loadPlaylists(){
   setupStatus.textContent = "Lade Playlists…";
   setDebug(debugSetup, "");
@@ -738,34 +678,13 @@ async function autoLoadPlaylistForPlayer(playerIndex, playlistId){
   }
 }
 
-/* ========== Lobby logic (enforce your rules) ========== */
+/* ========== Lobby ========== */
 function setActiveMode(mode){
   lobby.mode = mode;
   Object.keys(modeCards).forEach(k => modeCards[k].classList.toggle("active", k === mode));
-  enforceModeRules();
+  setDebug(debugLobby, JSON.stringify({mode:lobby.mode}, null, 2));
 }
-
-function enforceModeRules(){
-  timewindowExtra.classList.toggle("hidden", lobby.mode !== "timewindow");
-  timelineExtra.classList.toggle("hidden", lobby.mode !== "timeline");
-  metaExtra.classList.toggle("hidden", lobby.mode !== "meta");
-
-  if(lobby.mode === "timeline"){
-    playStyleSel.value = "solo";
-    playStyleSel.disabled = true;
-    playStyleHint.textContent = "Timeline ist immer Solo (SAFE/WAGNIS = Quelle).";
-  }else if(lobby.mode === "meta"){
-    playStyleSel.value = "solo";
-    playStyleSel.disabled = true;
-    playStyleHint.textContent = "Song erraten ist immer Solo.";
-  }else{
-    playStyleSel.disabled = false;
-    playStyleHint.textContent = "Solo oder Shuffle/Party möglich.";
-  }
-}
-
 function openLobby(){
-  enforceModeRules();
   showScreen("lobby");
   setDebug(debugLobby, JSON.stringify({
     players: players.map(p=>({name:p.name, tracks:p.tracks.length})),
@@ -773,79 +692,25 @@ function openLobby(){
   }, null, 2));
 }
 
-/* ========== Session helpers ========== */
-function renderScoreboard(){
-  scoreBoard.innerHTML = "";
-  players.forEach((p)=>{
-    const el = document.createElement("div");
-    el.className = "scoreItem";
-    el.innerHTML = `<b>${esc(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
-    scoreBoard.appendChild(el);
-  });
-}
-
-function resetSessionPointsAndTimelines(){
-  players.forEach(p=>{
-    p.points = 0;
-    p.timeline = [];
-    p.referenceYear = null;
-    p.spanMin = null;
-    p.spanMax = null;
-  });
-}
-
-function computeWinners(){
-  const max = Math.max(...players.map(p=>p.points));
-  return players.filter(p=>p.points === max);
-}
-
-function showSessionOverlay(){
-  const winners = computeWinners();
-  sessionSummary.innerHTML = `
-    Modus: <b>${esc(getModeLabel())}</b><br>
-    Runden gespielt: <b>${game.sessionRound-1}</b> · Punkte-Ziel: <b>${lobby.pointsToWin}</b>
-  `;
-  sessionWinners.innerHTML = "";
-  winners.forEach(w=>{
-    const li = document.createElement("li");
-    li.textContent = `${w.name} – ${w.points} Punkte`;
-    sessionWinners.appendChild(li);
-  });
-  sessionOverlay.style.display = "flex";
-}
-
-function hideSessionOverlay(){
-  sessionOverlay.style.display = "none";
-}
-
-/* ========== NEW: Reference year + span per player ========== */
+/* ========== Reference (Ø + Spanne) ========== */
 function initReferenceYearsAndSpan(){
   players.forEach(p=>{
     const years = p.tracks
       .map(t => parseInt(t.year,10))
       .filter(y => !isNaN(y) && y <= NOW_YEAR);
 
-    if(!years.length){
-      // fallback (sollte kaum vorkommen wenn Tracks sauber geladen)
-      p.referenceYear = 2000;
-      p.spanMin = 2000;
-      p.spanMax = 2000;
-    }else{
-      const minY = Math.min(...years);
-      const maxY = Math.max(...years);
-      const avg = years.reduce((a,b)=>a+b,0) / years.length;
+    const minY = years.length ? Math.min(...years) : 2000;
+    const maxY = years.length ? Math.max(...years) : 2000;
+    const avg  = years.length ? (years.reduce((a,b)=>a+b,0) / years.length) : 2000;
 
-      p.referenceYear = Math.round(avg);
-      p.spanMin = minY;
-      p.spanMax = maxY;
-    }
+    p.referenceYear = Math.round(avg);
+    p.spanMin = minY;
+    p.spanMax = maxY;
 
-    // Startkarte in Timeline (nur Jahr, damit es klar "anders" ist als Hitster)
     p.timeline = [{
       year: String(p.referenceYear),
       title: "Startjahr",
       artist: `Spanne: ${p.spanMin}–${p.spanMax}`,
-      ok: true,
       isReference: true
     }];
   });
@@ -854,11 +719,10 @@ function initReferenceYearsAndSpan(){
 function showReferenceIntro(){
   clearReveal();
   revealBox.classList.add("good");
-
   revealTitle.textContent = "Start-Referenz (pro Spieler)";
   revealMeta.textContent = "Startjahr = Durchschnitt der Playlist-Jahre · Spanne = min–max";
-
   answersBox.innerHTML = "";
+
   players.forEach(p=>{
     const row = document.createElement("div");
     row.className = "ansRow good";
@@ -871,97 +735,34 @@ function showReferenceIntro(){
     answersBox.appendChild(row);
   });
 
-  // Controls im Intro:
+  // Wichtig: In Intro KEIN Safe/Wagnis
+  safeWagnisUI.classList.add("hidden");
+  safeWagnisHint.classList.add("hidden");
+
   playPauseBtn.disabled = true;
   revealBtn.disabled = true;
   nextBtn.disabled = false;
 
   turnHint.textContent = "Start-Setup";
-  turnName.textContent = "WEITER → Runde 1";
-
-  sourcePill.textContent = "—";
+  turnName.textContent = "WEITER → Spiel startet";
+  infoPill.textContent = "Referenz zählt NICHT als Runde";
 }
 
-/* ========== Game state helpers ========== */
-function showModePanels(){
-  panel_timewindow.classList.toggle("hidden", lobby.mode !== "timewindow");
-  panel_meta.classList.toggle("hidden", lobby.mode !== "meta");
-  panel_timeline.classList.toggle("hidden", lobby.mode !== "timeline");
-}
-
-function currentPlayer(){ return players[game.answeringPlayerIndex]; }
-
-/* ===== Timeline: choose source by safe/risk BEFORE play ===== */
-function pickTimelineSourcePlayerIndex(){
-  const me = game.answeringPlayerIndex;
-  if(players.length <= 1) return me;
-  let idx = me;
-  let tries = 0;
-  while(idx === me && tries < 50){
-    idx = Math.floor(Math.random() * players.length);
-    tries++;
-  }
-  return idx;
-}
-
-/* ========== Round flow ========== */
-async function beginRound(){
-  hideSessionOverlay();
-  clearReveal();
-  showModePanels();
-  setDebug(debugGame, "");
-
-  game.revealed = false;
-  game.currentSong = null;
-  game.pendingInsertIndex = 0;
-  game.timelinePick = null;
-  game.timelineSourceIndex = null;
-
-  // UI reset
-  playPauseBtn.disabled = true;
-  playPauseBtn.textContent = "▶️ Play";
-  revealBtn.disabled = true;
-  nextBtn.disabled = true;
-  emphasizeReveal(false);
-
-  renderScoreboard();
-  modePill.textContent = `${getModeLabel()} · ${lobby.mode === "timewindow" ? playStyleSel.value : "Solo"}`;
-  roundPill.textContent = `Runde ${game.sessionRound}/${lobby.roundsTotal} · Ziel ${lobby.pointsToWin}`;
-
-  turnHint.textContent = "Du bist dran:";
-  turnName.textContent = currentPlayer().name;
-
-  if(lobby.mode !== "timeline"){
-    // (andere Modi bleiben vorbereitet)
-    sourcePill.textContent = "—";
-    nextBtn.disabled = false;
-    revealTitle.textContent = "Dieser Modus ist vorbereitet";
-    revealMeta.textContent = "Timeline ist aktuell dein Fokus.";
-    return;
-  }
-
-  sourcePill.textContent = "Quelle: (SAFE oder WAGNIS wählen)";
-  prepareTimeline();
-}
-
-/* ========== Mode: Timeline ========== */
-function prepareTimeline(){
-  safeBtn.classList.remove("active");
-  riskBtn.classList.remove("active");
-
-  renderTimelineUI();
-
-  safeBtn.disabled = false;
-  riskBtn.disabled = false;
-  revealBtn.disabled = true;
-  playPauseBtn.disabled = true;
-  nextBtn.disabled = true;
+/* ========== Game UI ========== */
+function renderScoreboard(){
+  scoreBoard.innerHTML = "";
+  players.forEach((p, idx)=>{
+    const el = document.createElement("div");
+    el.className = "scoreItem" + (idx===game.currentPlayerIndex ? " active" : "");
+    el.innerHTML = `<b>${esc(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
+    scoreBoard.appendChild(el);
+  });
 }
 
 function renderTimelineUI(){
   timelineRow.innerHTML = "";
   const p = currentPlayer();
-  const slotCount = (p.timeline.length + 1);
+  const slotCount = p.timeline.length + 1;
 
   for(let i=0;i<slotCount;i++){
     const slot = document.createElement("button");
@@ -969,6 +770,7 @@ function renderTimelineUI(){
     slot.textContent = "＋";
     slot.onclick = ()=>{
       if(game.revealed) return;
+      // Slotwahl ist erst sinnvoll nach Songstart, aber erlauben wir trotzdem
       game.pendingInsertIndex = i;
       renderTimelineUI();
     };
@@ -988,175 +790,281 @@ function renderTimelineUI(){
   }
 }
 
-async function startTimelineRound(pick){ // pick = "safe"|"risk"
-  if(game.revealed) return;
-  game.timelinePick = pick;
+function resetTurnUI(){
+  clearReveal();
+  game.revealed = false;
+  game.currentSong = null;
+  game.pendingInsertIndex = 0;
+  game.choice = null;
+  game.sourcePlayerIndex = game.currentPlayerIndex;
 
-  const me = game.answeringPlayerIndex;
-  let sourceIndex = me;
+  playPauseBtn.disabled = true;
+  playPauseBtn.textContent = "▶️ Play";
+  revealBtn.disabled = true;
+  nextBtn.disabled = true;
 
-  if(pick === "risk"){
-    sourceIndex = pickTimelineSourcePlayerIndex();
-  }
-
-  game.timelineSourceIndex = sourceIndex;
-  const source = players[sourceIndex];
-
-  sourcePill.textContent = `Quelle: ${source.name} (${pick === "safe" ? "SAFE" : "WAGNIS"})`;
-
-  game.currentSong = pickRandomTrack(source.tracks);
-
-  // lock choice + start playing immediately
-  safeBtn.disabled = true;
-  riskBtn.disabled = true;
-  safeBtn.classList.toggle("active", pick==="safe");
-  riskBtn.classList.toggle("active", pick==="risk");
-
-  playPauseBtn.disabled = false;
-  await playUri(game.currentSong.uri).catch(e=>setDebug(debugGame, e.stack||e.message));
-
-  revealBtn.disabled = false;
-  emphasizeReveal(true);
+  // Safe/Wagnis default: sichtbar nur in Timeline & NICHT im Intro
+  safeWagnisUI.classList.add("hidden");
+  safeWagnisHint.classList.add("hidden");
 }
 
-safeBtn.onclick = ()=> startTimelineRound("safe");
-riskBtn.onclick = ()=> startTimelineRound("risk");
+/* ========== Timeline Rules ========== */
+function correctTimelinePositions(timelineYears, y){
+  const correct = [];
+  for(let i=0;i<=timelineYears.length;i++){
+    const leftOK  = (i===0) ? true : timelineYears[i-1] <= y;
+    const rightOK = (i===timelineYears.length) ? true : y <= timelineYears[i];
+    if(leftOK && rightOK) correct.push(i);
+  }
+  return correct;
+}
 
-/* ========== Reveal ========== */
-async function reveal(){
-  if(game.revealed) return;
-  if(lobby.mode === "timeline" && !game.currentSong){
-    alert("Erst SAFE oder WAGNIS wählen!");
+function pickSourcePlayerIndexForWagnis(){
+  const others = players.map((_,idx)=>idx).filter(i=>i !== game.currentPlayerIndex);
+  return others[Math.floor(Math.random() * others.length)];
+}
+
+/* ========== Turn flow ========== */
+async function beginTurn(){
+  resetTurnUI();
+  showModePanels();
+  renderScoreboard();
+
+  modePill.textContent = lobby.mode === "timeline" ? "Timeline" : lobby.mode;
+  roundPill.textContent = `Runde ${game.roundIndex}/${lobby.roundsTotal}`;
+  infoPill.textContent = `Zug: ${game.turnIndex+1}`;
+
+  turnHint.textContent = "Du bist dran:";
+  turnName.textContent = currentPlayer().name;
+
+  if(lobby.mode !== "timeline"){
+    revealTitle.textContent = "Modus noch nicht ausgebaut";
+    revealMeta.textContent = "Timeline funktioniert. Diese Modi sind Platzhalter.";
+    nextBtn.disabled = false;
     return;
   }
+
+  // Timeline Panel
+  panel_timeline.classList.remove("hidden");
+  renderTimelineUI();
+
+  // JETZT: Safe/Wagnis anzeigen (ab erstem echten Turn, nicht Intro)
+  safeWagnisUI.classList.remove("hidden");
+  safeWagnisHint.classList.remove("hidden");
+
+  revealTitle.textContent = "Wähle SAFE oder WAGNIS";
+  revealMeta.textContent = "Song startet sofort nach deiner Wahl.";
+
+  // Buttons aktivieren
+  safeBtn.disabled = false;
+  wagnisBtn.disabled = false;
+
+  // Reveal erst nach Auswahl/Songstart
+  revealBtn.disabled = true;
+  playPauseBtn.disabled = true;
+}
+
+async function startSongWithChoice(choice){
+  if(game.currentSong || game.revealed) return;
+
+  game.choice = choice;
+
+  // Quelle bestimmen
+  if(choice === "safe"){
+    game.sourcePlayerIndex = game.currentPlayerIndex;
+  }else{
+    game.sourcePlayerIndex = pickSourcePlayerIndexForWagnis();
+  }
+
+  const srcPlayer = players[game.sourcePlayerIndex];
+  const song = pickRandomTrack(srcPlayer.tracks);
+  game.currentSong = song;
+
+  // UI: Buttons sperren
+  safeBtn.disabled = true;
+  wagnisBtn.disabled = true;
+
+  // Sofort spielen
+  playPauseBtn.disabled = false;
+  await playUri(song.uri).catch(e=>setDebug(debugGame, e.stack||e.message));
+
+  // Jetzt Reveal erlauben
+  revealBtn.disabled = false;
+  revealBtn.classList.add("revealBig");
+
+  // In der Info klar sagen, woher der Song kam (aber Songdaten geheim)
+  infoPill.textContent = (choice === "safe")
+    ? "SAFE: eigene Playlist"
+    : `WAGNIS: Playlist von ${players[game.sourcePlayerIndex].name}`;
+}
+
+/* ========== Reveal / Scoring ========== */
+async function reveal(){
+  if(game.revealed) return;
+  if(!game.currentSong){ return; }
 
   try{ await pausePlayback(true); }catch{}
   game.revealed = true;
 
-  // prevent loop-after-reveal
+  // Nach Reveal: Play deaktivieren (kein Loop)
   playPauseBtn.disabled = true;
   playback.isPlaying = false;
   playPauseBtn.textContent = "▶️ Play";
-  emphasizeReveal(false);
+  revealBtn.classList.remove("revealBig");
 
   const s = game.currentSong;
   const artistStr = (s.artists||[]).join(", ");
+  const y = parseInt(s.year,10);
+
   revealTitle.textContent = s.name;
   revealMeta.innerHTML = `<b>${esc(artistStr)}</b> · Jahr: <b>${esc(s.year)}</b>`;
 
   answersBox.innerHTML = "";
   revealBox.classList.remove("good","bad");
 
-  revealTimeline();
-
-  renderScoreboard();
-  revealBtn.disabled = true;
-  nextBtn.disabled = false;
-
-  if(players.some(p => p.points >= lobby.pointsToWin)){
-    game.sessionRound += 1;
-    showSessionOverlay();
-  }
-}
-
-function revealTimeline(){
   const p = currentPlayer();
-  const y = parseInt(game.currentSong.year, 10);
 
+  // Timeline years
   const years = p.timeline.map(c => parseInt(c.year,10)).filter(v=>!isNaN(v));
-  const correctPositions = [];
-  for(let i=0;i<=years.length;i++){
-    const leftOK  = (i===0) ? true : years[i-1] <= y;
-    const rightOK = (i===years.length) ? true : y <= years[i];
-    if(leftOK && rightOK) correctPositions.push(i);
-  }
-
+  const correct = correctTimelinePositions(years, y);
   const chosen = game.pendingInsertIndex;
-  const ok = correctPositions.includes(chosen);
+  const ok = correct.includes(chosen);
 
-  // scoring depends on safe/risk (source choice)
-  if(game.timelinePick === "risk"){
-    if(ok) p.points += 2;
-    else p.points -= 1;
-  }else{
-    if(ok) p.points += 1;
+  // Points based on safe/wagnis rules:
+  // SAFE: ok +1, wrong 0
+  // WAGNIS: ok +2, wrong -1
+  let delta = 0;
+  if(game.choice === "safe"){
+    delta = ok ? 1 : 0;
+  }else if(game.choice === "wagnis"){
+    delta = ok ? 2 : -1;
   }
 
-  // ALWAYS show the card even if wrong (your request)
-  const card = {
-    year: String(y),
-    title: game.currentSong.name,
-    artist: (game.currentSong.artists||[]).join(", "),
-    ok
-  };
-  p.timeline.splice(chosen, 0, card);
+  if(ok){
+    // nur bei ok einfügen
+    p.timeline.splice(chosen, 0, {
+      year: String(y),
+      title: s.name,
+      artist: artistStr
+    });
+    revealBox.classList.add("good");
+  }else{
+    // bei falsch NICHT einfügen
+    revealBox.classList.add("bad");
+  }
 
+  p.points += delta;
+
+  const srcName = players[game.sourcePlayerIndex]?.name || "?";
   const row = document.createElement("div");
   row.className = "ansRow " + (ok ? "good" : "bad");
-
-  const srcName = players[game.timelineSourceIndex]?.name || "?";
   row.innerHTML = `
     <div class="name">${esc(p.name)} ${ok ? "✅" : "❌"}</div>
     <div class="muted">
-      Quelle: <b>${esc(srcName)}</b> · Modus: <b>${game.timelinePick === "risk" ? "WAGNIS" : "SAFE"}</b> · Slot: <b>${chosen+1}</b><br>
-      Karte bleibt liegen: <b>${esc(card.year)} – ${esc(card.title)} – ${esc(card.artist)}</b><br>
-      Richtig wäre Slot: <b>${correctPositions.map(i=>i+1).join(", ")}</b> · Punkte: <b>${p.points}</b>
+      Modus: <b>${esc(game.choice || "?")}</b> · Quelle: <b>${esc(srcName)}</b><br>
+      Gewählt: Slot <b>${chosen+1}</b> · Richtig wäre Slot: <b>${correct.map(i=>i+1).join(", ")}</b><br>
+      ${ok ? "Karte eingefügt." : "Karte NICHT eingefügt."}<br>
+      Punkte: <b>${p.points}</b> (${delta >= 0 ? "+" : ""}${delta})
     </div>
   `;
   answersBox.appendChild(row);
 
-  revealBox.classList.add(ok ? "good" : "bad");
   renderTimelineUI();
+  renderScoreboard();
+
+  revealBtn.disabled = true;
+  nextBtn.disabled = false;
+
+  // Win check (Punkte-Ziel)
+  if(players.some(pp => pp.points >= lobby.pointsToWin)){
+    showSessionOverlay("Punkte-Ziel erreicht.");
+  }
 }
 
-/* ========== Next ========== */
 async function next(){
-  // Intro stage: start round 1 without increasing round
+  // Intro → Start Turn 1
   if(game.inIntro){
     game.inIntro = false;
-    await beginRound();
+    game.turnIndex = 0;
+    game.roundIndex = 1;
+    game.currentPlayerIndex = 0;
+    await beginTurn();
     return;
   }
 
-  game.sessionRound += 1;
+  game.turnIndex += 1;
+  game.currentPlayerIndex = (game.currentPlayerIndex + 1) % players.length;
 
-  if(game.sessionRound > lobby.roundsTotal){
-    showSessionOverlay();
-    return;
+  if(game.currentPlayerIndex === 0){
+    game.roundIndex += 1;
+    if(game.roundIndex > lobby.roundsTotal){
+      showSessionOverlay("Runden-Ziel erreicht.");
+      return;
+    }
   }
 
-  game.answeringPlayerIndex = (game.answeringPlayerIndex + 1) % players.length;
-  await beginRound();
+  await beginTurn();
 }
 
-/* ========== Session start ========== */
-async function startSession(){
-  lobby.playStyle = playStyleSel.value;
-  lobby.roundsTotal = Math.max(1, parseInt(roundsTotalInp.value, 10) || 10);
-  lobby.pointsToWin = Math.max(1, parseInt(pointsToWinInp.value, 10) || 15);
-  lobby.windowSize = parseInt(windowSizeSel.value, 10) || 10;
+/* ========== Session ========== */
+function resetSessionPointsAndTimelines(){
+  players.forEach(p=>{
+    p.points = 0;
+    p.timeline = [];
+    p.referenceYear = null;
+    p.spanMin = null;
+    p.spanMax = null;
+  });
+}
 
-  enforceModeRules();
+function computeWinners(){
+  const max = Math.max(...players.map(p=>p.points));
+  return players.filter(p=>p.points === max);
+}
+
+function showSessionOverlay(reason){
+  const winners = computeWinners();
+  sessionSummary.innerHTML = `
+    <b>${esc(reason||"Session beendet")}</b><br>
+    Modus: <b>${esc(lobby.mode)}</b><br>
+    Runden gespielt: <b>${Math.max(0, game.roundIndex-1)}</b>
+  `;
+  sessionWinners.innerHTML = "";
+  winners.forEach(w=>{
+    const li = document.createElement("li");
+    li.textContent = `${w.name} – ${w.points} Punkte`;
+    sessionWinners.appendChild(li);
+  });
+  sessionOverlay.style.display = "flex";
+}
+
+function hideSessionOverlay(){ sessionOverlay.style.display = "none"; }
+
+async function startSession(){
+  lobby.roundsTotal = Math.max(1, parseInt(roundsTotalInp.value, 10) || 5);
+  lobby.pointsToWin = Math.max(1, parseInt(pointsToWinInp.value, 10) || 15);
 
   if(resetPointsChk.checked) resetSessionPointsAndTimelines();
 
   game.inIntro = true;
-  game.sessionRound = 1;
-  game.answeringPlayerIndex = 0;
+  game.turnIndex = 0;
+  game.roundIndex = 1;
+  game.currentPlayerIndex = 0;
   game.currentSong = null;
   game.revealed = false;
+  game.pendingInsertIndex = 0;
+  game.choice = null;
+  game.sourcePlayerIndex = 0;
 
-  showScreen("game");
-
-  // NEW: per-player reference + span
   initReferenceYearsAndSpan();
 
-  // show intro list
+  showScreen("game");
   showModePanels();
-  panel_timeline.classList.remove("hidden");
   renderScoreboard();
-  modePill.textContent = `${getModeLabel()} · Solo`;
-  roundPill.textContent = `Runde 1/${lobby.roundsTotal} · Ziel ${lobby.pointsToWin}`;
+  modePill.textContent = lobby.mode === "timeline" ? "Timeline" : lobby.mode;
+  roundPill.textContent = `Runde 1/${lobby.roundsTotal}`;
+  infoPill.textContent = "—";
+
   showReferenceIntro();
 }
 
@@ -1168,19 +1076,19 @@ document.getElementById("loadPlaylistsBtn").onclick = ()=> loadPlaylists().catch
   setupStatus.innerHTML = `<span class="bad">❌ ${esc(e.message)}</span>`;
   setDebug(debugSetup, e.stack || e.message);
 });
+
 document.getElementById("buildPlayersBtn").onclick = ()=> buildPlayerFields();
 
 toLobbyBtn.onclick = ()=> openLobby();
-backToSetupBtn.onclick = ()=> showScreen("setup");
+document.getElementById("backToSetupBtn").onclick = ()=> showScreen("setup");
+document.getElementById("startSessionBtn").onclick = ()=> startSession().catch(e=>{
+  setDebug(debugLobby, e.stack || e.message);
+  alert(e.message);
+});
 
 modeCards.timeline.onclick = ()=> setActiveMode("timeline");
 modeCards.meta.onclick = ()=> setActiveMode("meta");
 modeCards.timewindow.onclick = ()=> setActiveMode("timewindow");
-
-startSessionBtn.onclick = ()=> startSession().catch(e=>{
-  setDebug(debugLobby, e.stack || e.message);
-  alert(e.message);
-});
 
 playPauseBtn.onclick = async ()=>{
   if(!game.currentSong || game.revealed || game.inIntro) return;
@@ -1195,7 +1103,18 @@ revealBtn.onclick = ()=> reveal().catch(e=>{
   setDebug(debugGame, e.stack || e.message);
   alert(e.message);
 });
+
 nextBtn.onclick = ()=> next().catch(e=>{
+  setDebug(debugGame, e.stack || e.message);
+  alert(e.message);
+});
+
+// Safe/Wagnis buttons
+safeBtn.onclick = ()=> startSongWithChoice("safe").catch(e=>{
+  setDebug(debugGame, e.stack || e.message);
+  alert(e.message);
+});
+wagnisBtn.onclick = ()=> startSongWithChoice("wagnis").catch(e=>{
   setDebug(debugGame, e.stack || e.message);
   alert(e.message);
 });
@@ -1215,8 +1134,8 @@ toSetup2Btn.onclick = ()=>{
 
 function boot(){
   refreshConnStatus();
-  setActiveMode("timeline");
   showScreen("setup");
+  setActiveMode("timeline");
 }
 boot();
 </script>
