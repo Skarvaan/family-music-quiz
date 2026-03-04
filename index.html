@@ -5,88 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Family Music Quiz</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1020px; margin: 18px auto; padding: 0 12px; }
-    h1 { margin: 8px 0 4px; }
+    body { font-family: Arial, sans-serif; max-width: 1180px; margin: 14px auto; padding: 0 12px; background:#fafafa; }
+    h1 { margin: 8px 0 2px; }
+    h2,h3 { margin: 0 0 10px; }
     .muted { color:#666; font-size: 12px; }
-    .box { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
-    button { padding: 12px 14px; margin: 6px 6px 6px 0; cursor: pointer; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
-    button.primary { font-weight: 700; padding: 16px 18px; border: 1px solid #333; }
-    button.danger { border-color: #b00020; color: #b00020; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    select, input { padding: 10px; margin: 6px 6px 6px 0; border-radius: 10px; border: 1px solid #ccc; }
+    .box { border: 1px solid #ddd; border-radius: 16px; padding: 12px; margin-top: 12px; background:#fff; }
+    .row { display:flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    button { padding: 12px 14px; border-radius: 14px; border: 1px solid #ccc; background: #fff; cursor:pointer; }
+    button.primary { border-color:#222; font-weight: 900; padding: 16px 18px; }
+    button.danger { border-color:#b00020; color:#b00020; }
+    button:disabled { opacity: .45; cursor:not-allowed; }
+    select, input { padding: 10px; border-radius: 14px; border: 1px solid #ccc; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:14px; }
+
     .ok { color:#0a7a0a; }
     .bad { color:#b00020; }
-    pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:10px; }
+
     .hidden { display:none; }
-    .row { display:flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .spacer { height: 8px; }
 
-    .playerCard { border: 1px solid #eee; border-radius: 12px; padding: 10px; background: #fff; }
-    .playerCard h3 { margin: 0 0 6px; }
+    .grid2 { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media(min-width: 860px){ .grid2 { grid-template-columns: 1fr 1fr; } }
+
     .playerGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
-    @media(min-width: 720px){ .playerGrid { grid-template-columns: 1fr 1fr; } }
+    @media(min-width: 860px){ .playerGrid { grid-template-columns: 1fr 1fr; } }
+    .playerCard { border:1px solid #eee; border-radius: 16px; padding: 10px; background:#fff; }
+    .playerCard h3 { margin: 0 0 8px; }
 
-    .bigBanner { text-align:center; font-size: 22px; font-weight: 800; padding: 12px; border-radius: 14px; border: 1px solid #ddd; background: #fcfcfc; }
-    .bigName { font-size: 28px; font-weight: 900; }
-    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #ddd; background:#fff; font-size: 12px; }
+    .cardChoiceGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media(min-width: 860px){ .cardChoiceGrid { grid-template-columns: 1fr 1fr 1fr; } }
+    .choiceCard { border:2px solid #ddd; border-radius: 18px; padding: 12px; background:#fff; cursor:pointer; }
+    .choiceCard.active { border-color:#222; box-shadow: 0 0 0 3px rgba(0,0,0,.05) inset; }
+    .choiceCard .title { font-weight: 900; font-size: 16px; }
+    .choiceCard .desc { margin-top: 6px; color:#555; font-size: 13px; line-height: 1.25; }
+
+    .banner { text-align:center; border:1px solid #eee; border-radius: 18px; padding: 12px; background:#fcfcfc; }
+    .big { font-size: 30px; font-weight: 900; }
+    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; border:1px solid #ddd; background:#fff; font-size: 12px; margin: 2px; }
+
     .scoreBoard { display:flex; flex-wrap: wrap; gap: 8px; }
-    .scoreItem { border:1px solid #eee; border-radius: 12px; padding: 8px 10px; background:#fff; }
-    .scoreItem.active { border-color:#333; }
+    .scoreItem { border:1px solid #eee; border-radius: 14px; padding: 8px 10px; background:#fff; }
+    .scoreItem.active { border-color:#222; }
 
-    .timelineWrap { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
-    .timelineTitle { display:flex; justify-content: space-between; align-items:center; }
-    .timeline { display:flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .options { display:flex; flex-wrap: wrap; gap: 10px; justify-content:center; }
+    .optBtn { min-width: 190px; padding: 18px 18px; font-size: 18px; font-weight: 900; border-radius: 18px; border: 2px solid #222; background:#fff; }
+    .optBtn:disabled { opacity: .5; border-color:#aaa; }
 
-    .slot {
-      width: 18px; height: 70px; border-radius: 12px;
-      border: 2px dashed #bbb; display:flex; align-items:center; justify-content:center;
-      cursor: pointer; background: #fafafa;
-    }
-    .slot.selected { border-color:#333; background:#fff; }
-    .slot::after { content:"+"; color:#aaa; font-weight:900; font-size: 16px; }
-    .slot.selected::after { content:"✓"; color:#333; }
+    .revealBox { border:1px solid #eee; border-radius: 18px; padding: 12px; background:#fff; }
+    .revealBox .title { font-weight: 900; font-size: 18px; }
+    .revealBox.good { border-color:#0a7a0a; box-shadow: 0 0 0 2px rgba(10,122,10,.08) inset; }
+    .revealBox.bad { border-color:#b00020; box-shadow: 0 0 0 2px rgba(176,0,32,.08) inset; }
 
-    .card { min-width: 180px; max-width: 240px; border:1px solid #ddd; border-radius: 14px; padding: 10px; background:#fff; }
-    .card .title { font-weight: 900; font-size: 16px; }
-    .card .meta { font-size: 12px; color:#666; margin-top: 4px; }
-    .card.unknown { text-align:center; font-weight: 900; font-size: 22px; padding: 18px 10px; }
-    .card.good { border-color:#0a7a0a; box-shadow: 0 0 0 2px rgba(10,122,10,.08) inset; }
-    .card.bad { border-color:#b00020; box-shadow: 0 0 0 2px rgba(176,0,32,.08) inset; }
+    .answers { margin-top: 10px; display:grid; grid-template-columns: 1fr; gap: 8px; }
+    @media(min-width: 860px){ .answers { grid-template-columns: 1fr 1fr; } }
+    .ansRow { border:1px solid #eee; border-radius: 16px; padding: 10px; background:#fff; }
+    .ansRow.good { border-color:#0a7a0a; }
+    .ansRow.bad { border-color:#b00020; }
+    .ansRow .name { font-weight: 900; }
 
-    .resultBox { border:1px solid #eee; border-radius: 14px; padding: 10px; background:#fff; }
-    .resultBox .headline { font-weight: 900; }
+    .metaToggles { display:flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .toggleBtn { padding: 12px 12px; border-radius: 14px; border:2px solid #222; background:#fff; font-weight: 900; }
+    .toggleBtn.on { background:#222; color:#fff; }
 
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display:none; align-items: center; justify-content: center; padding: 18px; z-index: 9999; }
-    .overlay .panel { width: min(720px, 100%); background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #ddd; }
+    /* Timeline UI (lightweight, click-to-insert slots) */
+    .timelineWrap { margin-top: 10px; }
+    .timelineRow { display:flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    .slotBtn { padding: 10px 10px; border-radius: 14px; border: 2px dashed #bbb; background:#fff; cursor:pointer; min-width: 64px; }
+    .slotBtn.active { border-color:#222; }
+    .tCard { border:2px solid #222; border-radius: 16px; padding: 10px 10px; min-width: 150px; background:#fff; }
+    .tCard .y { font-weight: 900; }
+    .tCard .s { font-size: 13px; color:#333; }
+    .tCard .a { font-size: 12px; color:#666; }
+
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding: 18px; z-index: 9999; }
+    .overlay .panel { width: min(820px, 100%); background:#fff; border-radius: 20px; padding: 16px; border: 1px solid #ddd; }
     .overlay h2 { margin: 0 0 8px; }
-    .overlay .wlist { margin: 8px 0 12px; padding-left: 18px; }
+    .overlay ul { margin: 10px 0 14px; padding-left: 18px; }
   </style>
 </head>
 <body>
 
 <h1>Family Music Quiz</h1>
-<div class="muted">Timeline + SAFE/WAGNIS – Ziel: <b>15 Punkte</b> (Siegprüfung erst am Ende einer Runde)</div>
+<div class="muted">Setup → Lobby (Modus + Konstellation + Runden) → Session spielen → zurück zur Lobby</div>
 
+<!-- Spotify -->
 <div class="box">
   <h2>1) Spotify Verbindung</h2>
   <div class="row">
     <button id="loginBtn" class="primary">Mit Spotify verbinden</button>
-    <button id="logoutBtn" class="danger">Logout (Token löschen)</button>
+    <button id="logoutBtn" class="danger">Logout</button>
+    <span id="connStatus" class="muted"></span>
   </div>
-  <div id="connStatus" class="muted"></div>
 </div>
 
+<!-- Setup Screen -->
 <div id="setupScreen" class="box">
-  <h2>2) Setup</h2>
+  <h2>2) Setup: Spieler & Playlists</h2>
 
   <div class="row">
     <button id="loadPlaylistsBtn">Playlists laden</button>
     <span id="setupStatus" class="muted"></span>
+    <span id="loadProgress" class="muted"></span>
   </div>
 
-  <div class="spacer"></div>
-
-  <div class="row">
+  <div class="row" style="margin-top:10px;">
     <label><b>Anzahl Spieler</b></label>
     <select id="playerCount">
       <option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option>
@@ -96,98 +117,178 @@
 
   <div id="playersArea" class="playerGrid" style="margin-top:10px;"></div>
 
-  <div class="spacer"></div>
-
-  <div class="row">
-    <label><b>Punkte zum Sieg</b></label>
-    <input id="pointsToWin" type="number" min="5" max="50" value="15" style="width:90px;" />
-    <span class="muted">(Sieg wird erst nach dem letzten Spieler einer Runde geprüft)</span>
+  <div class="row" style="margin-top:12px;">
+    <button id="toLobbyBtn" class="primary" disabled>Weiter → Lobby</button>
+    <span class="muted">Aktiv, sobald alle Spieler eine Playlist mit geladenen Tracks haben.</span>
   </div>
 
-  <div class="row">
-    <button id="startGameBtn" class="primary" disabled>Spiel starten (Tracks laden)</button>
+  <div class="box">
+    <h3>Debug</h3>
+    <pre id="debugSetup"></pre>
   </div>
-
-  <div id="loadProgress" class="muted"></div>
 </div>
 
-<div id="gameScreen" class="box hidden">
-  <h2>3) Spiel</h2>
+<!-- Lobby Screen -->
+<div id="lobbyScreen" class="box hidden">
+  <h2>3) Lobby: Modus & Konstellation</h2>
 
-  <div class="scoreBoard" id="scoreBoard"></div>
-
-  <div class="spacer"></div>
-
-  <div class="bigBanner">
-    <div class="muted">Spieler ist dran:</div>
-    <div class="bigName" id="currentPlayerName">—</div>
-    <div style="margin-top:8px;">
-      <span class="pill" id="modePill">—</span>
+  <div class="box">
+    <h3>Schritt 1: Spielart wählen</h3>
+    <div class="cardChoiceGrid">
+      <div class="choiceCard" id="mode_timeline">
+        <div class="title">Timeline</div>
+        <div class="desc">Song ziehen → in deine Timeline einsortieren → Reveal zeigt Jahr & ob richtig.</div>
+      </div>
+      <div class="choiceCard" id="mode_meta">
+        <div class="title">Song erraten</div>
+        <div class="desc">Titel / Interpret / Jahr raten → nach Reveal ankreuzen, was richtig war (1 Punkt pro richtig).</div>
+      </div>
+      <div class="choiceCard" id="mode_timewindow">
+        <div class="title">Zeitraum raten</div>
+        <div class="desc">4 Optionen (zusammenhängend): Jahrzehnt / 5er / 2er / 1er Fenster → wählen → Reveal.</div>
+      </div>
     </div>
   </div>
 
-  <div class="spacer"></div>
+  <div class="grid2">
+    <div class="box">
+      <h3>Schritt 2: Konstellation</h3>
+      <div class="row">
+        <select id="playStyle">
+          <option value="solo" selected>Solo: jeder für sich (eigene Playlist)</option>
+          <option value="party">Shuffle/Party: alle raten nacheinander (Quelle rotiert)</option>
+        </select>
+        <span class="muted" id="playStyleHint"></span>
+      </div>
 
-  <div class="row" style="justify-content:center;">
-    <button id="safeBtn" class="primary">SAFE: eigene Playlist (+1 / 0)</button>
-    <button id="riskBtn" class="primary">WAGNIS: fremde Playlist (+2 / −1)</button>
+      <div id="timewindowExtra" class="row hidden" style="margin-top:8px;">
+        <label><b>Fenster</b></label>
+        <select id="windowSize">
+          <option value="10" selected>Jahrzehnt (10)</option>
+          <option value="5">5er Fenster</option>
+          <option value="2">2er Fenster</option>
+          <option value="1">1er (exaktes Jahr)</option>
+        </select>
+      </div>
+
+      <div id="timelineExtra" class="row hidden" style="margin-top:8px;">
+        <label><b>Timeline-Regel</b></label>
+        <select id="timelineRule">
+          <option value="simple" selected>Einfach: falsch = 0 Punkte</option>
+          <option value="risk">Wagnis: richtig +2 / falsch −1</option>
+        </select>
+      </div>
+
+      <div id="metaExtra" class="row hidden" style="margin-top:8px;">
+        <span class="muted">Meta-Modus: 1 Punkt pro richtigem Häkchen (Titel/Interpret/Jahr).</span>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Schritt 3: Runden-Ziel</h3>
+      <div class="row">
+        <label><b>Runden</b></label>
+        <input id="roundsTotal" type="number" value="10" min="1" max="100" style="width:100px;">
+        <label><b>Punkte-Ziel (optional)</b></label>
+        <input id="pointsToWin" type="number" value="15" min="1" max="999" style="width:110px;">
+      </div>
+      <div class="muted">Session endet, wenn Runden erreicht sind <b>oder</b> jemand das Punkte-Ziel erreicht.</div>
+
+      <div class="row" style="margin-top:10px;">
+        <label><input type="checkbox" id="resetPoints" checked> Punkte beim Start zurücksetzen</label>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="startSessionBtn" class="primary">Session starten</button>
+        <button id="backToSetupBtn">← zurück zum Setup</button>
+      </div>
+    </div>
   </div>
 
-  <div class="row" style="justify-content:center;">
-    <button id="playPauseBtn" disabled>▶️ Play</button>
+  <div class="box">
+    <h3>Debug</h3>
+    <pre id="debugLobby"></pre>
+  </div>
+</div>
+
+<!-- Game Screen -->
+<div id="gameScreen" class="box hidden">
+  <h2>4) Spiel</h2>
+
+  <div class="scoreBoard" id="scoreBoard"></div>
+
+  <div class="banner" style="margin-top:10px;">
+    <div class="muted" id="turnHint">—</div>
+    <div class="big" id="turnName">—</div>
+    <div style="margin-top:8px;">
+      <span class="pill" id="modePill">—</span>
+      <span class="pill" id="roundPill">—</span>
+      <span class="pill" id="sourcePill">—</span>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:center; margin-top:10px;">
+    <button id="playPauseBtn" class="primary" disabled>▶️ Play</button>
     <button id="revealBtn" class="primary" disabled>REVEAL</button>
     <button id="nextBtn" class="primary" disabled>WEITER</button>
   </div>
 
   <div class="muted" style="text-align:center; margin-top:6px;">
-    Tipp: Spotify muss auf irgendeinem Gerät geöffnet sein (Handy/Webplayer/Tablet).<br>
-    Vor „REVEAL“ kannst du die Platzierung durch Klick auf die Slot-Linien ändern.
+    Hinweis: Spotify muss auf einem Gerät offen sein. Die Web-App steuert nur das Abspielen.
   </div>
 
-  <div class="spacer"></div>
+  <!-- Mode panels -->
+  <div id="panel_timewindow" class="box hidden">
+    <h3>Zeitraum raten</h3>
+    <div class="options" id="optionButtons"></div>
+  </div>
 
-  <div class="timelineWrap">
-    <div class="timelineTitle">
-      <div><b>Timeline</b> <span class="muted">(Jahr + Titel/Interpret nach Reveal)</span></div>
-      <div class="muted" id="timelineInfo"></div>
+  <div id="panel_meta" class="box hidden">
+    <h3>Song erraten</h3>
+    <div class="muted">Nach REVEAL: pro richtigem Häkchen 1 Punkt.</div>
+    <div id="metaPerPlayer" class="answers"></div>
+  </div>
+
+  <div id="panel_timeline" class="box hidden">
+    <h3>Timeline</h3>
+    <div class="muted">Klicke eine Einfüge-Linie (Slot), um den verdeckten Song einzusortieren. Vor REVEAL kannst du Slot ändern.</div>
+    <div class="timelineWrap">
+      <div class="timelineRow" id="timelineRow"></div>
     </div>
-    <div id="timeline" class="timeline"></div>
   </div>
 
-  <div class="spacer"></div>
-
-  <div class="resultBox">
-    <div class="headline">Auflösung</div>
-    <div id="unknownCard" class="card unknown">?</div>
-    <div id="resultText" class="muted" style="margin-top:8px;"></div>
+  <div class="revealBox" id="revealBox" style="margin-top:10px;">
+    <div class="title" id="revealTitle">?</div>
+    <div class="muted" id="revealMeta">—</div>
+    <div class="answers" id="answersBox"></div>
   </div>
-
-  <div class="spacer"></div>
 
   <div class="box">
-    <h3 style="margin-top:0;">Debug</h3>
-    <pre id="debug"></pre>
+    <h3>Debug</h3>
+    <pre id="debugGame"></pre>
   </div>
 </div>
 
-<div class="overlay" id="winnerOverlay" role="dialog" aria-modal="true">
+<!-- Session End Overlay -->
+<div class="overlay" id="sessionOverlay" aria-modal="true" role="dialog">
   <div class="panel">
-    <h2>🏁 Spiel beendet</h2>
-    <div id="winnerText" class="muted"></div>
-    <ul id="winnerList" class="wlist"></ul>
+    <h2>🏁 Session beendet</h2>
+    <div id="sessionSummary" class="muted"></div>
+    <ul id="sessionWinners"></ul>
     <div class="row" style="justify-content:flex-end;">
-      <button id="endBtn" class="primary">Beenden → zurück zum Setup</button>
+      <button id="againBtn" class="primary">Nochmal gleiche Session</button>
+      <button id="toLobby2Btn">Modus/Konstellation ändern</button>
+      <button id="toSetup2Btn">Zurück zum Setup</button>
     </div>
   </div>
 </div>
 
 <script>
 /* =========================
-   CONFIG
+   KONFIG
 ========================= */
 const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
 const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
-
 const scopes = [
   "playlist-read-private",
   "playlist-read-collaborative",
@@ -196,111 +297,187 @@ const scopes = [
 ].join(" ");
 
 /* =========================
-   STATE
-========================= */
-let allPlaylists = [];
-let players = [];
-let pointsToWin = 15;
-
-let game = {
-  currentPlayerIndex: 0,
-  sourceMode: null,          // "SAFE" | "WAGNIS" | "REF"
-  sourceOwnerIndex: null,
-  currentSong: null,
-  proposedInsertIndex: 0,
-  revealed: false,
-  roundStartPlayerIndex: 0,
-  isReferenceSong: false     // ✅ first song per player
-};
-
-let playback = { isPlaying: false, lastDeviceId: null };
-let gameOver = false;
-
-/* =========================
    UI refs
 ========================= */
 const connStatus = document.getElementById("connStatus");
+
+const setupScreen = document.getElementById("setupScreen");
+const lobbyScreen = document.getElementById("lobbyScreen");
+const gameScreen  = document.getElementById("gameScreen");
+
+const debugSetup = document.getElementById("debugSetup");
+const debugLobby = document.getElementById("debugLobby");
+const debugGame  = document.getElementById("debugGame");
+
 const setupStatus = document.getElementById("setupStatus");
 const loadProgress = document.getElementById("loadProgress");
 const playersArea = document.getElementById("playersArea");
-const startGameBtn = document.getElementById("startGameBtn");
+const toLobbyBtn = document.getElementById("toLobbyBtn");
 
-const setupScreen = document.getElementById("setupScreen");
-const gameScreen = document.getElementById("gameScreen");
+const modeCards = {
+  timeline: document.getElementById("mode_timeline"),
+  meta: document.getElementById("mode_meta"),
+  timewindow: document.getElementById("mode_timewindow")
+};
+const playStyleSel = document.getElementById("playStyle");
+const playStyleHint = document.getElementById("playStyleHint");
+const timewindowExtra = document.getElementById("timewindowExtra");
+const timelineExtra = document.getElementById("timelineExtra");
+const metaExtra = document.getElementById("metaExtra");
+const windowSizeSel = document.getElementById("windowSize");
+const timelineRuleSel = document.getElementById("timelineRule");
+
+const roundsTotalInp = document.getElementById("roundsTotal");
+const pointsToWinInp = document.getElementById("pointsToWin");
+const resetPointsChk = document.getElementById("resetPoints");
+const startSessionBtn = document.getElementById("startSessionBtn");
+const backToSetupBtn = document.getElementById("backToSetupBtn");
 
 const scoreBoard = document.getElementById("scoreBoard");
-const currentPlayerNameEl = document.getElementById("currentPlayerName");
+const turnHint = document.getElementById("turnHint");
+const turnName = document.getElementById("turnName");
 const modePill = document.getElementById("modePill");
+const roundPill = document.getElementById("roundPill");
+const sourcePill = document.getElementById("sourcePill");
 
-const safeBtn = document.getElementById("safeBtn");
-const riskBtn = document.getElementById("riskBtn");
 const playPauseBtn = document.getElementById("playPauseBtn");
 const revealBtn = document.getElementById("revealBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-const timelineEl = document.getElementById("timeline");
-const timelineInfo = document.getElementById("timelineInfo");
+const panel_timewindow = document.getElementById("panel_timewindow");
+const panel_meta = document.getElementById("panel_meta");
+const panel_timeline = document.getElementById("panel_timeline");
 
-const unknownCard = document.getElementById("unknownCard");
-const resultText = document.getElementById("resultText");
-const debugEl = document.getElementById("debug");
+const optionButtons = document.getElementById("optionButtons");
+const metaPerPlayer = document.getElementById("metaPerPlayer");
+const timelineRow = document.getElementById("timelineRow");
 
-const winnerOverlay = document.getElementById("winnerOverlay");
-const winnerText = document.getElementById("winnerText");
-const winnerList = document.getElementById("winnerList");
-const endBtn = document.getElementById("endBtn");
+const revealBox = document.getElementById("revealBox");
+const revealTitle = document.getElementById("revealTitle");
+const revealMeta = document.getElementById("revealMeta");
+const answersBox = document.getElementById("answersBox");
+
+const sessionOverlay = document.getElementById("sessionOverlay");
+const sessionSummary = document.getElementById("sessionSummary");
+const sessionWinners = document.getElementById("sessionWinners");
+const againBtn = document.getElementById("againBtn");
+const toLobby2Btn = document.getElementById("toLobby2Btn");
+const toSetup2Btn = document.getElementById("toSetup2Btn");
+
+/* =========================
+   STATE
+========================= */
+let allPlaylists = [];
+let players = []; // {name, playlistId, tracks[], points, timeline[]}
+
+const playlistTracksCache = new Map();     // playlistId -> tracks[]
+const playlistLoadControllers = new Map(); // playerIndex -> AbortController
+const playlistLoadTimers = new Map();      // playerIndex -> debounce timer
+
+let playback = { isPlaying:false, lastDeviceId:null };
+
+let lobby = {
+  mode: "timeline",         // "timeline" | "meta" | "timewindow"
+  playStyle: "solo",        // "solo" | "party"
+  roundsTotal: 10,
+  pointsToWin: 15,
+  windowSize: 10,
+  timelineRule: "simple"    // "simple" | "risk"
+};
+
+let game = {
+  sessionRound: 1,
+  sourcePlayerIndex: 0,
+  answeringPlayerIndex: 0,
+  currentSong: null,        // {uri,name,artists[],year}
+  revealed: false,
+
+  // timewindow
+  question: null,           // {correctStart, options[], windowSize}
+  answersByPlayerIndex: {}, // for party mode
+
+  // meta
+  metaChecksByPlayerIndex: {}, // {i:{title:true,artist:true,year:true}}
+
+  // timeline
+  pendingInsertIndex: 0      // where to insert the new card
+};
 
 /* =========================
    Helpers
 ========================= */
-function setDebug(msg) { debugEl.textContent = msg || ""; }
-function setConn(html) { connStatus.innerHTML = html; }
-function setSetupStatus(html) { setupStatus.innerHTML = html; }
+function esc(s){ return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+function setDebug(el, msg){ el.textContent = msg || ""; }
 
-function escapeHtml(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-}
-function getToken() { return localStorage.getItem("spotify_access_token"); }
-function getScope() { return localStorage.getItem("spotify_scope") || ""; }
+function getToken(){ return localStorage.getItem("spotify_access_token"); }
+function getScope(){ return localStorage.getItem("spotify_scope") || ""; }
 
-function refreshConnStatus() {
+function refreshConnStatus(){
   const s = getScope();
-  setConn(getToken()
-    ? `<span class="ok">✅ Verbunden</span> <span class="muted">Scopes: ${escapeHtml(s || "(unbekannt)")}</span>`
-    : `<span class="bad">❌ Nicht verbunden</span>`
-  );
+  connStatus.innerHTML = getToken()
+    ? `<span class="ok">✅ Verbunden</span> <span class="muted">Scopes: ${esc(s||"(unbekannt)")}</span>`
+    : `<span class="bad">❌ Nicht verbunden</span>`;
 }
 
-async function apiFetch(url, { method="GET", headers={}, body=null } = {}, timeoutMs=15000) {
+function showScreen(name){
+  setupScreen.classList.toggle("hidden", name !== "setup");
+  lobbyScreen.classList.toggle("hidden", name !== "lobby");
+  gameScreen.classList.toggle("hidden",  name !== "game");
+}
+
+function updateToLobbyEnabled(){
+  const ok = !!getToken()
+    && players.length >= 2
+    && players.every(p => p.name && p.playlistId && Array.isArray(p.tracks) && p.tracks.length > 0);
+  toLobbyBtn.disabled = !ok;
+}
+
+function pickRandomTrack(tracks){
+  return tracks[Math.floor(Math.random() * tracks.length)];
+}
+
+function getModeLabel(){
+  if(lobby.mode === "timeline") return "Timeline";
+  if(lobby.mode === "meta") return "Song erraten";
+  return "Zeitraum raten";
+}
+
+function getPlayStyleLabel(){
+  return lobby.playStyle === "solo" ? "Solo" : "Shuffle/Party";
+}
+
+/* =========================
+   Spotify API fetch (Abort + Timeout)
+========================= */
+async function apiFetch(url, { method="GET", headers={}, body=null, signal=null } = {}, timeoutMs=15000){
   const token = getToken();
-  if (!token) throw new Error("Kein Token – bitte verbinden.");
+  if(!token) throw new Error("Kein Token – bitte verbinden.");
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
+  const usedSignal = signal || ctrl.signal;
 
-  try {
+  try{
     const res = await fetch(url, {
       method,
       headers: { Authorization: `Bearer ${token}`, ...headers },
       body,
-      signal: ctrl.signal
+      signal: usedSignal
     });
 
     const text = await res.text();
     let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch {}
+    try{ data = text ? JSON.parse(text) : null; }catch{}
 
-    if (!res.ok) {
+    if(!res.ok){
       const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
       throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
     }
     return data;
-  } catch (e) {
-    if (e.name === "AbortError") throw new Error("Timeout: Spotify antwortet nicht.");
+  }catch(e){
+    if(e.name === "AbortError") throw new Error("Abgebrochen (Playlist-Wechsel).");
     throw e;
-  } finally {
+  }finally{
     clearTimeout(timer);
   }
 }
@@ -308,17 +485,17 @@ async function apiFetch(url, { method="GET", headers={}, body=null } = {}, timeo
 /* =========================
    PKCE Login
 ========================= */
-function randomVerifier() {
+function randomVerifier(){
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const bytes = crypto.getRandomValues(new Uint8Array(64));
   return Array.from(bytes, b => chars[b % chars.length]).join("");
 }
-async function sha256Base64Url(verifier) {
+async function sha256Base64Url(verifier){
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    .replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
 }
-async function login() {
+async function login(){
   const verifier = randomVerifier();
   localStorage.setItem("pkce_verifier", verifier);
   const challenge = await sha256Base64Url(verifier);
@@ -335,48 +512,89 @@ async function login() {
 
   window.location = url;
 }
-function logout() {
+function logout(){
   localStorage.removeItem("spotify_access_token");
   localStorage.removeItem("spotify_scope");
   localStorage.removeItem("pkce_verifier");
-  localStorage.removeItem("spotify_auth_code");
   refreshConnStatus();
-  setSetupStatus("🔒 Token gelöscht.");
+  setupStatus.textContent = "🔒 Token gelöscht.";
+  updateToLobbyEnabled();
 }
 
 /* =========================
-   Setup: Load playlists + players
+   Playback
 ========================= */
-async function loadPlaylists() {
-  setSetupStatus("Lade Playlists…");
-  setDebug("");
-
-  const data = await apiFetch("https://api.spotify.com/v1/me/playlists?limit=50");
-  allPlaylists = data.items || [];
-
-  if (!allPlaylists.length) {
-    setSetupStatus("⚠️ Keine Playlists gefunden.");
-    setDebug(JSON.stringify(data, null, 2));
+async function getActiveDeviceId(){
+  const data = await apiFetch("https://api.spotify.com/v1/me/player/devices");
+  const devices = data.devices || [];
+  const active = devices.find(d => d.is_active);
+  if(active) return active.id;
+  if(devices.length) return devices[0].id;
+  return null;
+}
+async function pausePlayback(silent=false){
+  const deviceId = playback.lastDeviceId || await getActiveDeviceId();
+  if(!deviceId) return;
+  try{
+    await apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
+      method: "PUT"
+    });
+  }catch(e){
+    if(!silent) throw e;
+  }
+  playback.isPlaying = false;
+  playPauseBtn.textContent = "▶️ Play";
+}
+async function playUri(uri){
+  const deviceId = await getActiveDeviceId();
+  if(!deviceId){
+    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte irgendeinen Song, dann nochmal.");
     return;
   }
+  // mild smooth transition
+  try{ await pausePlayback(true); }catch{}
+  await new Promise(r => setTimeout(r, 120));
 
-  setSetupStatus(`<span class="ok">✅ ${allPlaylists.length} Playlists geladen</span>`);
+  await apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uris: [uri] })
+  });
+
+  playback.isPlaying = true;
+  playback.lastDeviceId = deviceId;
+  playPauseBtn.textContent = "⏸️ Stop";
+}
+
+/* =========================
+   Setup: Load Playlists + Players UI
+========================= */
+async function loadPlaylists(){
+  setupStatus.textContent = "Lade Playlists…";
+  setDebug(debugSetup, "");
+  const data = await apiFetch("https://api.spotify.com/v1/me/playlists?limit=50");
+  allPlaylists = data.items || [];
+  if(!allPlaylists.length){
+    setupStatus.textContent = "⚠️ Keine Playlists gefunden.";
+    setDebug(debugSetup, JSON.stringify(data, null, 2));
+    return;
+  }
+  setupStatus.innerHTML = `<span class="ok">✅ ${allPlaylists.length} Playlists geladen</span>`;
   buildPlayerFields();
 }
 
-function buildPlayerFields() {
+function buildPlayerFields(){
   const count = parseInt(document.getElementById("playerCount").value, 10);
   playersArea.innerHTML = "";
   players = [];
 
-  for (let i = 0; i < count; i++) {
+  for(let i=0;i<count;i++){
     players.push({
       name: `Spieler ${i+1}`,
       playlistId: "",
       tracks: [],
-      timeline: [],
       points: 0,
-      hasReference: false // ✅ first song per player
+      timeline: [] // per player
     });
 
     const card = document.createElement("div");
@@ -384,10 +602,10 @@ function buildPlayerFields() {
     card.innerHTML = `
       <h3>Spieler ${i+1}</h3>
       <div class="row">
-        <input type="text" id="pname_${i}" placeholder="Name" style="min-width:180px;" value="${escapeHtml(players[i].name)}">
+        <input id="pname_${i}" type="text" placeholder="Name" value="${esc(players[i].name)}" style="min-width: 180px;">
       </div>
       <div class="row">
-        <select id="plist_${i}" style="min-width: 320px;">
+        <select id="plist_${i}" style="min-width: 360px;">
           <option value="">— Playlist wählen —</option>
         </select>
       </div>
@@ -396,7 +614,7 @@ function buildPlayerFields() {
     playersArea.appendChild(card);
 
     const sel = card.querySelector(`#plist_${i}`);
-    allPlaylists.forEach(pl => {
+    allPlaylists.forEach(pl=>{
       const opt = document.createElement("option");
       opt.value = pl.id;
       const total = (typeof pl.tracks?.total === "number") ? pl.tracks.total : "?";
@@ -405,45 +623,43 @@ function buildPlayerFields() {
     });
 
     const nameInput = card.querySelector(`#pname_${i}`);
-    nameInput.addEventListener("input", () => {
+    nameInput.addEventListener("input", ()=>{
       players[i].name = nameInput.value.trim() || `Spieler ${i+1}`;
-      updateStartButtonEnabled();
+      updateToLobbyEnabled();
     });
 
-    sel.addEventListener("change", () => {
-      players[i].playlistId = sel.value;
-      const info = card.querySelector(`#pinfo_${i}`);
-      info.textContent = sel.value ? "Playlist ausgewählt. (Wird beim Start geladen)" : "Noch keine Playlist ausgewählt.";
-      updateStartButtonEnabled();
+    sel.addEventListener("change", ()=>{
+      const playlistId = sel.value;
+
+      const oldTimer = playlistLoadTimers.get(i);
+      if(oldTimer) clearTimeout(oldTimer);
+
+      const timer = setTimeout(()=>{
+        autoLoadPlaylistForPlayer(i, playlistId).catch(e=>{
+          document.getElementById(`pinfo_${i}`).textContent = `❌ ${e.message}`;
+          updateToLobbyEnabled();
+        });
+      }, 550);
+
+      playlistLoadTimers.set(i, timer);
     });
   }
 
-  updateStartButtonEnabled();
+  updateToLobbyEnabled();
 }
 
-function updateStartButtonEnabled() {
-  const ok = players.length >= 2
-    && players.every(p => p.name && p.playlistId)
-    && allPlaylists.length > 0
-    && !!getToken();
-  startGameBtn.disabled = !ok;
-}
-
-/* =========================
-   Load ALL tracks for a playlist (pagination)
-========================= */
-async function loadAllPlaylistTracks(playlistId, label) {
+async function loadAllPlaylistTracks(playlistId, label, signal){
   const limit = 100;
   let offset = 0;
   let all = [];
 
-  while (true) {
+  while(true){
     const url =
       `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items` +
       `?limit=${limit}&offset=${offset}&market=from_token` +
-      `&fields=items(item(type,id,uri,name,artists(name),album(release_date))),total,next`;
+      `&fields=items(item(type,id,uri,name,artists(name),album(release_date))),next`;
 
-    const data = await apiFetch(url);
+    const data = await apiFetch(url, { signal });
     const items = data.items || [];
 
     const tracks = items
@@ -459,471 +675,697 @@ async function loadAllPlaylistTracks(playlistId, label) {
       .filter(t => t.uri && t.year !== "?");
 
     all.push(...tracks);
-
-    loadProgress.textContent = `Lade Tracks: ${label} … ${all.length} geladen`;
+    loadProgress.textContent = `Lade Tracks: ${label} … ${all.length}`;
     offset += limit;
 
-    if (!data.next || items.length === 0) break;
+    if(!data.next || items.length === 0) break;
   }
 
-  const map = new Map();
-  all.forEach(t => map.set(t.uri, t));
-  return Array.from(map.values());
+  // dedup by uri
+  const m = new Map();
+  all.forEach(t => m.set(t.uri, t));
+  return Array.from(m.values());
 }
 
-/* =========================
-   Game init + reset
-========================= */
-function resetToSetup() {
-  pausePlayback().catch(()=>{});
-  gameOver = false;
-  winnerOverlay.style.display = "none";
-  gameScreen.classList.add("hidden");
-  setupScreen.classList.remove("hidden");
-  setDebug("");
-  setSetupStatus("Du kannst Einstellungen ändern und erneut starten.");
-  loadProgress.textContent = "";
-  updateStartButtonEnabled();
-}
+async function autoLoadPlaylistForPlayer(playerIndex, playlistId){
+  const player = players[playerIndex];
+  const infoEl = document.getElementById(`pinfo_${playerIndex}`);
 
-async function startGame() {
-  pointsToWin = parseInt(document.getElementById("pointsToWin").value, 10) || 15;
+  player.playlistId = playlistId;
+  player.tracks = [];
 
-  setSetupStatus("Lade alle Tracks für alle Spieler…");
-  loadProgress.textContent = "";
+  if(!playlistId){
+    infoEl.textContent = "Noch keine Playlist ausgewählt.";
+    updateToLobbyEnabled();
+    return;
+  }
 
-  for (let i = 0; i < players.length; i++) {
-    const plId = players[i].playlistId;
-    const label = `${players[i].name}`;
-    players[i].tracks = await loadAllPlaylistTracks(plId, label);
-    players[i].timeline = [];
-    players[i].points = 0;
-    players[i].hasReference = false;
+  // cache hit
+  if(playlistTracksCache.has(playlistId)){
+    player.tracks = playlistTracksCache.get(playlistId);
+    infoEl.textContent = `✅ Tracks bereit (Cache): ${player.tracks.length}`;
+    updateToLobbyEnabled();
+    return;
+  }
 
-    if (players[i].tracks.length < 5) {
-      setSetupStatus(`<span class="bad">❌ Playlist zu klein/problematisch: ${escapeHtml(players[i].name)}</span>`);
-      throw new Error(`Playlist von ${players[i].name} hat zu wenige Tracks.`);
+  // abort previous
+  const prev = playlistLoadControllers.get(playerIndex);
+  if(prev) prev.abort();
+
+  const ctrl = new AbortController();
+  playlistLoadControllers.set(playerIndex, ctrl);
+
+  infoEl.textContent = "⏳ Lade Tracks…";
+
+  try{
+    const label = player.name || `Spieler ${playerIndex+1}`;
+    const tracks = await loadAllPlaylistTracks(playlistId, label, ctrl.signal);
+
+    playlistTracksCache.set(playlistId, tracks);
+
+    if(player.playlistId === playlistId){
+      player.tracks = tracks;
+      infoEl.textContent = `✅ Tracks geladen: ${tracks.length}`;
     }
-  }
-
-  loadProgress.textContent = "✅ Tracks geladen.";
-
-  setupScreen.classList.add("hidden");
-  gameScreen.classList.remove("hidden");
-
-  game.currentPlayerIndex = 0;
-  game.roundStartPlayerIndex = 0;
-  resetTurnState();
-
-  renderScoreboard();
-  renderTurnBanner();
-  renderTimeline();
-}
-
-function resetTurnState() {
-  game.sourceMode = null;
-  game.sourceOwnerIndex = null;
-  game.currentSong = null;
-  game.proposedInsertIndex = 0;
-  game.revealed = false;
-  game.isReferenceSong = false;
-
-  modePill.textContent = "Wähle SAFE oder WAGNIS";
-  playPauseBtn.disabled = true;
-  revealBtn.disabled = true;
-  nextBtn.disabled = true;
-
-  safeBtn.disabled = false;
-  riskBtn.disabled = false;
-
-  unknownCard.className = "card unknown";
-  unknownCard.textContent = "?";
-  resultText.textContent = "Wähle SAFE/WAGNIS → Song startet sofort. Dann platzieren → Reveal.";
-
-  playback.isPlaying = false;
-  playPauseBtn.textContent = "⏸️ Stop";
-}
-
-/* =========================
-   Spotify playback helpers
-========================= */
-async function getActiveDeviceId() {
-  const data = await apiFetch("https://api.spotify.com/v1/me/player/devices");
-  const devices = data.devices || [];
-  const active = devices.find(d => d.is_active);
-  if (active) return active.id;
-  if (devices.length) return devices[0].id;
-  return null;
-}
-
-async function playUri(uri) {
-  const deviceId = await getActiveDeviceId();
-  if (!deviceId) {
-    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte irgendwas, dann nochmal.");
-    return;
-  }
-
-  await apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uris: [uri] })
-  });
-
-  playback.isPlaying = true;
-  playback.lastDeviceId = deviceId;
-  playPauseBtn.textContent = "⏸️ Stop";
-}
-
-async function pausePlayback() {
-  const deviceId = playback.lastDeviceId || await getActiveDeviceId();
-  if (!deviceId) return;
-
-  await apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
-    method: "PUT"
-  });
-
-  playback.isPlaying = false;
-  playPauseBtn.textContent = "▶️ Play";
-}
-
-/* =========================
-   Game: source selection + immediate play
-========================= */
-function pickRandomFromArray(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-/** ✅ Reference song: first song of each player is inserted freely, no points, no SAFE/WAGNIS */
-async function startReferenceSongForCurrentPlayer() {
-  const idx = game.currentPlayerIndex;
-  const p = players[idx];
-  if (p.hasReference) return; // already done
-
-  // pick a random song from own playlist
-  game.sourceMode = "REF";
-  game.sourceOwnerIndex = idx;
-  game.currentSong = pickRandomFromArray(p.tracks);
-  game.isReferenceSong = true;
-
-  modePill.textContent = "Referenzsong (kostenlos, immer richtig)";
-  resultText.textContent = "Referenz: einfach anhören → Reveal → wird automatisch eingeordnet. Keine Punkte.";
-  safeBtn.disabled = true;
-  riskBtn.disabled = true;
-
-  // place at end by default
-  game.proposedInsertIndex = p.timeline.length;
-
-  // autoplay immediately
-  playPauseBtn.disabled = false;
-  revealBtn.disabled = false;
-  nextBtn.disabled = true;
-
-  unknownCard.className = "card unknown";
-  unknownCard.textContent = "?";
-
-  renderTimeline();
-
-  try { await playUri(game.currentSong.uri); } catch(e) {}
-}
-
-async function chooseSource(mode) {
-  if (gameOver) return;
-
-  const current = game.currentPlayerIndex;
-  const currentPlayer = players[current];
-
-  // ✅ if player has no reference yet, force reference flow
-  if (!currentPlayer.hasReference) {
-    await startReferenceSongForCurrentPlayer();
-    return;
-  }
-
-  // if something is playing, stop first for cleaner transition
-  try { await pausePlayback(); } catch {}
-
-  if (mode === "SAFE") {
-    game.sourceMode = "SAFE";
-    game.sourceOwnerIndex = current;
-  } else {
-    game.sourceMode = "WAGNIS";
-    const others = players.map((_, idx) => idx).filter(idx => idx !== current);
-    game.sourceOwnerIndex = pickRandomFromArray(others);
-  }
-
-  const sourcePlayer = players[game.sourceOwnerIndex];
-  game.currentSong = pickRandomFromArray(sourcePlayer.tracks);
-
-  game.proposedInsertIndex = currentPlayer.timeline.length;
-  game.revealed = false;
-  game.isReferenceSong = false;
-
-  modePill.textContent = `${game.sourceMode} → Song aus Playlist von: ${players[game.sourceOwnerIndex].name}`;
-
-  // ✅ immediate autoplay when choosing SAFE/WAGNIS
-  playPauseBtn.disabled = false;
-  revealBtn.disabled = false;
-  nextBtn.disabled = true;
-
-  safeBtn.disabled = true;
-  riskBtn.disabled = true;
-
-  unknownCard.className = "card unknown";
-  unknownCard.textContent = "?";
-  resultText.textContent = "Platziere per Slot (du kannst ändern) → Reveal.";
-
-  renderTimeline();
-
-  try { await playUri(game.currentSong.uri); } catch (e) {}
-}
-
-async function onPlayPause() {
-  if (gameOver) return;
-  if (game.revealed) return;
-  if (!game.currentSong) return;
-
-  if (playback.isPlaying) {
-    await pausePlayback();
-    return;
-  }
-  await playUri(game.currentSong.uri);
-}
-
-/* =========================
-   Timeline rendering + placement
-========================= */
-function renderTimeline() {
-  const p = players[game.currentPlayerIndex];
-  const timeline = p.timeline;
-
-  timelineEl.innerHTML = "";
-  const slotsCount = timeline.length + 1;
-
-  for (let i = 0; i < slotsCount; i++) {
-    const slot = document.createElement("div");
-    slot.className = "slot" + (game.proposedInsertIndex === i && game.currentSong && !game.revealed ? " selected" : "");
-    slot.title = "Hier platzieren";
-    slot.addEventListener("click", () => {
-      if (gameOver) return;
-      if (!game.currentSong) return;
-      if (game.revealed) return;
-      game.proposedInsertIndex = i;
-      renderTimeline();
-    });
-    timelineEl.appendChild(slot);
-
-    if (i < timeline.length) {
-      const c = timeline[i];
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <div class="title">${escapeHtml(c.year)}</div>
-        <div class="meta"><b>${escapeHtml(c.name || "")}</b></div>
-        <div class="meta">${escapeHtml((c.artists || []).join(", "))}</div>
-      `;
-      timelineEl.appendChild(card);
+  }catch(e){
+    if(String(e.message).includes("Abgebrochen")){
+      infoEl.textContent = "↪️ Wechsel erkannt…";
+    }else{
+      infoEl.textContent = `❌ Fehler: ${e.message}`;
     }
+  }finally{
+    updateToLobbyEnabled();
   }
-
-  if (game.currentSong && !game.revealed) {
-    timelineInfo.textContent = `Platzierung gewählt: Slot #${game.proposedInsertIndex + 1} von ${slotsCount}`;
-  } else if (game.currentSong && game.revealed) {
-    timelineInfo.textContent = "Auflösung erfolgt.";
-  } else {
-    timelineInfo.textContent = "";
-  }
-
-  renderTurnBanner();
 }
 
-function renderTurnBanner() {
-  const p = players[game.currentPlayerIndex];
-  currentPlayerNameEl.textContent = p.name;
+/* =========================
+   Lobby UI logic
+========================= */
+function setActiveMode(mode){
+  lobby.mode = mode;
+  Object.keys(modeCards).forEach(k => modeCards[k].classList.toggle("active", k === mode));
+  refreshLobbyExtras();
 }
 
-function renderScoreboard() {
+function refreshLobbyExtras(){
+  // default show/hide extras
+  timewindowExtra.classList.toggle("hidden", lobby.mode !== "timewindow");
+  timelineExtra.classList.toggle("hidden", lobby.mode !== "timeline");
+  metaExtra.classList.toggle("hidden", lobby.mode !== "meta");
+
+  // timeline & meta are easiest in solo; party is allowed for meta+timewindow
+  if(lobby.mode === "timeline"){
+    playStyleHint.textContent = "Timeline läuft am besten Solo (eigene Timeline pro Spieler).";
+    playStyleSel.value = "solo";
+    playStyleSel.disabled = true;
+  }else{
+    playStyleSel.disabled = false;
+    playStyleHint.textContent = lobby.mode === "meta"
+      ? "Shuffle/Party: nach Reveal setzt du pro Spieler Häkchen (Host tippt)."
+      : "Shuffle/Party: alle tippen nacheinander; Quelle rotiert pro Runde.";
+  }
+}
+
+function openLobby(){
+  // ensure defaults sane
+  setActiveMode(lobby.mode);
+  showScreen("lobby");
+  setDebug(debugLobby, JSON.stringify({
+    players: players.map(p=>({name:p.name, tracks:p.tracks.length})),
+    lobby
+  }, null, 2));
+}
+
+/* =========================
+   Game helpers: scoreboard & UI
+========================= */
+function renderScoreboard(){
   scoreBoard.innerHTML = "";
-  players.forEach((p, idx) => {
+  players.forEach((p, idx)=>{
     const el = document.createElement("div");
-    el.className = "scoreItem" + (idx === game.currentPlayerIndex ? " active" : "");
-    el.innerHTML = `<b>${escapeHtml(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
+    el.className = "scoreItem" + ((idx === game.answeringPlayerIndex && lobby.playStyle==="party") ? " active" : "");
+    el.innerHTML = `<b>${esc(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
     scoreBoard.appendChild(el);
   });
 }
 
-/* =========================
-   Reveal: judge placement + scoring
-========================= */
-function correctInsertRangeForYear(timeline, year) {
-  const y = parseInt(year, 10);
-  if (!Number.isFinite(y)) return [0, 0];
+function setPhaseUI({ canAnswer, canReveal, canNext, canPlayPause }){
+  // timewindow options
+  optionButtons.querySelectorAll("button").forEach(b => b.disabled = !canAnswer);
 
-  const years = timeline.map(c => parseInt(c.year, 10)).filter(Number.isFinite);
-  if (!years.length) return [0, 0];
-
-  let valid = [];
-  for (let i = 0; i <= years.length; i++) {
-    const left = (i === 0) ? -Infinity : years[i-1];
-    const right = (i === years.length) ? Infinity : years[i];
-    if (left <= y && y <= right) valid.push(i);
-  }
-  if (!valid.length) return [0, 0];
-  return [Math.min(...valid), Math.max(...valid)];
+  revealBtn.disabled = !canReveal;
+  nextBtn.disabled = !canNext;
+  playPauseBtn.disabled = !canPlayPause;
 }
 
-async function reveal() {
-  if (gameOver) return;
-  if (!game.currentSong) return;
+function clearReveal(){
+  revealBox.classList.remove("good","bad");
+  revealTitle.textContent = "?";
+  revealMeta.textContent = "—";
+  answersBox.innerHTML = "";
+}
 
-  try { await pausePlayback(); } catch {}
+/* =========================
+   TimeWindow: contiguous options, no gaps
+========================= */
+function generateTimeWindowOptions(year, windowSize, count=4, {min=1930, max=2030}={}){
+  const correctStart = Math.floor(year / windowSize) * windowSize;
 
-  const p = players[game.currentPlayerIndex];
-  const timeline = p.timeline;
+  let pos = Math.floor(Math.random() * count);
+  const blockSize = windowSize * (count - 1);
+  const blockOk = (start) => start >= min && (start + blockSize) <= max;
 
-  const year = game.currentSong.year;
-  const [minIdx, maxIdx] = correctInsertRangeForYear(timeline, year);
-  const chosen = game.proposedInsertIndex;
-
-  const isCorrect = (chosen >= minIdx && chosen <= maxIdx);
-
-  // ✅ Reference: always insert, no points, no correctness check needed
-  let countedCorrect = isCorrect;
-  if (game.isReferenceSong) countedCorrect = true;
-
-  // scoring (only if not reference)
-  if (!game.isReferenceSong) {
-    if (game.sourceMode === "SAFE") {
-      if (countedCorrect) p.points += 1;
-    } else if (game.sourceMode === "WAGNIS") {
-      if (countedCorrect) p.points += 2;
-      else p.points -= 1;
-      if (p.points < 0) p.points = 0;
-    }
+  let start = correctStart - pos * windowSize;
+  let safety = 0;
+  while(!blockOk(start) && safety < 50){
+    pos = Math.floor(Math.random() * count);
+    start = correctStart - pos * windowSize;
+    safety++;
+  }
+  if(!blockOk(start)){
+    start = Math.min(Math.max(correctStart - blockSize, min), max - blockSize);
   }
 
-  // timeline insert
-  if (game.isReferenceSong || countedCorrect) {
-    const card = { year, name: game.currentSong.name, artists: game.currentSong.artists };
-    timeline.splice(chosen, 0, card);
-  }
+  const options = [];
+  for(let i=0;i<count;i++) options.push(start + i*windowSize);
+  options.sort(()=>Math.random()-0.5);
 
-  // show revealed song always
-  const artists = (game.currentSong.artists || []).join(", ");
-  const sourceName = players[game.sourceOwnerIndex]?.name || "—";
+  return { correctStart, options, windowSize };
+}
+function formatTimeWindowLabel(start, windowSize){
+  if(windowSize === 10) return `${start}er`;
+  if(windowSize === 1) return `${start}`;
+  const end = start + windowSize - 1;
+  const endShort = String(end).slice(-2);
+  return `${start}–${endShort}`;
+}
 
-  unknownCard.className = "card " + (countedCorrect ? "good" : "bad");
-  unknownCard.innerHTML = `
-    <div class="title">${escapeHtml(game.currentSong.name)}</div>
-    <div class="meta">${escapeHtml(artists)}</div>
-    <div class="meta">Jahr: <b>${escapeHtml(year)}</b> · Quelle: ${escapeHtml(sourceName)}</div>
-    <div class="meta">${game.isReferenceSong ? "⭐ Referenzsong (immer richtig)" : (countedCorrect ? "✅ Richtig platziert" : "❌ Falsch platziert")}</div>
+/* =========================
+   Session start & rounds
+========================= */
+function resetSessionPointsAndTimelines(){
+  players.forEach(p=>{
+    p.points = 0;
+    p.timeline = [];
+  });
+}
+
+function sessionShouldEnd(){
+  const roundsDone = game.sessionRound > lobby.roundsTotal;
+  const pointsWin = players.some(p => p.points >= lobby.pointsToWin);
+  return roundsDone || pointsWin;
+}
+
+function computeWinners(){
+  const max = Math.max(...players.map(p=>p.points));
+  return players.filter(p=>p.points === max);
+}
+
+function showSessionOverlay(){
+  const winners = computeWinners();
+  sessionSummary.innerHTML = `
+    Modus: <b>${esc(getModeLabel())}</b> · Konstellation: <b>${esc(getPlayStyleLabel())}</b><br>
+    Runden gespielt: <b>${game.sessionRound-1}</b> · Punkte-Ziel: <b>${lobby.pointsToWin}</b>
   `;
+  sessionWinners.innerHTML = "";
+  winners.forEach(w=>{
+    const li = document.createElement("li");
+    li.textContent = `${w.name} – ${w.points} Punkte`;
+    sessionWinners.appendChild(li);
+  });
+  sessionOverlay.style.display = "flex";
+}
 
-  if (game.isReferenceSong) {
-    resultText.innerHTML = `Referenz gesetzt. Keine Punkte.`;
-    p.hasReference = true;
-  } else {
-    resultText.innerHTML = `Gültige Slots: <b>${minIdx+1}</b> bis <b>${maxIdx+1}</b> · Punkte: <b>${escapeHtml(p.name)} = ${p.points}</b>`;
-  }
-
-  game.revealed = true;
-
-  // lock playback after reveal (no looping)
-  playPauseBtn.disabled = true;
-  playPauseBtn.textContent = "▶️ Play";
-  playback.isPlaying = false;
-
-  revealBtn.disabled = true;
-  nextBtn.disabled = false;
-
-  renderScoreboard();
-  renderTimeline();
+function hideSessionOverlay(){
+  sessionOverlay.style.display = "none";
 }
 
 /* =========================
-   Winner handling (end of round)
+   Game round start: choose source + who answers
 ========================= */
-function endOfRoundReached(nextIndex) { return nextIndex === game.roundStartPlayerIndex; }
-function winnersNow() { return players.filter(p => p.points >= pointsToWin); }
+async function startSession(){
+  lobby.playStyle = playStyleSel.value;
+  lobby.roundsTotal = Math.max(1, parseInt(roundsTotalInp.value, 10) || 10);
+  lobby.pointsToWin = Math.max(1, parseInt(pointsToWinInp.value, 10) || 15);
+  lobby.windowSize = parseInt(windowSizeSel.value, 10) || 10;
+  lobby.timelineRule = timelineRuleSel.value || "simple";
 
-function showWinnerOverlay(winners) {
-  gameOver = true;
-  safeBtn.disabled = true;
-  riskBtn.disabled = true;
-  playPauseBtn.disabled = true;
+  if(resetPointsChk.checked) resetSessionPointsAndTimelines();
+
+  game.sessionRound = 1;
+  game.sourcePlayerIndex = 0;
+  game.answeringPlayerIndex = 0;
+  game.currentSong = null;
+  game.revealed = false;
+
+  showScreen("game");
+  await beginRound();
+}
+
+function showModePanels(){
+  panel_timewindow.classList.toggle("hidden", lobby.mode !== "timewindow");
+  panel_meta.classList.toggle("hidden", lobby.mode !== "meta");
+  panel_timeline.classList.toggle("hidden", lobby.mode !== "timeline");
+}
+
+async function beginRound(){
+  hideSessionOverlay();
+
+  clearReveal();
+  showModePanels();
+  setDebug(debugGame, "");
+
+  game.revealed = false;
+  playPauseBtn.disabled = false;
+  playPauseBtn.textContent = "⏸️ Stop";
   revealBtn.disabled = true;
   nextBtn.disabled = true;
 
-  winnerText.textContent = `Ziel erreicht: ≥ ${pointsToWin} Punkte (Siegprüfung am Ende der Runde).`;
-  winnerList.innerHTML = "";
-  winners.forEach(w => {
-    const li = document.createElement("li");
-    li.textContent = `${w.name} – ${w.points} Punkte`;
-    winnerList.appendChild(li);
-  });
-
-  winnerOverlay.style.display = "flex";
-}
-
-function nextTurn() {
-  if (gameOver) return;
-
-  const prev = game.currentPlayerIndex;
-  const next = (prev + 1) % players.length;
-  const endRound = endOfRoundReached(next);
-
-  game.currentPlayerIndex = next;
-
-  if (endRound) {
-    const winners = winnersNow();
-    if (winners.length) { showWinnerOverlay(winners); return; }
+  // Source: solo => answering player's playlist; party => rotates by sessionRound
+  if(lobby.playStyle === "solo"){
+    game.sourcePlayerIndex = game.answeringPlayerIndex;
+  }else{
+    game.sourcePlayerIndex = (game.sessionRound - 1) % players.length;
+    game.answeringPlayerIndex = 0; // for sequential answering (timewindow), meta uses per-player checks after reveal
   }
 
-  resetTurnState();
-  renderScoreboard();
-  renderTurnBanner();
-  renderTimeline();
+  const source = players[game.sourcePlayerIndex];
+  const song = pickRandomTrack(source.tracks);
+  game.currentSong = song;
 
-  // ✅ automatically trigger reference for players that don't have it yet
-  const p = players[game.currentPlayerIndex];
-  if (!p.hasReference) {
-    // small delay so UI updates first
-    setTimeout(() => { startReferenceSongForCurrentPlayer().catch(()=>{}); }, 150);
+  // UI header
+  renderScoreboard();
+  modePill.textContent = `${getModeLabel()} · ${getPlayStyleLabel()}`;
+  roundPill.textContent = `Runde ${game.sessionRound}/${lobby.roundsTotal} · Ziel ${lobby.pointsToWin}`;
+  sourcePill.textContent = `Quelle: ${source.name}`;
+
+  if(lobby.playStyle === "solo"){
+    turnHint.textContent = "Du bist dran:";
+    turnName.textContent = players[game.answeringPlayerIndex].name;
+  }else{
+    turnHint.textContent = "Alle tippen nacheinander – jetzt tippt:";
+    turnName.textContent = players[game.answeringPlayerIndex].name;
+  }
+
+  // Mode-specific prepare
+  if(lobby.mode === "timewindow"){
+    prepareTimeWindow();
+  }else if(lobby.mode === "meta"){
+    prepareMeta();
+  }else{
+    prepareTimeline();
+  }
+
+  // autoplay
+  try{
+    await playUri(song.uri);
+  }catch(e){
+    setDebug(debugGame, e.stack || e.message);
   }
 }
 
 /* =========================
-   Wire up
+   Mode: TimeWindow
 ========================= */
-document.getElementById("loginBtn").onclick = () => login();
-document.getElementById("logoutBtn").onclick = () => logout();
+function prepareTimeWindow(){
+  game.answersByPlayerIndex = {};
+  const y = parseInt(game.currentSong.year, 10);
+  game.question = generateTimeWindowOptions(y, lobby.windowSize, 4);
 
-document.getElementById("loadPlaylistsBtn").onclick = async () => {
-  try { await loadPlaylists(); updateStartButtonEnabled(); }
-  catch (e) { setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`); setDebug(e.stack || e.message); }
+  optionButtons.innerHTML = "";
+  game.question.options.forEach(start=>{
+    const b = document.createElement("button");
+    b.className = "optBtn";
+    b.textContent = formatTimeWindowLabel(start, lobby.windowSize);
+    b.onclick = ()=> onPickTimeWindow(start);
+    optionButtons.appendChild(b);
+  });
+
+  setPhaseUI({ canAnswer:true, canReveal:false, canNext:false, canPlayPause:true });
+  revealMeta.textContent = "Wähle eine Option…";
+}
+
+function onPickTimeWindow(pickedStart){
+  if(game.revealed) return;
+
+  if(lobby.playStyle === "solo"){
+    game.answersByPlayerIndex[game.answeringPlayerIndex] = pickedStart;
+    setPhaseUI({ canAnswer:false, canReveal:true, canNext:false, canPlayPause:true });
+    revealMeta.textContent = `Auswahl gespeichert: ${formatTimeWindowLabel(pickedStart, lobby.windowSize)}. Jetzt REVEAL.`;
+    return;
+  }
+
+  // party: sequential answer
+  const a = game.answeringPlayerIndex;
+  game.answersByPlayerIndex[a] = pickedStart;
+
+  const next = a + 1;
+  if(next < players.length){
+    game.answeringPlayerIndex = next;
+    renderScoreboard();
+    turnName.textContent = players[next].name;
+    revealMeta.textContent = `Gespeichert für ${players[a].name}. Jetzt tippt ${players[next].name}.`;
+  }else{
+    setPhaseUI({ canAnswer:false, canReveal:true, canNext:false, canPlayPause:true });
+    revealMeta.textContent = "Alle haben getippt. Jetzt REVEAL.";
+  }
+}
+
+/* =========================
+   Mode: Meta (Title/Artist/Year self-check)
+========================= */
+function prepareMeta(){
+  game.metaChecksByPlayerIndex = {};
+  metaPerPlayer.innerHTML = "";
+  revealMeta.textContent = "Hört zu – REVEAL zeigt Daten; dann Häkchen setzen.";
+  // In meta mode: before reveal, no picking. Just listening.
+  setPhaseUI({ canAnswer:false, canReveal:true, canNext:false, canPlayPause:true });
+}
+
+function renderMetaChecksAfterReveal(){
+  metaPerPlayer.innerHTML = "";
+
+  const makeRow = (pi) => {
+    if(!game.metaChecksByPlayerIndex[pi]){
+      game.metaChecksByPlayerIndex[pi] = { title:false, artist:false, year:false };
+    }
+    const state = game.metaChecksByPlayerIndex[pi];
+
+    const row = document.createElement("div");
+    row.className = "ansRow";
+    row.innerHTML = `
+      <div class="name">${esc(players[pi].name)}</div>
+      <div class="metaToggles">
+        <button class="toggleBtn" data-k="title">Titel</button>
+        <button class="toggleBtn" data-k="artist">Interpret</button>
+        <button class="toggleBtn" data-k="year">Jahr</button>
+      </div>
+      <div class="muted">Punkte jetzt: <b id="mp_${pi}">${players[pi].points}</b></div>
+    `;
+
+    row.querySelectorAll(".toggleBtn").forEach(btn=>{
+      const k = btn.dataset.k;
+      btn.classList.toggle("on", !!state[k]);
+      btn.onclick = ()=>{
+        state[k] = !state[k];
+        btn.classList.toggle("on", !!state[k]);
+      };
+    });
+
+    metaPerPlayer.appendChild(row);
+  };
+
+  if(lobby.playStyle === "solo"){
+    makeRow(game.answeringPlayerIndex);
+  }else{
+    for(let i=0;i<players.length;i++) makeRow(i);
+  }
+}
+
+/* =========================
+   Mode: Timeline (simple click-to-insert slots)
+========================= */
+function prepareTimeline(){
+  game.pendingInsertIndex = 0;
+  revealMeta.textContent = "Slot wählen → dann REVEAL.";
+  renderTimelineUI();
+  setPhaseUI({ canAnswer:false, canReveal:true, canNext:false, canPlayPause:true }); // reveal always available
+}
+
+function renderTimelineUI(){
+  timelineRow.innerHTML = "";
+  const p = players[game.answeringPlayerIndex];
+
+  // slots count = timeline length + 1
+  const slotCount = (p.timeline.length + 1);
+
+  for(let i=0;i<slotCount;i++){
+    const slot = document.createElement("button");
+    slot.className = "slotBtn" + (i===game.pendingInsertIndex ? " active" : "");
+    slot.textContent = "＋";
+    slot.onclick = ()=>{
+      if(game.revealed) return;
+      game.pendingInsertIndex = i;
+      renderTimelineUI();
+    };
+    timelineRow.appendChild(slot);
+
+    if(i < p.timeline.length){
+      const card = p.timeline[i];
+      const el = document.createElement("div");
+      el.className = "tCard";
+      el.innerHTML = `
+        <div class="y">${esc(card.year)}</div>
+        <div class="s">${esc(card.title)}</div>
+        <div class="a">${esc(card.artist)}</div>
+      `;
+      timelineRow.appendChild(el);
+    }
+  }
+}
+
+/* =========================
+   Reveal (all modes)
+========================= */
+async function reveal(){
+  if(game.revealed) return;
+
+  try{ await pausePlayback(true); }catch{}
+  game.revealed = true;
+
+  // IMPORTANT: prevent loop after reveal
+  playPauseBtn.disabled = true;
+  playback.isPlaying = false;
+  playPauseBtn.textContent = "▶️ Play";
+
+  const s = game.currentSong;
+  const artistStr = (s.artists||[]).join(", ");
+
+  revealTitle.textContent = s.name;
+  revealMeta.innerHTML = `<b>${esc(artistStr)}</b> · Jahr: <b>${esc(s.year)}</b>`;
+
+  answersBox.innerHTML = "";
+  revealBox.classList.remove("good","bad");
+
+  if(lobby.mode === "timewindow"){
+    revealTimeWindow();
+  }else if(lobby.mode === "meta"){
+    revealMetaMode();
+  }else{
+    revealTimeline();
+  }
+
+  renderScoreboard();
+  revealBtn.disabled = true;
+  nextBtn.disabled = false;
+  setDebug(debugGame, JSON.stringify({
+    lobby,
+    round: game.sessionRound,
+    source: players[game.sourcePlayerIndex]?.name,
+    song: { name:s.name, year:s.year }
+  }, null, 2));
+
+  // session end check
+  // (round increments on NEXT, so check "pointsToWin" here only)
+  if(players.some(p => p.points >= lobby.pointsToWin)){
+    // end immediately
+    game.sessionRound += 1; // count this round as done
+    showSessionOverlay();
+  }
+}
+
+function revealTimeWindow(){
+  const q = game.question;
+  const correct = q.correctStart;
+  const correctLabel = formatTimeWindowLabel(correct, lobby.windowSize);
+
+  let anyCorrect = false;
+
+  const evalPlayer = (pi) => {
+    const picked = game.answersByPlayerIndex[pi];
+    const ok = (picked === correct);
+
+    if(ok){ anyCorrect = true; players[pi].points += 1; }
+
+    const row = document.createElement("div");
+    row.className = "ansRow " + (ok ? "good" : "bad");
+    const pickedLabel = (picked==null) ? "—" : formatTimeWindowLabel(picked, lobby.windowSize);
+    row.innerHTML = `
+      <div class="name">${esc(players[pi].name)} ${ok ? "✅" : "❌"}</div>
+      <div class="muted">Tipp: <b>${esc(pickedLabel)}</b> · Richtig: <b>${esc(correctLabel)}</b> · Punkte: <b>${players[pi].points}</b></div>
+    `;
+    answersBox.appendChild(row);
+  };
+
+  if(lobby.playStyle === "solo"){
+    evalPlayer(game.answeringPlayerIndex);
+  }else{
+    for(let i=0;i<players.length;i++) evalPlayer(i);
+  }
+
+  revealBox.classList.add(anyCorrect ? "good" : "bad");
+}
+
+function revealMetaMode(){
+  // show per-player toggles, then scoring happens at NEXT (so you can change before continuing)
+  renderMetaChecksAfterReveal();
+  revealBox.classList.add("good");
+  revealMeta.innerHTML += `<div class="muted">Setze jetzt Häkchen. Punkte werden beim Klick auf <b>WEITER</b> addiert.</div>`;
+}
+
+function revealTimeline(){
+  const p = players[game.answeringPlayerIndex];
+  const y = parseInt(game.currentSong.year, 10);
+
+  // determine correct insert positions based on existing years (allow equal year anywhere adjacent)
+  const years = p.timeline.map(c => parseInt(c.year,10));
+  // correct positions are i where inserting keeps nondecreasing order
+  const correctPositions = [];
+  for(let i=0;i<=years.length;i++){
+    const leftOK  = (i===0) ? true : years[i-1] <= y;
+    const rightOK = (i===years.length) ? true : y <= years[i];
+    if(leftOK && rightOK) correctPositions.push(i);
+  }
+
+  const chosen = game.pendingInsertIndex;
+  const ok = correctPositions.includes(chosen);
+
+  // scoring
+  if(lobby.timelineRule === "risk"){
+    if(ok) p.points += 2;
+    else p.points -= 1;
+  }else{
+    if(ok) p.points += 1; // simple: +1, else 0
+  }
+
+  // Insert card (always insert, even if wrong: user asked earlier "wenn falsch trotzdem präsent anzeigen")
+  const card = {
+    year: String(y),
+    title: game.currentSong.name,
+    artist: (game.currentSong.artists||[]).join(", "),
+    ok
+  };
+  p.timeline.splice(chosen, 0, card);
+
+  // reveal feedback
+  const row = document.createElement("div");
+  row.className = "ansRow " + (ok ? "good" : "bad");
+  row.innerHTML = `
+    <div class="name">${esc(p.name)} ${ok ? "✅" : "❌"}</div>
+    <div class="muted">Einfüge-Slot: <b>${chosen+1}</b> · Richtig wäre Slot: <b>${correctPositions.map(i=>i+1).join(", ")}</b> · Punkte: <b>${p.points}</b></div>
+  `;
+  answersBox.appendChild(row);
+
+  revealBox.classList.add(ok ? "good" : "bad");
+
+  // update timeline UI now with revealed card
+  renderTimelineUI();
+}
+
+/* =========================
+   Next
+========================= */
+async function next(){
+  // meta scoring happens here (because user can still change after reveal)
+  if(lobby.mode === "meta"){
+    const applyForPlayer = (pi) => {
+      const st = game.metaChecksByPlayerIndex[pi] || {title:false,artist:false,year:false};
+      const add = (st.title?1:0) + (st.artist?1:0) + (st.year?1:0);
+      players[pi].points += add;
+
+      // show what was counted
+      const row = document.createElement("div");
+      row.className = "ansRow";
+      row.innerHTML = `
+        <div class="name">${esc(players[pi].name)}</div>
+        <div class="muted">+${add} Punkte (Titel:${st.title?"✅":"❌"} · Interpret:${st.artist?"✅":"❌"} · Jahr:${st.year?"✅":"❌"})</div>
+      `;
+      answersBox.appendChild(row);
+    };
+
+    if(lobby.playStyle === "solo"){
+      applyForPlayer(game.answeringPlayerIndex);
+    }else{
+      for(let i=0;i<players.length;i++) applyForPlayer(i);
+    }
+
+    renderScoreboard();
+
+    // check points win
+    if(players.some(p => p.points >= lobby.pointsToWin)){
+      game.sessionRound += 1;
+      showSessionOverlay();
+      return;
+    }
+  }
+
+  // increment round
+  game.sessionRound += 1;
+
+  if(game.sessionRound > lobby.roundsTotal){
+    showSessionOverlay();
+    return;
+  }
+
+  // rotate answerer in solo
+  if(lobby.playStyle === "solo"){
+    game.answeringPlayerIndex = (game.answeringPlayerIndex + 1) % players.length;
+  }else{
+    game.answeringPlayerIndex = 0;
+  }
+
+  // re-enable playback for next round
+  playPauseBtn.disabled = false;
+
+  await beginRound();
+}
+
+/* =========================
+   Event wiring
+========================= */
+document.getElementById("loginBtn").onclick = ()=> login();
+document.getElementById("logoutBtn").onclick = ()=> logout();
+
+document.getElementById("loadPlaylistsBtn").onclick = ()=> loadPlaylists().catch(e=>{
+  setupStatus.innerHTML = `<span class="bad">❌ ${esc(e.message)}</span>`;
+  setDebug(debugSetup, e.stack || e.message);
+});
+document.getElementById("buildPlayersBtn").onclick = ()=> buildPlayerFields();
+
+toLobbyBtn.onclick = ()=> openLobby();
+backToSetupBtn.onclick = ()=> showScreen("setup");
+document.getElementById("backToSetupBtn").onclick = ()=> showScreen("setup");
+
+modeCards.timeline.onclick = ()=> setActiveMode("timeline");
+modeCards.meta.onclick = ()=> setActiveMode("meta");
+modeCards.timewindow.onclick = ()=> setActiveMode("timewindow");
+
+playStyleSel.onchange = ()=> { lobby.playStyle = playStyleSel.value; };
+
+startSessionBtn.onclick = ()=> startSession().catch(e=>{
+  setDebug(debugLobby, e.stack || e.message);
+  alert(e.message);
+});
+
+playPauseBtn.onclick = async ()=>{
+  if(!game.currentSong || game.revealed) return;
+  if(playback.isPlaying){
+    await pausePlayback();
+  }else{
+    await playUri(game.currentSong.uri);
+  }
 };
-document.getElementById("buildPlayersBtn").onclick = () => { buildPlayerFields(); updateStartButtonEnabled(); };
 
-startGameBtn.onclick = async () => {
-  try { await startGame(); }
-  catch (e) { setSetupStatus(`<span class="bad">❌ ${escapeHtml(e.message)}</span>`); setDebug(e.stack || e.message); }
+revealBtn.onclick = ()=> reveal().catch(e=>{
+  setDebug(debugGame, e.stack || e.message);
+  alert(e.message);
+});
+nextBtn.onclick = ()=> next().catch(e=>{
+  setDebug(debugGame, e.stack || e.message);
+  alert(e.message);
+});
+
+againBtn.onclick = async ()=>{
+  hideSessionOverlay();
+  // restart session with same lobby settings (points reset depends on checkbox state)
+  await startSession();
+};
+toLobby2Btn.onclick = ()=>{
+  hideSessionOverlay();
+  showScreen("lobby");
+};
+toSetup2Btn.onclick = ()=>{
+  hideSessionOverlay();
+  showScreen("setup");
 };
 
-// ✅ SAFE/WAGNIS now auto-start music
-safeBtn.onclick = () => chooseSource("SAFE").catch(()=>{});
-riskBtn.onclick = () => chooseSource("WAGNIS").catch(()=>{});
-
-playPauseBtn.onclick = () => {
-  onPlayPause().catch(e => { setDebug(e.stack || e.message); alert(e.message); });
-};
-
-revealBtn.onclick = () => {
-  reveal().catch(e => { setDebug(e.stack || e.message); alert(e.message); });
-};
-
-nextBtn.onclick = () => nextTurn();
-endBtn.onclick = () => resetToSetup();
-
-refreshConnStatus();
+function boot(){
+  refreshConnStatus();
+  setActiveMode("timeline");
+  refreshLobbyExtras();
+  showScreen("setup");
+}
+boot();
 </script>
 
 </body>
