@@ -3,429 +3,350 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Family Music Quiz</title>
+  <title>Family Music Quiz (Prototype)</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1180px; margin: 14px auto; padding: 0 12px; background:#fafafa; }
-    h1 { margin: 8px 0 2px; }
-    h2,h3 { margin: 0 0 10px; }
-    .muted { color:#666; font-size: 12px; }
-    .box { border: 1px solid #ddd; border-radius: 16px; padding: 12px; margin-top: 12px; background:#fff; }
-    .row { display:flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    button { padding: 12px 14px; border-radius: 14px; border: 1px solid #ccc; background: #fff; cursor:pointer; }
-    button.primary { border-color:#222; font-weight: 900; padding: 16px 18px; }
-    button.danger { border-color:#b00020; color:#b00020; }
-    button:disabled { opacity: .45; cursor:not-allowed; }
-    select, input { padding: 10px; border-radius: 14px; border: 1px solid #ccc; }
-    pre { white-space: pre-wrap; word-break: break-word; background:#fafafa; border:1px solid #eee; padding:10px; border-radius:14px; }
+    :root{
+      --bg:#ffffff; --fg:#111; --muted:#666; --line:#e6e6e6;
+      --ok:#0a7a0a; --bad:#b00020; --card:#fafafa;
+      --shadow: 0 6px 18px rgba(0,0,0,.08);
+      --r:14px;
+    }
+    body{ font-family: Arial, sans-serif; max-width: 1050px; margin: 22px auto; padding: 0 14px; color:var(--fg); background:var(--bg); }
+    h1{ margin:8px 0 6px; }
+    h2{ margin:0 0 10px; }
+    button{ padding: 10px 12px; margin: 6px 8px 6px 0; cursor:pointer; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    button.primary{ background:#111; color:#fff; border-color:#111; }
+    button.big{ font-size: 22px; padding: 14px 18px; border-radius: 14px; }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    select,input{ padding: 10px; margin: 6px 8px 6px 0; border:1px solid var(--line); border-radius:10px; }
+    .box{ border:1px solid var(--line); padding: 14px; border-radius: var(--r); margin-top: 14px; box-shadow: var(--shadow); background:#fff; }
+    .row{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 820px){ .grid2{ grid-template-columns:1fr; } }
+    .muted{ color:var(--muted); font-size:12px; }
+    .ok{ color:var(--ok); }
+    .bad{ color:var(--bad); }
+    pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); border:1px solid var(--line); padding:10px; border-radius:10px; }
+    .pill{ display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--card); font-size:12px; }
+    .screen{ display:none; }
+    .screen.active{ display:block; }
 
-    .ok { color:#0a7a0a; }
-    .bad { color:#b00020; }
+    /* Shared game header */
+    .turnBanner{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      box-shadow: var(--shadow);
+    }
+    .scoreTable{ width:100%; border-collapse: collapse; }
+    .scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
+    .scoreTable th{ background:#fafafa; }
 
-    .hidden { display:none; }
-
-    .playerGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
-    @media(min-width: 860px){ .playerGrid { grid-template-columns: 1fr 1fr; } }
-    .playerCard { border:1px solid #eee; border-radius: 16px; padding: 10px; background:#fff; }
-    .playerCard h3 { margin: 0 0 8px; }
-
-    .cardChoiceGrid { display:grid; grid-template-columns: 1fr; gap: 10px; }
-    @media(min-width: 860px){ .cardChoiceGrid { grid-template-columns: 1fr 1fr 1fr; } }
-    .choiceCard { border:2px solid #ddd; border-radius: 18px; padding: 12px; background:#fff; cursor:pointer; }
-    .choiceCard.active { border-color:#222; box-shadow: 0 0 0 3px rgba(0,0,0,.05) inset; }
-    .choiceCard .title { font-weight: 900; font-size: 16px; }
-    .choiceCard .desc { margin-top: 6px; color:#555; font-size: 13px; line-height: 1.25; }
-
-    .banner { text-align:center; border:1px solid #eee; border-radius: 18px; padding: 12px; background:#fcfcfc; }
-    .big { font-size: 30px; font-weight: 900; }
-    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; border:1px solid #ddd; background:#fff; font-size: 12px; margin: 2px; }
-
-    .scoreBoard { display:flex; flex-wrap: wrap; gap: 8px; }
-    .scoreItem { border:1px solid #eee; border-radius: 14px; padding: 8px 10px; background:#fff; }
-    .scoreItem.active { border-color:#222; }
-
-    .revealBox { border:1px solid #eee; border-radius: 18px; padding: 12px; background:#fff; }
-    .revealBox .title { font-weight: 900; font-size: 18px; }
-    .revealBox.good { border-color:#0a7a0a; box-shadow: 0 0 0 2px rgba(10,122,10,.08) inset; }
-    .revealBox.bad { border-color:#b00020; box-shadow: 0 0 0 2px rgba(176,0,32,.08) inset; }
-
-    .answers { margin-top: 10px; display:grid; grid-template-columns: 1fr; gap: 8px; }
-    @media(min-width: 860px){ .answers { grid-template-columns: 1fr 1fr; } }
-    .ansRow { border:1px solid #eee; border-radius: 16px; padding: 10px; background:#fff; }
-    .ansRow.good { border-color:#0a7a0a; }
-    .ansRow.bad { border-color:#b00020; }
-    .ansRow .name { font-weight: 900; }
+    /* Cards */
+    .card{
+      min-width: 150px;
+      max-width: 260px;
+      border:1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--card);
+    }
+    .card .year{ font-weight:800; font-size: 16px; }
+    .card .title{ margin-top:6px; font-weight:800; font-size: 14px; }
+    .card .artist{ margin-top:2px; color:var(--muted); font-size: 12px; }
+    .card.ok{ border-color: rgba(10,122,10,.35); background: rgba(10,122,10,.06); }
+    .card.bad{ border-color: rgba(176,0,32,.35); background: rgba(176,0,32,.06); }
 
     /* Timeline */
-    .timelineWrap { margin-top: 10px; }
-    .timelineRow { display:flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
-    .slotBtn { padding: 10px 10px; border-radius: 14px; border: 2px dashed #bbb; background:#fff; cursor:pointer; min-width: 64px; }
-    .slotBtn.active { border-color:#222; }
-    .tCard { border:2px solid #222; border-radius: 16px; padding: 10px 10px; min-width: 160px; background:#fff; }
-    .tCard .y { font-weight: 900; }
-    .tCard .s { font-size: 13px; color:#333; }
-    .tCard .a { font-size: 12px; color:#666; }
+    .timelineLine{ display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+    .slotRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0; }
+    .slot{
+      width: 26px; height: 70px;
+      border-radius: 10px;
+      border:1px dashed #bbb;
+      background:#fff;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+    .slot.active{ border-style: solid; border-color:#111; background:#111; color:#fff; }
 
-    .revealBig { transform: scale(1.06); box-shadow: 0 8px 26px rgba(0,0,0,.12); }
+    /* Multiple choice */
+    .choiceGrid{ display:flex; flex-wrap:wrap; gap:10px; }
+    .choiceBtn{ padding: 12px 14px; border-radius: 12px; border:1px solid var(--line); background:#fff; }
+    .choiceBtn.selected{ background:#111; color:#fff; border-color:#111; }
 
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding: 18px; z-index: 9999; }
-    .overlay .panel { width: min(820px, 100%); background:#fff; border-radius: 20px; padding: 16px; border: 1px solid #ddd; }
-
-    /* Safe / Wagnis */
-    .swWrap { display:flex; gap: 10px; justify-content:center; margin-top: 10px; flex-wrap: wrap; }
-    .swBtn { padding: 18px 18px; border-radius: 18px; border: 2px solid #222; font-weight: 900; font-size: 18px; min-width: 220px; }
-    .swBtn.safe { background:#fff; }
-    .swBtn.wagnis { background:#fff; }
-    .swHint { text-align:center; margin-top: 6px; }
+    /* “per player” mini selector */
+    .miniPick{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .miniPick .mini{ padding:8px 10px; border-radius: 10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .miniPick .mini.selected{ background:#111; color:#fff; border-color:#111; }
   </style>
 </head>
 <body>
 
 <h1>Family Music Quiz</h1>
-<div class="muted">Setup → Lobby → Session</div>
+<div class="muted">Prototype · Spotify Premium Host · Fokus: <b>Meine Songs kennen & einordnen</b> · Global <b>No-Duplicates</b> pro Session</div>
 
-<div class="box">
-  <h2>Spotify Verbindung</h2>
-  <div class="row">
-    <button id="loginBtn" class="primary">Mit Spotify verbinden</button>
-    <button id="logoutBtn" class="danger">Logout</button>
-    <span id="connStatus" class="muted"></span>
-  </div>
-</div>
-
-<div id="setupScreen" class="box">
-  <h2>Setup: Spieler & Playlists</h2>
-
-  <div class="row">
-    <button id="loadPlaylistsBtn">Playlists laden</button>
-    <span id="setupStatus" class="muted"></span>
-    <span id="loadProgress" class="muted"></span>
-  </div>
-
-  <div class="row" style="margin-top:10px;">
-    <label><b>Anzahl Spieler</b></label>
-    <select id="playerCount">
-      <option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option>
-    </select>
-    <button id="buildPlayersBtn">Spielerfelder erstellen</button>
-  </div>
-
-  <div id="playersArea" class="playerGrid" style="margin-top:10px;"></div>
-
-  <div class="row" style="margin-top:12px;">
-    <button id="toLobbyBtn" class="primary" disabled>Weiter → Lobby</button>
-    <span class="muted">Aktiv, sobald alle Spieler eine Playlist mit geladenen Tracks haben.</span>
-  </div>
-
+<!-- =========================================================
+     SCREEN: SETUP
+     ========================================================= -->
+<section id="screenSetup" class="screen active">
   <div class="box">
-    <h3>Debug</h3>
-    <pre id="debugSetup"></pre>
-  </div>
-</div>
-
-<div id="lobbyScreen" class="box hidden">
-  <h2>Lobby: Modus & Ziel</h2>
-
-  <div class="box">
-    <h3>Spielart</h3>
-    <div class="cardChoiceGrid">
-      <div class="choiceCard active" id="mode_timeline">
-        <div class="title">Timeline</div>
-        <div class="desc">Nach Referenz: pro Zug SAFE (eigene Playlist) oder WAGNIS (zufällig aus anderer Playlist). Slot wählen → Reveal.</div>
-      </div>
-      <div class="choiceCard" id="mode_meta">
-        <div class="title">Song erraten</div>
-        <div class="desc">(Platzhalter) später wieder rein.</div>
-      </div>
-      <div class="choiceCard" id="mode_timewindow">
-        <div class="title">Zeitraum raten</div>
-        <div class="desc">(Platzhalter) später wieder rein.</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="box">
-    <h3>Ziel</h3>
+    <h2>1) Spotify verbinden</h2>
     <div class="row">
-      <label><b>Runden</b></label>
-      <input id="roundsTotal" type="number" value="5" min="1" max="100" style="width:100px;">
-      <label><b>Punkte-Ziel</b></label>
-      <input id="pointsToWin" type="number" value="15" min="1" max="999" style="width:110px;">
-      <label><input type="checkbox" id="resetPoints" checked> Punkte beim Start zurücksetzen</label>
+      <button id="loginBtn" class="primary">Mit Spotify verbinden</button>
+      <button id="logoutBtn">Logout</button>
+      <span id="connStatus" class="pill"></span>
     </div>
-    <div class="muted">1 Runde = alle waren einmal dran. Referenz zählt nicht als Runde.</div>
-    <div class="row" style="margin-top:10px;">
-      <button id="startSessionBtn" class="primary">Session starten</button>
-      <button id="backToSetupBtn">← zurück zum Setup</button>
+    <div class="muted">
+      Redirect URI ist diese Seite. In Spotify Developer musst du als Redirect URL exakt eintragen:
+      <br><span class="pill" id="redirectUriPill"></span>
     </div>
   </div>
 
   <div class="box">
-    <h3>Debug</h3>
-    <pre id="debugLobby"></pre>
-  </div>
-</div>
+    <h2>2) Spiel einrichten</h2>
 
-<div id="gameScreen" class="box hidden">
-  <h2>Spiel</h2>
-
-  <div class="scoreBoard" id="scoreBoard"></div>
-
-  <div class="banner" style="margin-top:10px;">
-    <div class="muted" id="turnHint">—</div>
-    <div class="big" id="turnName">—</div>
-    <div style="margin-top:8px;">
-      <span class="pill" id="modePill">—</span>
-      <span class="pill" id="roundPill">—</span>
-      <span class="pill" id="infoPill">—</span>
+    <div class="row">
+      <label><b>Spielmodus</b></label>
+      <select id="modeSelect">
+        <option value="timeline">Timeline (Einordnen)</option>
+        <option value="guessSong">Song raten (Titel/Interpret/Jahr)</option>
+        <option value="quick3">3-Sekunden Challenge</option>
+        <option value="yearRange">Zeitraum raten (MC)</option>
+        <option value="playlistGuess">Welche Playlist ist das?</option>
+      </select>
+      <span class="muted" id="modeHint"></span>
     </div>
-  </div>
 
-  <div class="row" style="justify-content:center; margin-top:10px;">
-    <button id="playPauseBtn" class="primary" disabled>▶️ Play</button>
-    <button id="revealBtn" class="primary" disabled>REVEAL</button>
-    <button id="nextBtn" class="primary" disabled>WEITER</button>
-  </div>
-
-  <div class="muted" style="text-align:center; margin-top:6px;">
-    Spotify muss offen sein (App/Webplayer). Diese Seite steuert nur.
-  </div>
-
-  <!-- Panels -->
-  <div id="panel_timeline" class="box hidden">
-    <h3>Timeline</h3>
-    <div class="muted">Nach Referenz: Wähle SAFE oder WAGNIS → Song startet sofort → Slot wählen → Reveal.</div>
-
-    <div id="safeWagnisUI" class="swWrap hidden">
-      <button id="safeBtn" class="swBtn safe">SAFE<br><span class="muted">eigene Playlist<br><b>+1</b> / <b>0</b></span></button>
-      <button id="wagnisBtn" class="swBtn wagnis">WAGNIS<br><span class="muted">andere Playlist<br><b>+2</b> / <b>-1</b></span></button>
+    <div class="row">
+      <label><b>Party-Option</b></label>
+      <select id="partySelect">
+        <option value="rotate">Reihum (jeder ist dran)</option>
+        <option value="allguess">Alle raten gleichzeitig (nur wo sinnvoll)</option>
+      </select>
+      <span class="muted" id="partyHint"></span>
     </div>
-    <div id="safeWagnisHint" class="swHint muted hidden">Musik startet sofort nach deiner Wahl.</div>
 
-    <div class="timelineWrap">
-      <div class="timelineRow" id="timelineRow"></div>
+    <div class="row" id="riskRow">
+      <label><b>Risk-Mechanik</b></label>
+      <span class="pill">Safe: +1 / 0</span>
+      <span class="pill">Wagnis: +2 / -1</span>
+      <span class="muted">Wird im Spiel pro Zug ausgewählt (wo unterstützt).</span>
     </div>
-  </div>
 
-  <div id="panel_meta" class="box hidden">
-    <h3>Song erraten (Platzhalter)</h3>
-    <div class="muted">Dieser Modus ist noch nicht ausgebaut.</div>
-  </div>
+    <div class="row">
+      <label><b>Zielpunkte</b></label>
+      <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px;">
+      <span class="muted">Wer zuerst erreicht, gewinnt.</span>
+    </div>
 
-  <div id="panel_timewindow" class="box hidden">
-    <h3>Zeitraum raten (Platzhalter)</h3>
-    <div class="muted">Dieser Modus ist noch nicht ausgebaut.</div>
-  </div>
+    <div class="row">
+      <label><b>Spieleranzahl</b></label>
+      <input id="playerCountInput" type="number" min="1" max="8" value="3" style="width:110px;">
+      <button id="buildPlayersBtn">Spieler anlegen</button>
+      <button id="loadMyPlaylistsBtn">Meine Playlists laden</button>
+      <span class="muted" id="playlistStatus"></span>
+    </div>
 
-  <div class="revealBox" id="revealBox" style="margin-top:10px;">
-    <div class="title" id="revealTitle">?</div>
-    <div class="muted" id="revealMeta">—</div>
-    <div class="answers" id="answersBox"></div>
+    <div class="muted">Playlist-Dropdown lädt automatisch <b>alle Tracks</b> (Pagination) sobald du auswählst.</div>
+
+    <div id="playersConfig" style="margin-top:10px;"></div>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="startGameBtn" class="primary" disabled>Spiel starten</button>
+    </div>
   </div>
 
   <div class="box">
-    <h3>Debug</h3>
-    <pre id="debugGame"></pre>
+    <h2>Debug</h2>
+    <pre id="debug"></pre>
   </div>
-</div>
+</section>
 
-<div class="overlay" id="sessionOverlay" aria-modal="true" role="dialog">
-  <div class="panel">
-    <h2>🏁 Session beendet</h2>
-    <div id="sessionSummary" class="muted"></div>
-    <ul id="sessionWinners"></ul>
-    <div class="row" style="justify-content:flex-end;">
-      <button id="againBtn" class="primary">Nochmal gleiche Session</button>
-      <button id="toLobby2Btn">Modus ändern</button>
-      <button id="toSetup2Btn">Zurück zum Setup</button>
+<!-- =========================================================
+     SCREEN: REFERENCE (pro Spieler Referenzjahr + Spanne)
+     ========================================================= -->
+<section id="screenReference" class="screen">
+  <div class="box">
+    <h2>Referenzkarten</h2>
+    <div class="muted">
+      Jeder Spieler bekommt ein Referenzjahr (Median) + typische Spanne (10–90%). Das zählt <b>nicht</b> als Runde.
+    </div>
+    <div id="referenceGrid" class="grid2" style="margin-top:12px;"></div>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="refContinueBtn" class="primary big">Los geht’s</button>
+      <button id="backToSetupBtn">Zurück</button>
     </div>
   </div>
-</div>
+</section>
+
+<!-- =========================================================
+     SCREEN: GAME
+     ========================================================= -->
+<section id="screenGame" class="screen">
+  <div class="box">
+    <div class="turnBanner">
+      <div>
+        <div class="muted">Modus</div>
+        <div style="font-size:18px; font-weight:800;" id="gameModeLabel">–</div>
+        <div class="muted" id="gameModeSub">–</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="muted">Runde</div>
+        <div style="font-size:18px; font-weight:800;" id="roundLabel">–</div>
+      </div>
+    </div>
+
+    <div class="turnBanner" style="margin-top:12px;">
+      <div>
+        <div class="muted">Spieler am Zug</div>
+        <div style="font-size:24px; font-weight:900;" id="turnPlayerName">–</div>
+        <div class="muted" id="turnInfo">–</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="muted">Global gespielt</div>
+        <div style="font-size:18px; font-weight:800;" id="globalUsedLabel">0</div>
+      </div>
+    </div>
+
+    <!-- Risk selection (only in modes that support it) -->
+    <div class="box" id="riskBox" style="margin-top:12px;">
+      <h2>Safe oder Wagnis</h2>
+      <div class="muted" id="riskHint">Wähle zuerst Safe oder Wagnis, dann “Bereit!”.</div>
+      <div class="row">
+        <button id="safeBtn">Safe (eigene Playlist) · +1 / 0</button>
+        <button id="wagnisBtn">Wagnis (andere Playlist) · +2 / -1</button>
+      </div>
+    </div>
+
+    <!-- Core turn buttons -->
+    <div class="row" style="margin-top:12px;">
+      <button id="readyBtn" class="primary big" disabled>Bereit!</button>
+      <button id="playToggleBtn" class="big" disabled>▶️ Play</button>
+      <button id="revealBtn" class="big" disabled>Reveal</button>
+      <button id="nextBtn" class="primary big" disabled>Weiter</button>
+    </div>
+    <div class="muted" id="turnFlowHint" style="margin-top:6px;"></div>
+
+    <!-- MODE AREA -->
+    <div class="box" style="margin-top:14px;">
+      <h2 id="modeAreaTitle">Spielbereich</h2>
+      <div id="modeArea"></div>
+    </div>
+
+    <!-- Reveal box -->
+    <div id="revealBox" class="box" style="display:none; margin-top:12px;">
+      <div id="revealText"></div>
+      <div id="revealExtra" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="box" style="margin-top:14px;">
+      <h2>Scores</h2>
+      <table class="scoreTable" id="scoreTable"></table>
+    </div>
+
+    <div class="box" style="margin-top:14px;">
+      <h2>Debug</h2>
+      <pre id="debugGame"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SCREEN: WINNER
+     ========================================================= -->
+<section id="screenWinner" class="screen">
+  <div class="box">
+    <h2>🏆 Gewinner</h2>
+    <div id="winnerHeadline" style="font-size:24px; font-weight:900;"></div>
+    <div class="muted" id="winnerSub"></div>
+
+    <div class="box" style="margin-top:12px;">
+      <h2>Endstand</h2>
+      <table class="scoreTable" id="finalScoreTable"></table>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="endBtn" class="primary big">Beenden</button>
+    </div>
+  </div>
+</section>
 
 <script>
-/* ========== KONFIG ========== */
-const clientId = "1567cc8cfec14ea2b8562efca5dd7e08";
-const redirectUri = "https://skarvaan.github.io/family-music-quiz/callback.html";
-const scopes = [
+/* =====================================================================
+   FAMILY MUSIC QUIZ — FULL INDEX (single file, readable architecture)
+   ---------------------------------------------------------------------
+   Goal:
+   - Multiple modes, but USP stays: "Meine Songs kennen & einordnen"
+   - Timeline is INCLUDED but not the only thing
+   - Global No-Duplicates across the whole session
+   - Clean structure so a frontend dev can re-style/extend
+
+   MAIN MODULES INSIDE THIS FILE:
+   0) Config
+   1) DOM helpers + screen switching
+   2) Spotify Auth (PKCE) — redirect to this same page
+   3) Spotify API helpers (GET/PUT) + playback
+   4) Data model (players, tracks, global used, session state)
+   5) Playlist + track loading (pagination)
+   6) Game engine (turns, draw track, scoring, win)
+   7) Modes (timeline, guessSong, quick3, yearRange, playlistGuess)
+   8) UI rendering + wiring
+   ===================================================================== */
+
+/* =========================
+   0) CONFIG
+   ========================= */
+const SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
+const REDIRECT_URI = window.location.origin + window.location.pathname; // same page
+const SPOTIFY_SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
   "user-read-playback-state",
   "user-modify-playback-state"
 ].join(" ");
-const NOW_YEAR = 2026;
 
-/* ========== UI refs ========== */
-const connStatus = document.getElementById("connStatus");
+/* =========================
+   1) DOM HELPERS
+   ========================= */
+const $ = (id) => document.getElementById(id);
 
-const setupScreen = document.getElementById("setupScreen");
-const lobbyScreen = document.getElementById("lobbyScreen");
-const gameScreen  = document.getElementById("gameScreen");
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
 
-const setupStatus = document.getElementById("setupStatus");
-const loadProgress = document.getElementById("loadProgress");
-const playersArea = document.getElementById("playersArea");
-const toLobbyBtn = document.getElementById("toLobbyBtn");
+function showScreen(id){
+  for (const el of document.querySelectorAll(".screen")) el.classList.remove("active");
+  $(id).classList.add("active");
+}
 
-const debugSetup = document.getElementById("debugSetup");
-const debugLobby = document.getElementById("debugLobby");
-const debugGame = document.getElementById("debugGame");
+function setDebug(text){ $("debug").textContent = text || ""; }
+function setGameDebug(text){ $("debugGame").textContent = text || ""; }
 
-const roundsTotalInp = document.getElementById("roundsTotal");
-const pointsToWinInp = document.getElementById("pointsToWin");
-const resetPointsChk = document.getElementById("resetPoints");
-
-const modeCards = {
-  timeline: document.getElementById("mode_timeline"),
-  meta: document.getElementById("mode_meta"),
-  timewindow: document.getElementById("mode_timewindow")
+/* =========================
+   2) AUTH (PKCE, Token)
+   ========================= */
+const storage = {
+  get token(){ return localStorage.getItem("spotify_access_token"); },
+  set token(v){ v ? localStorage.setItem("spotify_access_token", v) : localStorage.removeItem("spotify_access_token"); },
+  get scope(){ return localStorage.getItem("spotify_scope") || ""; },
+  set scope(v){ v ? localStorage.setItem("spotify_scope", v) : localStorage.removeItem("spotify_scope"); },
+  get verifier(){ return localStorage.getItem("pkce_verifier"); },
+  set verifier(v){ v ? localStorage.setItem("pkce_verifier", v) : localStorage.removeItem("pkce_verifier"); }
 };
 
-const scoreBoard = document.getElementById("scoreBoard");
-const turnHint = document.getElementById("turnHint");
-const turnName = document.getElementById("turnName");
-const modePill = document.getElementById("modePill");
-const roundPill = document.getElementById("roundPill");
-const infoPill = document.getElementById("infoPill");
-
-const playPauseBtn = document.getElementById("playPauseBtn");
-const revealBtn = document.getElementById("revealBtn");
-const nextBtn = document.getElementById("nextBtn");
-
-const panel_timeline = document.getElementById("panel_timeline");
-const panel_meta = document.getElementById("panel_meta");
-const panel_timewindow = document.getElementById("panel_timewindow");
-
-const timelineRow = document.getElementById("timelineRow");
-
-const safeWagnisUI = document.getElementById("safeWagnisUI");
-const safeWagnisHint = document.getElementById("safeWagnisHint");
-const safeBtn = document.getElementById("safeBtn");
-const wagnisBtn = document.getElementById("wagnisBtn");
-
-const revealBox = document.getElementById("revealBox");
-const revealTitle = document.getElementById("revealTitle");
-const revealMeta = document.getElementById("revealMeta");
-const answersBox = document.getElementById("answersBox");
-
-const sessionOverlay = document.getElementById("sessionOverlay");
-const sessionSummary = document.getElementById("sessionSummary");
-const sessionWinners = document.getElementById("sessionWinners");
-const againBtn = document.getElementById("againBtn");
-const toLobby2Btn = document.getElementById("toLobby2Btn");
-const toSetup2Btn = document.getElementById("toSetup2Btn");
-
-/* ========== STATE ========== */
-let allPlaylists = [];
-let players = []; // {name, playlistId, tracks[], points, timeline[], referenceYear, spanMin, spanMax}
-
-const playlistTracksCache = new Map();
-const playlistLoadControllers = new Map();
-const playlistLoadTimers = new Map();
-
-let lobby = {
-  mode: "timeline",
-  roundsTotal: 5,
-  pointsToWin: 15
-};
-
-let playback = { isPlaying:false, lastDeviceId:null };
-
-let game = {
-  inIntro: true,
-  turnIndex: 0,
-  roundIndex: 1,
-  currentPlayerIndex: 0,
-
-  currentSong: null,
-  revealed: false,
-
-  pendingInsertIndex: 0,
-
-  // NEW: safe/wagnis state (only for timeline)
-  choice: null,          // "safe" | "wagnis"
-  sourcePlayerIndex: 0   // which playlist produced the song
-};
-
-/* ========== Helpers ========== */
-function esc(s){ return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
-function setDebug(el, msg){ el.textContent = msg || ""; }
-function getToken(){ return localStorage.getItem("spotify_access_token"); }
-function getScope(){ return localStorage.getItem("spotify_scope") || ""; }
-
-function refreshConnStatus(){
-  const s = getScope();
-  connStatus.innerHTML = getToken()
-    ? `<span class="ok">✅ Verbunden</span> <span class="muted">Scopes: ${esc(s||"(unbekannt)")}</span>`
-    : `<span class="bad">❌ Nicht verbunden</span>`;
-}
-
-function showScreen(name){
-  setupScreen.classList.toggle("hidden", name !== "setup");
-  lobbyScreen.classList.toggle("hidden", name !== "lobby");
-  gameScreen.classList.toggle("hidden",  name !== "game");
-}
-
-function updateToLobbyEnabled(){
-  const ok = !!getToken()
-    && players.length >= 2
-    && players.every(p => p.name && p.playlistId && Array.isArray(p.tracks) && p.tracks.length > 0);
-  toLobbyBtn.disabled = !ok;
-}
-
-function pickRandomTrack(tracks){
-  return tracks[Math.floor(Math.random() * tracks.length)];
-}
-
-function clearReveal(){
-  revealBox.classList.remove("good","bad");
-  revealTitle.textContent = "?";
-  revealMeta.textContent = "—";
-  answersBox.innerHTML = "";
-  revealBtn.classList.remove("revealBig");
-}
-
-function showModePanels(){
-  panel_timeline.classList.toggle("hidden", lobby.mode !== "timeline");
-  panel_meta.classList.toggle("hidden", lobby.mode !== "meta");
-  panel_timewindow.classList.toggle("hidden", lobby.mode !== "timewindow");
-}
-
-function currentPlayer(){ return players[game.currentPlayerIndex]; }
-
-/* ========== Spotify fetch ========== */
-async function apiFetch(url, { method="GET", headers={}, body=null, signal=null } = {}, timeoutMs=15000){
-  const token = getToken();
-  if(!token) throw new Error("Kein Token – bitte verbinden.");
-
-  const ctrl = new AbortController();
-  const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
-  const usedSignal = signal || ctrl.signal;
-
-  try{
-    const res = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, ...headers },
-      body,
-      signal: usedSignal
-    });
-
-    const text = await res.text();
-    let data = null;
-    try{ data = text ? JSON.parse(text) : null; }catch{}
-
-    if(!res.ok){
-      const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
-      throw new Error(`Spotify API Fehler (${res.status}): ${msg}`);
-    }
-    return data;
-  }catch(e){
-    if(e.name === "AbortError") throw new Error("Abgebrochen (Playlist-Wechsel).");
-    throw e;
-  }finally{
-    clearTimeout(timer);
-  }
-}
-
-/* ========== PKCE Login ========== */
 function randomVerifier(){
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const bytes = crypto.getRandomValues(new Uint8Array(64));
@@ -436,708 +357,1536 @@ async function sha256Base64Url(verifier){
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
     .replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
 }
-async function login(){
+
+async function loginSpotify(){
   const verifier = randomVerifier();
-  localStorage.setItem("pkce_verifier", verifier);
+  storage.verifier = verifier;
   const challenge = await sha256Base64Url(verifier);
 
-  const url = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+  const authUrl = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
     response_type: "code",
-    client_id: clientId,
-    scope: scopes,
-    redirect_uri: redirectUri,
+    client_id: SPOTIFY_CLIENT_ID,
+    scope: SPOTIFY_SCOPES,
+    redirect_uri: REDIRECT_URI,
     code_challenge_method: "S256",
     code_challenge: challenge,
     show_dialog: "true"
   });
 
-  window.location = url;
-}
-function logout(){
-  localStorage.removeItem("spotify_access_token");
-  localStorage.removeItem("spotify_scope");
-  localStorage.removeItem("pkce_verifier");
-  refreshConnStatus();
-  setupStatus.textContent = "🔒 Token gelöscht.";
-  updateToLobbyEnabled();
+  window.location = authUrl;
 }
 
-/* ========== Playback ========== */
+function logoutSpotify(){
+  storage.token = null;
+  storage.scope = null;
+  storage.verifier = null;
+  refreshConnStatus();
+}
+
+async function handleOAuthCallbackIfPresent(){
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("code");
+  const err = url.searchParams.get("error");
+  if (err){
+    setDebug("OAuth Fehler: " + err);
+    url.searchParams.delete("error");
+    window.history.replaceState({}, "", url.toString());
+    return;
+  }
+  if (!code) return;
+
+  const verifier = storage.verifier;
+  if (!verifier){
+    setDebug("Fehler: PKCE verifier fehlt. Bitte nochmal Login drücken.");
+    return;
+  }
+
+  const body = new URLSearchParams({
+    client_id: SPOTIFY_CLIENT_ID,
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: verifier
+  });
+
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {"Content-Type":"application/x-www-form-urlencoded"},
+    body
+  });
+  const data = await res.json();
+
+  if (!data.access_token){
+    setDebug("Token Fehler:\n" + JSON.stringify(data, null, 2));
+    return;
+  }
+
+  storage.token = data.access_token;
+  storage.scope = data.scope || "";
+
+  url.searchParams.delete("code");
+  url.searchParams.delete("state");
+  window.history.replaceState({}, "", url.toString());
+
+  refreshConnStatus();
+}
+
+/* =========================
+   3) SPOTIFY API + PLAYBACK
+   ========================= */
+async function apiFetch(url, {method="GET", jsonBody=null, timeoutMs=12000} = {}){
+  if (!storage.token) throw new Error("Kein Token (bitte verbinden).");
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  try{
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${storage.token}`,
+        ...(jsonBody ? {"Content-Type":"application/json"} : {})
+      },
+      body: jsonBody ? JSON.stringify(jsonBody) : null,
+      signal: ctrl.signal
+    });
+
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch {}
+
+    if (!res.ok){
+      const msg = data?.error?.message || data?.error_description || text || `HTTP ${res.status}`;
+      throw new Error(`Spotify API (${res.status}): ${msg}`);
+    }
+    return data;
+  } catch(e){
+    if (e.name === "AbortError") throw new Error("Timeout: Spotify antwortet nicht.");
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function getActiveDeviceId(){
-  const data = await apiFetch("https://api.spotify.com/v1/me/player/devices");
+  const data = await apiFetch("https://api.spotify.com/v1/me/player/devices", {timeoutMs: 12000});
   const devices = data.devices || [];
   const active = devices.find(d => d.is_active);
-  if(active) return active.id;
-  if(devices.length) return devices[0].id;
+  if (active) return active.id;
+  if (devices.length) return devices[0].id;
   return null;
 }
-async function pausePlayback(silent=false){
-  const deviceId = playback.lastDeviceId || await getActiveDeviceId();
-  if(!deviceId) return;
-  try{
-    await apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
-      method: "PUT"
-    });
-  }catch(e){
-    if(!silent) throw e;
-  }
-  playback.isPlaying = false;
-  playPauseBtn.textContent = "▶️ Play";
-}
-async function playUri(uri){
+
+async function playTrackUri(uri, {positionMs=null} = {}){
   const deviceId = await getActiveDeviceId();
-  if(!deviceId){
-    alert("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte irgendeinen Song, dann nochmal.");
-    return;
+  if (!deviceId){
+    throw new Error("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz irgendeinen Song, dann erneut.");
   }
-  try{ await pausePlayback(true); }catch{}
-  await new Promise(r => setTimeout(r, 140));
+
+  const body = { uris: [uri] };
+  if (typeof positionMs === "number") body.position_ms = Math.max(0, positionMs);
+
   await apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uris: [uri] })
+    jsonBody: body,
+    timeoutMs: 12000
   });
-  playback.isPlaying = true;
-  playback.lastDeviceId = deviceId;
-  playPauseBtn.textContent = "⏸️ Stop";
 }
 
-/* ========== Setup Load ========== */
-async function loadPlaylists(){
-  setupStatus.textContent = "Lade Playlists…";
-  setDebug(debugSetup, "");
+async function pausePlayback(){
+  const deviceId = await getActiveDeviceId();
+  if (!deviceId) return;
+  await apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, {
+    method: "PUT",
+    timeoutMs: 12000
+  });
+}
+
+/* =========================
+   4) DATA MODEL
+   ========================= */
+const app = {
+  playlists: [],  // raw /me/playlists
+
+  // Players: [{id,name,playlistId,playlistName,tracks[],refYear,spanMin,spanMax,score}]
+  players: [],
+
+  // Track universe (unique by Spotify track ID), with owners list for playlistGuess
+  trackMap: new Map(), // trackId -> {id,uri,name,artists[],year,durationMs,owners:[playerId,...]}
+
+  // Global no duplicates
+  usedTrackIds: new Set(),
+
+  // Global deck for modes that draw from “any playlist”
+  globalDeck: [],
+
+  // Session configuration
+  config: {
+    mode: "timeline",
+    party: "rotate", // rotate | allguess
+    targetPoints: 15
+  },
+
+  // Turn state
+  state: {
+    round: 1,
+    turnIndex: 0,
+    phase: "idle",   // chooseRisk / ready / playing / answering / revealed
+    chosenRisk: null,// safe | wagnis | null
+    currentTrack: null,
+    currentSourcePlayerId: null, // whose playlist track was drawn from
+    isPlaying: false,
+    playTimer: null, // for 3-sec pause timer
+
+    // Mode-specific ephemeral state
+    timeline: { chosenSlot: 0 },
+    yearRange: { options: [], picks: new Map() },        // picks: playerId -> optionIndex
+    playlistGuess: { picks: new Map() },                 // picks: playerId -> guessedOwnerId
+    guessSong: { selfReport: {title:false, artist:false, year:false} },
+    quick3: { selfReport: {title:false, artist:false, year:false}, mode:"random" } // mode: intro | random
+  }
+};
+
+/* Helpers */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function yearFromReleaseDate(release_date){
+  if (!release_date) return null;
+  const y = parseInt(String(release_date).slice(0,4), 10);
+  if (!Number.isFinite(y)) return null;
+  const currentYear = new Date().getFullYear();
+  if (y < 1900 || y > currentYear) return null;
+  return y;
+}
+
+function calcYearStats(years){
+  const ys = years.filter(Number.isFinite).sort((a,b)=>a-b);
+  if (!ys.length) return {median:null, p10:null, p90:null};
+  const median = ys.length % 2 ? ys[(ys.length-1)/2] : Math.round((ys[ys.length/2-1]+ys[ys.length/2])/2);
+  const p = (q) => ys[Math.floor((ys.length-1)*q)];
+  return { median, p10: p(0.10), p90: p(0.90) };
+}
+
+/* Turn helpers */
+function currentPlayer(){ return app.players[app.state.turnIndex]; }
+function getPlayerName(id){ return app.players.find(p=>p.id===id)?.name || "Unbekannt"; }
+
+function nextTurn(){
+  app.state.turnIndex++;
+  if (app.state.turnIndex >= app.players.length){
+    app.state.turnIndex = 0;
+    app.state.round++;
+  }
+}
+
+/* =========================
+   5) PLAYLIST + TRACK LOADING
+   ========================= */
+async function loadMyPlaylists(){
+  $("playlistStatus").textContent = "Lade Playlists…";
+  setDebug("");
+
   const data = await apiFetch("https://api.spotify.com/v1/me/playlists?limit=50");
-  allPlaylists = data.items || [];
-  if(!allPlaylists.length){
-    setupStatus.textContent = "⚠️ Keine Playlists gefunden.";
-    setDebug(debugSetup, JSON.stringify(data, null, 2));
-    return;
-  }
-  setupStatus.innerHTML = `<span class="ok">✅ ${allPlaylists.length} Playlists geladen</span>`;
-  buildPlayerFields();
+  app.playlists = data.items || [];
+
+  $("playlistStatus").textContent = `✅ ${app.playlists.length} Playlists geladen`;
+  setDebug(JSON.stringify(app.playlists.map(p => ({name:p.name, id:p.id, total:p.tracks?.total})), null, 2));
+
+  refreshPlaylistDropdowns();
 }
 
-function buildPlayerFields(){
-  const count = parseInt(document.getElementById("playerCount").value, 10);
-  playersArea.innerHTML = "";
-  players = [];
-
-  for(let i=0;i<count;i++){
-    players.push({
-      name: `Spieler ${i+1}`,
-      playlistId: "",
-      tracks: [],
-      points: 0,
-      timeline: [],
-      referenceYear: null,
-      spanMin: null,
-      spanMax: null
-    });
-
-    const card = document.createElement("div");
-    card.className = "playerCard";
-    card.innerHTML = `
-      <h3>Spieler ${i+1}</h3>
-      <div class="row">
-        <input id="pname_${i}" type="text" placeholder="Name" value="${esc(players[i].name)}" style="min-width: 180px;">
-      </div>
-      <div class="row">
-        <select id="plist_${i}" style="min-width: 360px;">
-          <option value="">— Playlist wählen —</option>
-        </select>
-      </div>
-      <div class="muted" id="pinfo_${i}">Noch keine Playlist ausgewählt.</div>
-    `;
-    playersArea.appendChild(card);
-
-    const sel = card.querySelector(`#plist_${i}`);
-    allPlaylists.forEach(pl=>{
-      const opt = document.createElement("option");
-      opt.value = pl.id;
-      const total = (typeof pl.tracks?.total === "number") ? pl.tracks.total : "?";
-      opt.textContent = `${pl.name} (${total})`;
-      sel.appendChild(opt);
-    });
-
-    const nameInput = card.querySelector(`#pname_${i}`);
-    nameInput.addEventListener("input", ()=>{
-      players[i].name = nameInput.value.trim() || `Spieler ${i+1}`;
-      updateToLobbyEnabled();
-    });
-
-    sel.addEventListener("change", ()=>{
-      const playlistId = sel.value;
-      const oldTimer = playlistLoadTimers.get(i);
-      if(oldTimer) clearTimeout(oldTimer);
-
-      const timer = setTimeout(()=>{
-        autoLoadPlaylistForPlayer(i, playlistId).catch(e=>{
-          document.getElementById(`pinfo_${i}`).textContent = `❌ ${e.message}`;
-          updateToLobbyEnabled();
-        });
-      }, 550);
-
-      playlistLoadTimers.set(i, timer);
-    });
-  }
-
-  updateToLobbyEnabled();
-}
-
-async function loadAllPlaylistTracks(playlistId, label, signal){
+/**
+ * Load ALL tracks from playlist via /items pagination.
+ * We request only the fields we need. Includes duration_ms (for 3 seconds mode).
+ */
+async function loadAllTracksForPlaylist(playlistId){
+  const tracks = [];
   const limit = 100;
   let offset = 0;
-  let all = [];
+  let total = 999999;
 
-  while(true){
+  while(offset < total){
     const url =
       `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items` +
       `?limit=${limit}&offset=${offset}&market=from_token` +
-      `&fields=items(item(type,id,uri,name,artists(name),album(release_date))),next`;
+      `&fields=total,items(item(type,id,uri,name,duration_ms,artists(name),album(release_date)))`;
 
-    const data = await apiFetch(url, { signal });
+    const data = await apiFetch(url, {timeoutMs: 15000});
+    total = data.total ?? 0;
+
     const items = data.items || [];
+    for (const it of items){
+      const t = it?.item;
+      if (!t || t.type !== "track") continue;
 
-    const tracks = items
-      .map(x => x?.item ?? null)
-      .filter(t => t && t.type === "track")
-      .map(t => {
-        const year = ((t.album?.release_date || "").slice(0,4) || "?");
-        return ({
+      const year = yearFromReleaseDate(t.album?.release_date);
+      if (!year) continue;
+
+      tracks.push({
+        id: t.id,
+        uri: t.uri,
+        name: t.name,
+        artists: (t.artists || []).map(a => a.name),
+        year,
+        durationMs: typeof t.duration_ms === "number" ? t.duration_ms : null
+      });
+    }
+    offset += limit;
+    if (items.length === 0) break;
+  }
+
+  // Dedup by id inside playlist
+  const map = new Map();
+  for (const t of tracks) map.set(t.id, t);
+  return [...map.values()];
+}
+
+/* =========================
+   6) SETUP UI (players) + AUTO LOAD
+   ========================= */
+function buildPlayersConfig(){
+  const n = Math.max(1, Math.min(8, parseInt($("playerCountInput").value || "1", 10)));
+  $("playerCountInput").value = String(n);
+
+  const old = app.players;
+  app.players = [];
+
+  const wrap = document.createElement("div");
+  wrap.className = "box";
+  wrap.style.boxShadow = "none";
+  wrap.style.border = "1px dashed var(--line)";
+  wrap.innerHTML = `<div class="muted" style="margin-bottom:8px;">Spieler: Name + Playlist wählen (Tracks laden automatisch).</div>`;
+
+  for(let i=0;i<n;i++){
+    const prev = old[i] || {};
+    app.players.push({
+      id: crypto.randomUUID(),
+      name: prev.name || (i===0 ? "Spieler 1" : `Spieler ${i+1}`),
+      playlistId: prev.playlistId || "",
+      playlistName: prev.playlistName || "",
+      tracks: prev.tracks || [],
+      // mode data
+      score: 0,
+      timelineCards: [],     // only used in timeline mode
+      wrongTimeline: []      // list of wrong attempts in timeline mode
+    });
+
+    const p = app.players[i];
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.margin = "8px 0";
+    row.innerHTML = `
+      <span class="pill">#${i+1}</span>
+      <input data-role="name" data-pid="${p.id}" value="${escapeHtml(p.name)}" style="min-width:180px;">
+      <select data-role="playlist" data-pid="${p.id}" style="min-width:320px;">
+        <option value="">(Playlist wählen…)</option>
+      </select>
+      <span class="muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>
+    `;
+    wrap.appendChild(row);
+  }
+
+  $("playersConfig").innerHTML = "";
+  $("playersConfig").appendChild(wrap);
+
+  // name wiring
+  $("playersConfig").querySelectorAll('input[data-role="name"]').forEach(inp=>{
+    inp.addEventListener("input", ()=>{
+      const pid = inp.getAttribute("data-pid");
+      const p = app.players.find(x=>x.id===pid);
+      if (p) p.name = inp.value.trim() || "Spieler";
+      checkReadyToStart();
+    });
+  });
+
+  refreshPlaylistDropdowns();
+
+  // playlist change wiring (auto-load)
+  $("playersConfig").querySelectorAll('select[data-role="playlist"]').forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const pid = sel.getAttribute("data-pid");
+      const p = app.players.find(x=>x.id===pid);
+      if (!p) return;
+
+      const plId = sel.value;
+      p.playlistId = plId;
+      p.playlistName = app.playlists.find(x=>x.id===plId)?.name || "";
+
+      const statusEl = $("playersConfig").querySelector(`span[data-role="status"][data-pid="${pid}"]`);
+
+      if (!plId){
+        p.tracks = [];
+        statusEl.textContent = "noch nicht geladen";
+        rebuildTrackUniverse(); // keep consistent if someone unselects
+        checkReadyToStart();
+        return;
+      }
+
+      statusEl.textContent = "lade Tracks…";
+      try{
+        const tracks = await loadAllTracksForPlaylist(plId);
+        p.tracks = tracks;
+
+        // Show stats
+        const years = tracks.map(t=>t.year);
+        const stats = calcYearStats(years);
+        p.refYear = stats.median;
+        p.spanMin = stats.p10;
+        p.spanMax = stats.p90;
+
+        statusEl.innerHTML = `<span class="ok">✅ ${tracks.length} Tracks</span> <span class="muted">(Ref ${p.refYear ?? "?"}, ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`;
+      } catch(e){
+        statusEl.innerHTML = `<span class="bad">❌ ${escapeHtml(e.message)}</span>`;
+        p.tracks = [];
+      }
+
+      rebuildTrackUniverse();
+      checkReadyToStart();
+    });
+  });
+
+  rebuildTrackUniverse();
+  checkReadyToStart();
+}
+
+function refreshPlaylistDropdowns(){
+  const cfg = $("playersConfig");
+  if (!cfg) return;
+
+  cfg.querySelectorAll('select[data-role="playlist"]').forEach(sel=>{
+    const pid = sel.getAttribute("data-pid");
+    const p = app.players.find(x=>x.id===pid);
+    const current = p?.playlistId || "";
+
+    const opts = [`<option value="">(Playlist wählen…)</option>`];
+    for (const pl of app.playlists){
+      const total = (typeof pl.tracks?.total === "number") ? pl.tracks.total : "?";
+      opts.push(`<option value="${escapeHtml(pl.id)}" ${pl.id===current?"selected":""}>${escapeHtml(pl.name)} (${total})</option>`);
+    }
+    sel.innerHTML = opts.join("");
+  });
+}
+
+/**
+ * Build a unique track universe:
+ * - trackMap unique by track ID
+ * - owners[] list of players whose playlist contains the track
+ * This enables:
+ * - global No-Duplicates
+ * - playlistGuess correctness if track exists in multiple playlists (accept any owner)
+ */
+function rebuildTrackUniverse(){
+  app.trackMap = new Map();
+
+  for (const p of app.players){
+    for (const t of (p.tracks || [])){
+      if (!t?.id) continue;
+      if (!app.trackMap.has(t.id)){
+        app.trackMap.set(t.id, {
           id: t.id,
-          uri: t.uri || (t.id ? `spotify:track:${t.id}` : null),
+          uri: t.uri,
           name: t.name,
-          artists: (t.artists || []).map(a => a.name),
-          year
+          artists: t.artists,
+          year: t.year,
+          durationMs: t.durationMs,
+          owners: [p.id]
         });
-      })
-      .filter(t => t.uri && t.year !== "?")
-      .filter(t => {
-        const y = parseInt(t.year,10);
-        return !isNaN(y) && y <= NOW_YEAR;
+      } else {
+        const existing = app.trackMap.get(t.id);
+        if (!existing.owners.includes(p.id)) existing.owners.push(p.id);
+      }
+    }
+  }
+
+  // globalDeck will be created when game starts (fresh shuffled, excluding used)
+  app.globalDeck = [];
+}
+
+function checkReadyToStart(){
+  const okToken = !!storage.token;
+  const okPlayers = app.players.length >= 1 && app.players.every(p => p.name && p.playlistId && (p.tracks?.length||0) >= 5 && p.refYear);
+  $("startGameBtn").disabled = !(okToken && okPlayers);
+}
+
+/* =========================
+   7) GAME ENGINE (session + draw track + win)
+   ========================= */
+function resetSession(){
+  app.usedTrackIds = new Set();
+  app.globalDeck = shuffle([...app.trackMap.keys()]);
+
+  app.state.round = 1;
+  app.state.turnIndex = 0;
+  app.state.phase = "chooseRisk";
+  app.state.chosenRisk = null;
+  app.state.currentTrack = null;
+  app.state.currentSourcePlayerId = null;
+  app.state.isPlaying = false;
+  clearTimeout(app.state.playTimer);
+  app.state.playTimer = null;
+
+  // reset per player mode data + score
+  for (const p of app.players){
+    p.score = 0;
+    p.timelineCards = [];
+    p.wrongTimeline = [];
+  }
+
+  // reset mode ephemerals
+  app.state.timeline.chosenSlot = 0;
+  app.state.yearRange.options = [];
+  app.state.yearRange.picks = new Map();
+  app.state.playlistGuess.picks = new Map();
+  app.state.guessSong.selfReport = {title:false, artist:false, year:false};
+  app.state.quick3.selfReport = {title:false, artist:false, year:false};
+  app.state.quick3.mode = "random";
+}
+
+/**
+ * Global no-duplicates draw helper:
+ * Draw track IDs from a deck (array), skipping used.
+ * If deck empties, rebuild it from remaining unused.
+ */
+function drawFromDeck(deck){
+  while(deck.length){
+    const id = deck.pop();
+    if (!id) continue;
+    if (app.usedTrackIds.has(id)) continue;
+    app.usedTrackIds.add(id);
+    return app.trackMap.get(id) || null;
+  }
+
+  // rebuild from remaining unused
+  const remaining = [...app.trackMap.keys()].filter(id => !app.usedTrackIds.has(id));
+  const newDeck = shuffle(remaining);
+  deck.push(...newDeck);
+
+  while(deck.length){
+    const id = deck.pop();
+    if (!id) continue;
+    if (app.usedTrackIds.has(id)) continue;
+    app.usedTrackIds.add(id);
+    return app.trackMap.get(id) || null;
+  }
+
+  return null;
+}
+
+function anyTracksLeft(){
+  return app.usedTrackIds.size < app.trackMap.size;
+}
+
+/**
+ * Draw logic per “risk”:
+ * safe: from current player's own playlist
+ * wagnis: from a random other player's playlist
+ * For modes that do not use risk: we still draw from the current player's playlist (USP).
+ */
+function drawTrackForCurrentTurn({risk=null, forceFromAny=false} = {}){
+  const me = currentPlayer();
+
+  // Helper: draw from player playlist
+  function drawFromPlayer(p){
+    const ids = (p.tracks || []).map(t=>t.id).filter(Boolean);
+    const deck = shuffle(ids.filter(id => !app.usedTrackIds.has(id)));
+    // use drawFromDeck style but local deck
+    while(deck.length){
+      const id = deck.pop();
+      if (app.usedTrackIds.has(id)) continue;
+      app.usedTrackIds.add(id);
+      const track = app.trackMap.get(id) || null;
+      if (track) return {track, sourcePlayerId: p.id};
+    }
+    return null;
+  }
+
+  if (forceFromAny){
+    const track = drawFromDeck(app.globalDeck);
+    if (!track) return null;
+    // pick one owner as "source" (for playlistGuess)
+    const owners = track.owners || [];
+    const sourcePlayerId = owners.length ? owners[Math.floor(Math.random()*owners.length)] : me.id;
+    return {track, sourcePlayerId};
+  }
+
+  if (risk === "wagnis" && app.players.length >= 2){
+    const others = app.players.filter(p=>p.id!==me.id);
+    const src = others[Math.floor(Math.random()*others.length)];
+    const res = drawFromPlayer(src);
+    if (res) return res;
+    // fallback to any remaining
+    return anyTracksLeft() ? drawTrackForCurrentTurn({forceFromAny:true}) : null;
+  }
+
+  // default safe / no-risk: from own playlist
+  const res = drawFromPlayer(me);
+  if (res) return res;
+  return anyTracksLeft() ? drawTrackForCurrentTurn({forceFromAny:true}) : null;
+}
+
+function awardPoints(playerId, delta){
+  const p = app.players.find(x=>x.id===playerId);
+  if (!p) return;
+  p.score += delta;
+}
+
+function checkWinner(){
+  const target = app.config.targetPoints;
+  return app.players.find(p => p.score >= target) || null;
+}
+
+/* =========================
+   8) MODES
+   ========================= */
+const modes = {
+
+  /* ---------------------------------------------------------
+     TIMELINE MODE
+     - supports Safe/Wagnis
+     - player places the song by choosing an insertion slot
+     - correct if year fits between neighbors (equal years allowed)
+     --------------------------------------------------------- */
+  timeline: {
+    label: "Timeline (Einordnen)",
+    supportsRisk: true,
+    supportsAllGuess: false,
+
+    renderArea(){
+      const me = currentPlayer();
+      const chosenSlot = app.state.timeline.chosenSlot;
+
+      const slotCount = me.timelineCards.length + 1;
+      const slots = [];
+      for(let i=0;i<slotCount;i++){
+        slots.push(`<div class="slot ${i===chosenSlot?"active":""}" data-slot="${i}">+</div>`);
+      }
+
+      const cards = me.timelineCards.map(c => `
+        <div class="card">
+          <div class="year">${c.year}</div>
+          <div class="title">${escapeHtml(c.name)}</div>
+          <div class="artist">${escapeHtml(c.artists.join(", "))}</div>
+        </div>
+      `).join("");
+
+      const wrong = me.wrongTimeline.slice(-10).map(c => `
+        <div class="card bad">
+          <div class="year">${c.year}</div>
+          <div class="title">${escapeHtml(c.name)}</div>
+          <div class="artist">${escapeHtml(c.artists.join(", "))}</div>
+          <div class="muted">${escapeHtml(c.riskLabel)}</div>
+        </div>
+      `).join("");
+
+      $("modeAreaTitle").textContent = "Timeline";
+      $("modeArea").innerHTML = `
+        <div class="muted">Wähle einen Slot zwischen den Karten. Du kannst bis zum Reveal ändern.</div>
+        <div class="slotRow" id="timelineSlots">${slots.join("")}</div>
+        <div class="timelineLine" id="timelineCards">${cards || '<span class="muted">Noch keine Karten.</span>'}</div>
+        <div class="box" style="margin-top:12px;">
+          <h2>Falsch geraten (bleibt sichtbar)</h2>
+          <div class="row">${wrong || '<span class="muted">Noch keine falschen Songs.</span>'}</div>
+        </div>
+      `;
+
+      // slot click wiring
+      $("timelineSlots").querySelectorAll("[data-slot]").forEach(el=>{
+        el.addEventListener("click", ()=>{
+          if (app.state.phase !== "placing") return;
+          app.state.timeline.chosenSlot = parseInt(el.getAttribute("data-slot"), 10);
+          modes.timeline.renderArea();
+        });
       });
 
-    all.push(...tracks);
-    loadProgress.textContent = `Lade Tracks: ${label} … ${all.length}`;
-    offset += limit;
+      // ensure default slot if empty timeline
+      if (me.timelineCards.length === 0) app.state.timeline.chosenSlot = 0;
+    },
 
-    if(!data.next || items.length === 0) break;
-  }
+    isPlacementCorrect(year){
+      const me = currentPlayer();
+      const i = app.state.timeline.chosenSlot;
+      const left = (i-1>=0) ? me.timelineCards[i-1]?.year : null;
+      const right = (i<me.timelineCards.length) ? me.timelineCards[i]?.year : null;
+      if (left!==null && year < left) return false;
+      if (right!==null && year > right) return false;
+      return true;
+    },
 
-  const m = new Map();
-  all.forEach(t => m.set(t.uri, t));
-  return Array.from(m.values());
-}
+    onReveal(){
+      const me = currentPlayer();
+      const t = app.state.currentTrack;
+      const correct = modes.timeline.isPlacementCorrect(t.year);
 
-async function autoLoadPlaylistForPlayer(playerIndex, playlistId){
-  const player = players[playerIndex];
-  const infoEl = document.getElementById(`pinfo_${playerIndex}`);
+      // scoring by risk
+      const risk = app.state.chosenRisk || "safe";
+      const riskLabel = (risk==="safe")
+        ? `Safe (+1/0) · Quelle: ${me.name}`
+        : `Wagnis (+2/-1) · Quelle: ${getPlayerName(app.state.currentSourcePlayerId)}`;
 
-  player.playlistId = playlistId;
-  player.tracks = [];
+      if (risk==="safe"){
+        awardPoints(me.id, correct ? 1 : 0);
+      } else {
+        awardPoints(me.id, correct ? 2 : -1);
+      }
 
-  if(!playlistId){
-    infoEl.textContent = "Noch keine Playlist ausgewählt.";
-    updateToLobbyEnabled();
-    return;
-  }
+      if (correct){
+        me.timelineCards.splice(app.state.timeline.chosenSlot, 0, t);
+      } else {
+        me.wrongTimeline.push({...t, riskLabel});
+      }
 
-  if(playlistTracksCache.has(playlistId)){
-    player.tracks = playlistTracksCache.get(playlistId);
-    infoEl.textContent = `✅ Tracks bereit (Cache): ${player.tracks.length}`;
-    updateToLobbyEnabled();
-    return;
-  }
-
-  const prev = playlistLoadControllers.get(playerIndex);
-  if(prev) prev.abort();
-
-  const ctrl = new AbortController();
-  playlistLoadControllers.set(playerIndex, ctrl);
-
-  infoEl.textContent = "⏳ Lade Tracks…";
-
-  try{
-    const label = player.name || `Spieler ${playerIndex+1}`;
-    const tracks = await loadAllPlaylistTracks(playlistId, label, ctrl.signal);
-
-    playlistTracksCache.set(playlistId, tracks);
-
-    if(player.playlistId === playlistId){
-      player.tracks = tracks;
-      infoEl.textContent = `✅ Tracks geladen: ${tracks.length}`;
+      return {correct, headline: correct ? "✅ RICHTIG" : "❌ FALSCH", detail: riskLabel};
     }
-  }catch(e){
-    if(String(e.message).includes("Abgebrochen")){
-      infoEl.textContent = "↪️ Wechsel erkannt…";
-    }else{
-      infoEl.textContent = `❌ Fehler: ${e.message}`;
+  },
+
+  /* ---------------------------------------------------------
+     GUESS SONG MODE
+     - USP-heavy: plays from own playlist (no risk)
+     - player self-reports which parts were correct (title/artist/year)
+     --------------------------------------------------------- */
+  guessSong: {
+    label: "Song raten (Titel/Interpret/Jahr)",
+    supportsRisk: false,
+    supportsAllGuess: false,
+
+    renderArea(){
+      $("modeAreaTitle").textContent = "Song raten";
+      $("modeArea").innerHTML = `
+        <div class="muted">Du hörst den Song. Dann klickst du bei Reveal an, was du richtig hattest. (Titel=1, Interpret=1, Jahr=1)</div>
+        <div class="box" style="margin-top:12px;">
+          <div class="muted">Bei Reveal erscheint die Lösung + Selbst-Check.</div>
+        </div>
+      `;
+    },
+
+    onReveal(){
+      // self-report UI will be rendered in reveal box
+      return {correct: null, headline: "Auflösung", detail: "Punkte per Selbst-Check"};
+    },
+
+    renderRevealExtras(){
+      const me = currentPlayer();
+      const t = app.state.currentTrack;
+
+      $("revealExtra").innerHTML = `
+        <div class="box" style="box-shadow:none;">
+          <h2>Selbst-Check</h2>
+          <div class="muted">Hake an, was du korrekt genannt hast:</div>
+          <div class="row" style="margin-top:8px;">
+            <label><input type="checkbox" id="chkTitle"> Titel (1)</label>
+            <label><input type="checkbox" id="chkArtist"> Interpret (1)</label>
+            <label><input type="checkbox" id="chkYear"> Jahr (1)</label>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <button id="confirmGuessPtsBtn" class="primary">Punkte bestätigen</button>
+            <span class="muted" id="guessPtsStatus"></span>
+          </div>
+        </div>
+      `;
+
+      $("confirmGuessPtsBtn").onclick = ()=>{
+        const pts =
+          ($("chkTitle").checked ? 1 : 0) +
+          ($("chkArtist").checked ? 1 : 0) +
+          ($("chkYear").checked ? 1 : 0);
+        awardPoints(me.id, pts);
+        $("guessPtsStatus").innerHTML = `<span class="ok">+${pts} Punkte</span>`;
+        renderScoreTable();
+        // prevent double-award
+        $("confirmGuessPtsBtn").disabled = true;
+      };
     }
-  }finally{
-    updateToLobbyEnabled();
+  },
+
+  /* ---------------------------------------------------------
+     QUICK 3 MODE
+     - plays only 3 seconds (intro or random)
+     - then reveal + self report like guessSong
+     --------------------------------------------------------- */
+  quick3: {
+    label: "3-Sekunden Challenge",
+    supportsRisk: false,
+    supportsAllGuess: false,
+
+    renderArea(){
+      $("modeAreaTitle").textContent = "3-Sekunden Challenge";
+      $("modeArea").innerHTML = `
+        <div class="muted">Der Song läuft nur 3 Sekunden. Variante: Intro oder Random.</div>
+        <div class="row" style="margin-top:10px;">
+          <label><b>Start</b></label>
+          <select id="quick3StartSelect">
+            <option value="intro">Intro (0–3s)</option>
+            <option value="random" selected>Random (ab ca. 30s)</option>
+          </select>
+          <span class="muted">Bei Random wird eine Stelle im Song gewählt.</span>
+        </div>
+      `;
+
+      $("quick3StartSelect").onchange = ()=>{
+        app.state.quick3.mode = $("quick3StartSelect").value;
+      };
+    },
+
+    async onReadyPlay(){
+      // schedule auto stop after 3 seconds
+      clearTimeout(app.state.playTimer);
+      app.state.playTimer = setTimeout(async ()=>{
+        try { await pausePlayback(); } catch {}
+        app.state.isPlaying = false;
+        $("playToggleBtn").textContent = "▶️ Play";
+      }, 3000);
+    },
+
+    onReveal(){
+      return {correct: null, headline: "Auflösung", detail: "Punkte per Selbst-Check"};
+    },
+
+    renderRevealExtras(){
+      // same as guessSong
+      modes.guessSong.renderRevealExtras();
+    }
+  },
+
+  /* ---------------------------------------------------------
+     YEAR RANGE MODE (Multiple Choice)
+     - Shows 4 contiguous buckets that include the correct year bucket
+     - Buckets can be: decade | 5y | 2y | 1y
+     - Party option:
+       - rotate: only active player chooses
+       - allguess: each player picks; reveal when all picked
+     --------------------------------------------------------- */
+  yearRange: {
+    label: "Zeitraum raten (MC)",
+    supportsRisk: false,     // keep USP: own playlist by default
+    supportsAllGuess: true,
+
+    renderArea(){
+      $("modeAreaTitle").textContent = "Zeitraum raten";
+      $("modeArea").innerHTML = `
+        <div class="muted">Du hörst den Song und wählst den richtigen Zeitraum (4 Optionen, zusammenhängend).</div>
+        <div class="row" style="margin-top:10px;">
+          <label><b>Raster</b></label>
+          <select id="rangeStepSelect">
+            <option value="10">Jahrzehnt</option>
+            <option value="5">5-Jahres-Blöcke</option>
+            <option value="2">2-Jahres-Blöcke</option>
+            <option value="1">Exaktes Jahr</option>
+          </select>
+          <span class="muted">Optionen werden immer aufsteigend angezeigt.</span>
+        </div>
+        <div class="box" style="margin-top:12px;">
+          <h2>Auswahl</h2>
+          <div id="yearChoices"></div>
+          <div id="allGuessPanel" style="margin-top:10px;"></div>
+        </div>
+      `;
+
+      // default
+      $("rangeStepSelect").value = "10";
+      $("rangeStepSelect").onchange = ()=>{
+        // regenerate options after song exists (at next Ready)
+      };
+    },
+
+    buildOptionsForYear(year, step){
+      const currentYear = new Date().getFullYear();
+      const clampYear = (y)=>Math.min(currentYear, Math.max(1900, y));
+
+      // map year -> bucket start
+      const bucketStart = (y)=>{
+        if (step === 10) return Math.floor(y/10)*10;
+        if (step === 5) return Math.floor(y/5)*5;
+        if (step === 2) return Math.floor(y/2)*2;
+        return y; // step 1
+      };
+
+      const start = bucketStart(year);
+
+      // choose a contiguous window of 4 buckets that contains 'start'
+      // We randomize offset within [0..3] so correct bucket isn't always middle.
+      const offset = Math.floor(Math.random()*4); // correct bucket will be at index = offset
+      let windowStart = start - offset*step;
+
+      // clamp window so it doesn't exceed current year bucket too far
+      // ensure last bucket start <= currentYear bucketStart
+      const maxStart = bucketStart(currentYear);
+      const last = windowStart + 3*step;
+      if (last > maxStart){
+        windowStart -= (last - maxStart);
+        windowStart = bucketStart(windowStart); // re-align
+      }
+
+      // build buckets
+      const buckets = [];
+      for(let i=0;i<4;i++){
+        const s = clampYear(windowStart + i*step);
+        const e = clampYear(step===1 ? s : (s + step - 1));
+        buckets.push({start:s, end:e});
+      }
+
+      // ensure monotonic ascending after clamping
+      buckets.sort((a,b)=>a.start-b.start);
+
+      // correct bucket index after sort:
+      const correctStart = bucketStart(year);
+      const correctIdx = buckets.findIndex(b => b.start === correctStart);
+
+      return {buckets, correctIdx};
+    },
+
+    renderChoices({buckets, correctIdx}){
+      const step = parseInt($("rangeStepSelect").value, 10);
+
+      const labelBucket = (b)=>{
+        if (step === 10) return `${b.start}er`;
+        if (step === 1) return `${b.start}`;
+        return `${b.start}–${b.end}`;
+      };
+
+      const html = `
+        <div class="choiceGrid">
+          ${buckets.map((b,i)=>`<button class="choiceBtn" data-choice="${i}">${labelBucket(b)}</button>`).join("")}
+        </div>
+        <div class="muted" style="margin-top:8px;">Wähle eine Option. Reveal wird je nach Modus freigeschaltet.</div>
+      `;
+      $("yearChoices").innerHTML = html;
+
+      // picks reset
+      app.state.yearRange.picks = new Map();
+
+      if (app.config.party === "rotate"){
+        // active player picks (single)
+        $("yearChoices").querySelectorAll("[data-choice]").forEach(btn=>{
+          btn.onclick = ()=>{
+            $("yearChoices").querySelectorAll(".choiceBtn").forEach(x=>x.classList.remove("selected"));
+            btn.classList.add("selected");
+            app.state.yearRange.picks.set(currentPlayer().id, parseInt(btn.getAttribute("data-choice"),10));
+            $("revealBtn").disabled = false;
+          };
+        });
+        $("allGuessPanel").innerHTML = `<span class="muted">Reihum: nur der aktive Spieler wählt.</span>`;
+      } else {
+        // all-guess: each player needs a pick
+        $("revealBtn").disabled = true;
+        renderAllGuessPicker({
+          containerId: "allGuessPanel",
+          players: app.players,
+          onPick: (playerId, choiceIdx)=>{
+            app.state.yearRange.picks.set(playerId, choiceIdx);
+            // enable reveal when all players picked
+            if (app.state.yearRange.picks.size === app.players.length){
+              $("revealBtn").disabled = false;
+            }
+          },
+          choiceCount: buckets.length
+        });
+      }
+
+      // store for reveal
+      app.state.yearRange.options = buckets;
+      app.state.yearRange.correctIdx = correctIdx;
+    },
+
+    onReveal(){
+      const me = currentPlayer();
+      const correctIdx = app.state.yearRange.correctIdx;
+
+      if (app.config.party === "rotate"){
+        const pick = app.state.yearRange.picks.get(me.id);
+        const correct = (pick === correctIdx);
+        awardPoints(me.id, correct ? 1 : 0);
+        return {correct, headline: correct ? "✅ RICHTIG" : "❌ FALSCH", detail: "1 Punkt bei richtig"};
+      } else {
+        // all-guess scoring: each player gets 1 if correct
+        let anyCorrect = false;
+        for (const p of app.players){
+          const pick = app.state.yearRange.picks.get(p.id);
+          const correct = (pick === correctIdx);
+          if (correct){ awardPoints(p.id, 1); anyCorrect = true; }
+        }
+        return {correct: anyCorrect, headline: "Auflösung", detail: "Alle erhalten 1 Punkt bei richtig"};
+      }
+    }
+  },
+
+  /* ---------------------------------------------------------
+     PLAYLIST GUESS MODE
+     - We draw from ANY playlist (global deck), still "our songs", but identity game
+     - Correct if guessed owner is among track.owners (handles duplicates across playlists)
+     - Party option:
+       - rotate: active player guesses
+       - allguess: everyone guesses, points for correct
+     --------------------------------------------------------- */
+  playlistGuess: {
+    label: "Welche Playlist ist das?",
+    supportsRisk: false,
+    supportsAllGuess: true,
+
+    renderArea(){
+      $("modeAreaTitle").textContent = "Welche Playlist ist das?";
+      $("modeArea").innerHTML = `
+        <div class="muted">Song kommt aus einer der Playlists. Wer rät, aus wessen Playlist er stammt?</div>
+        <div class="box" style="margin-top:12px;">
+          <h2>Tippen</h2>
+          <div id="plGuessPanel"></div>
+          <div class="muted" style="margin-top:8px;">Wenn ein Song in mehreren Playlists vorkommt, zählen alle passenden als richtig.</div>
+        </div>
+      `;
+    },
+
+    renderGuessUI(){
+      const container = $("plGuessPanel");
+      container.innerHTML = "";
+
+      const ownerButtons = app.players.map(p=>({id:p.id, label:p.name}));
+
+      app.state.playlistGuess.picks = new Map();
+
+      if (app.config.party === "rotate"){
+        container.innerHTML = `
+          <div class="choiceGrid">
+            ${ownerButtons.map(o=>`<button class="choiceBtn" data-owner="${o.id}">${escapeHtml(o.label)}</button>`).join("")}
+          </div>
+        `;
+        container.querySelectorAll("[data-owner]").forEach(btn=>{
+          btn.onclick = ()=>{
+            container.querySelectorAll(".choiceBtn").forEach(x=>x.classList.remove("selected"));
+            btn.classList.add("selected");
+            app.state.playlistGuess.picks.set(currentPlayer().id, btn.getAttribute("data-owner"));
+            $("revealBtn").disabled = false;
+          };
+        });
+      } else {
+        $("revealBtn").disabled = true;
+        renderAllGuessPickerOwners({
+          container,
+          players: app.players,
+          ownerChoices: ownerButtons,
+          onPick: (playerId, ownerId)=>{
+            app.state.playlistGuess.picks.set(playerId, ownerId);
+            if (app.state.playlistGuess.picks.size === app.players.length){
+              $("revealBtn").disabled = false;
+            }
+          }
+        });
+      }
+    },
+
+    onReveal(){
+      const t = app.state.currentTrack;
+      const validOwners = new Set(t.owners || []);
+
+      if (app.config.party === "rotate"){
+        const me = currentPlayer();
+        const pick = app.state.playlistGuess.picks.get(me.id);
+        const correct = validOwners.has(pick);
+        awardPoints(me.id, correct ? 1 : 0);
+        return {correct, headline: correct ? "✅ RICHTIG" : "❌ FALSCH", detail: "1 Punkt bei richtig"};
+      } else {
+        let anyCorrect = false;
+        for (const p of app.players){
+          const pick = app.state.playlistGuess.picks.get(p.id);
+          const correct = validOwners.has(pick);
+          if (correct){ awardPoints(p.id, 1); anyCorrect = true; }
+        }
+        return {correct: anyCorrect, headline: "Auflösung", detail: "Alle erhalten 1 Punkt bei richtig"};
+      }
+    }
   }
-}
+};
 
-/* ========== Lobby ========== */
-function setActiveMode(mode){
-  lobby.mode = mode;
-  Object.keys(modeCards).forEach(k => modeCards[k].classList.toggle("active", k === mode));
-  setDebug(debugLobby, JSON.stringify({mode:lobby.mode}, null, 2));
-}
-function openLobby(){
-  showScreen("lobby");
-  setDebug(debugLobby, JSON.stringify({
-    players: players.map(p=>({name:p.name, tracks:p.tracks.length})),
-    lobby
-  }, null, 2));
-}
-
-/* ========== Reference (Ø + Spanne) ========== */
-function initReferenceYearsAndSpan(){
-  players.forEach(p=>{
-    const years = p.tracks
-      .map(t => parseInt(t.year,10))
-      .filter(y => !isNaN(y) && y <= NOW_YEAR);
-
-    const minY = years.length ? Math.min(...years) : 2000;
-    const maxY = years.length ? Math.max(...years) : 2000;
-    const avg  = years.length ? (years.reduce((a,b)=>a+b,0) / years.length) : 2000;
-
-    p.referenceYear = Math.round(avg);
-    p.spanMin = minY;
-    p.spanMax = maxY;
-
-    p.timeline = [{
-      year: String(p.referenceYear),
-      title: "Startjahr",
-      artist: `Spanne: ${p.spanMin}–${p.spanMax}`,
-      isReference: true
-    }];
-  });
-}
-
-function showReferenceIntro(){
-  clearReveal();
-  revealBox.classList.add("good");
-  revealTitle.textContent = "Start-Referenz (pro Spieler)";
-  revealMeta.textContent = "Startjahr = Durchschnitt der Playlist-Jahre · Spanne = min–max";
-  answersBox.innerHTML = "";
-
-  players.forEach(p=>{
-    const row = document.createElement("div");
-    row.className = "ansRow good";
-    row.innerHTML = `
-      <div class="name">${esc(p.name)}</div>
-      <div class="muted">
-        Startjahr: <b>${esc(p.referenceYear)}</b> · Spanne: <b>${esc(p.spanMin)}–${esc(p.spanMax)}</b>
+/* Helper: render “all guess” picker for yearRange (each player chooses 0..n-1) */
+function renderAllGuessPicker({containerId, players, onPick, choiceCount}){
+  const container = $(containerId);
+  const rows = players.map(p=>{
+    const choices = [];
+    for(let i=0;i<choiceCount;i++){
+      choices.push(`<span class="mini" data-pid="${p.id}" data-choice="${i}">${i+1}</span>`);
+    }
+    return `
+      <div class="row" style="margin:8px 0;">
+        <span class="pill">${escapeHtml(p.name)}</span>
+        <div class="miniPick" data-row="${p.id}">${choices.join("")}</div>
       </div>
     `;
-    answersBox.appendChild(row);
-  });
+  }).join("");
+  container.innerHTML = `
+    <div class="muted"><b>Alle raten:</b> Jeder wählt eine Option (1–${choiceCount}). Reveal erst wenn alle gewählt haben.</div>
+    ${rows}
+  `;
 
-  // Wichtig: In Intro KEIN Safe/Wagnis
-  safeWagnisUI.classList.add("hidden");
-  safeWagnisHint.classList.add("hidden");
-
-  playPauseBtn.disabled = true;
-  revealBtn.disabled = true;
-  nextBtn.disabled = false;
-
-  turnHint.textContent = "Start-Setup";
-  turnName.textContent = "WEITER → Spiel startet";
-  infoPill.textContent = "Referenz zählt NICHT als Runde";
-}
-
-/* ========== Game UI ========== */
-function renderScoreboard(){
-  scoreBoard.innerHTML = "";
-  players.forEach((p, idx)=>{
-    const el = document.createElement("div");
-    el.className = "scoreItem" + (idx===game.currentPlayerIndex ? " active" : "");
-    el.innerHTML = `<b>${esc(p.name)}</b><div class="muted">${p.points} Punkte</div>`;
-    scoreBoard.appendChild(el);
-  });
-}
-
-function renderTimelineUI(){
-  timelineRow.innerHTML = "";
-  const p = currentPlayer();
-  const slotCount = p.timeline.length + 1;
-
-  for(let i=0;i<slotCount;i++){
-    const slot = document.createElement("button");
-    slot.className = "slotBtn" + (i===game.pendingInsertIndex ? " active" : "");
-    slot.textContent = "＋";
-    slot.onclick = ()=>{
-      if(game.revealed) return;
-      // Slotwahl ist erst sinnvoll nach Songstart, aber erlauben wir trotzdem
-      game.pendingInsertIndex = i;
-      renderTimelineUI();
+  container.querySelectorAll("[data-choice]").forEach(el=>{
+    el.onclick = ()=>{
+      const pid = el.getAttribute("data-pid");
+      const idx = parseInt(el.getAttribute("data-choice"),10);
+      // highlight within that row
+      const row = container.querySelector(`[data-row="${pid}"]`);
+      row.querySelectorAll(".mini").forEach(x=>x.classList.remove("selected"));
+      el.classList.add("selected");
+      onPick(pid, idx);
     };
-    timelineRow.appendChild(slot);
+  });
+}
 
-    if(i < p.timeline.length){
-      const card = p.timeline[i];
-      const el = document.createElement("div");
-      el.className = "tCard";
-      el.innerHTML = `
-        <div class="y">${esc(card.year)}</div>
-        <div class="s">${esc(card.title)}</div>
-        <div class="a">${esc(card.artist)}</div>
-      `;
-      timelineRow.appendChild(el);
-    }
+/* Helper: render all-guess for playlist owners */
+function renderAllGuessPickerOwners({container, players, ownerChoices, onPick}){
+  container.innerHTML = `<div class="muted"><b>Alle raten:</b> Jeder wählt einen Spieler. Reveal erst wenn alle gewählt haben.</div>`;
+  for (const p of players){
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.margin = "8px 0";
+    row.innerHTML = `
+      <span class="pill">${escapeHtml(p.name)}</span>
+      <div class="miniPick" data-row="${p.id}">
+        ${ownerChoices.map(o=>`<span class="mini" data-pid="${p.id}" data-owner="${o.id}">${escapeHtml(o.label)}</span>`).join("")}
+      </div>
+    `;
+    container.appendChild(row);
   }
+
+  container.querySelectorAll("[data-owner]").forEach(el=>{
+    el.onclick = ()=>{
+      const pid = el.getAttribute("data-pid");
+      const owner = el.getAttribute("data-owner");
+      const row = container.querySelector(`[data-row="${pid}"]`);
+      row.querySelectorAll(".mini").forEach(x=>x.classList.remove("selected"));
+      el.classList.add("selected");
+      onPick(pid, owner);
+    };
+  });
+}
+
+/* =========================
+   9) UI RENDERING (shared)
+   ========================= */
+function refreshConnStatus(){
+  $("connStatus").innerHTML = storage.token
+    ? `<span class="ok">✅ Verbunden</span> <span class="muted">(${escapeHtml(storage.scope || "scopes?")})</span>`
+    : `<span class="bad">❌ Nicht verbunden</span>`;
+  checkReadyToStart();
+}
+
+function renderModeHints(){
+  const mode = $("modeSelect").value;
+  const party = $("partySelect").value;
+
+  const m = modes[mode];
+  $("modeHint").textContent = m ? m.label : "";
+  $("partyHint").textContent = (party==="rotate")
+    ? "Reihum ist immer möglich."
+    : "Alle raten gleichzeitig (nur bei Zeitraum/Playlist sinnvoll).";
+
+  // risk is only for timeline (by design here)
+  $("riskRow").style.display = (m && m.supportsRisk) ? "" : "none";
+}
+
+function renderReferenceScreen(){
+  const grid = $("referenceGrid");
+  grid.innerHTML = "";
+  for (const p of app.players){
+    const year = p.refYear ?? "?";
+    const span = (p.spanMin && p.spanMax) ? `${p.spanMin}–${p.spanMax}` : "?";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="muted">${escapeHtml(p.name)}</div>
+      <div class="year" style="font-size:30px;">${year}</div>
+      <div class="muted">typische Spanne: ${span}</div>
+      <div class="muted" style="margin-top:6px;">Playlist: ${escapeHtml(p.playlistName || "(unbekannt)")}</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+function renderScoreTable(){
+  const rows = [];
+  rows.push(`<tr><th>Spieler</th><th>Punkte</th><th>Ref</th><th>Spanne</th></tr>`);
+  for (const p of app.players){
+    const span = (p.spanMin && p.spanMax) ? `${p.spanMin}–${p.spanMax}` : "–";
+    rows.push(`<tr>
+      <td>${escapeHtml(p.name)}</td>
+      <td><b>${p.score}</b> / ${app.config.targetPoints}</td>
+      <td>${p.refYear ?? "?"}</td>
+      <td>${span}</td>
+    </tr>`);
+  }
+  $("scoreTable").innerHTML = rows.join("");
+}
+
+function renderHeader(){
+  const me = currentPlayer();
+  $("gameModeLabel").textContent = modes[app.config.mode]?.label || app.config.mode;
+  $("gameModeSub").textContent =
+    app.config.party === "rotate" ? "Reihum" : "Alle raten";
+
+  $("roundLabel").textContent = `Runde ${app.state.round}`;
+  $("turnPlayerName").textContent = me.name;
+  $("turnInfo").textContent = `Ref: ${me.refYear ?? "?"} · Ziel: ${app.config.targetPoints}`;
+  $("globalUsedLabel").textContent = String(app.usedTrackIds.size);
 }
 
 function resetTurnUI(){
-  clearReveal();
-  game.revealed = false;
-  game.currentSong = null;
-  game.pendingInsertIndex = 0;
-  game.choice = null;
-  game.sourcePlayerIndex = game.currentPlayerIndex;
+  $("revealBox").style.display = "none";
+  $("revealText").innerHTML = "";
+  $("revealExtra").innerHTML = "";
 
-  playPauseBtn.disabled = true;
-  playPauseBtn.textContent = "▶️ Play";
-  revealBtn.disabled = true;
-  nextBtn.disabled = true;
+  $("readyBtn").disabled = true;
+  $("playToggleBtn").disabled = true;
+  $("revealBtn").disabled = true;
+  $("nextBtn").disabled = true;
+  $("playToggleBtn").textContent = "▶️ Play";
 
-  // Safe/Wagnis default: sichtbar nur in Timeline & NICHT im Intro
-  safeWagnisUI.classList.add("hidden");
-  safeWagnisHint.classList.add("hidden");
-}
+  clearTimeout(app.state.playTimer);
+  app.state.playTimer = null;
 
-/* ========== Timeline Rules ========== */
-function correctTimelinePositions(timelineYears, y){
-  const correct = [];
-  for(let i=0;i<=timelineYears.length;i++){
-    const leftOK  = (i===0) ? true : timelineYears[i-1] <= y;
-    const rightOK = (i===timelineYears.length) ? true : y <= timelineYears[i];
-    if(leftOK && rightOK) correct.push(i);
+  app.state.isPlaying = false;
+  app.state.currentTrack = null;
+  app.state.currentSourcePlayerId = null;
+
+  // risk UI
+  const m = modes[app.config.mode];
+  $("riskBox").style.display = (m && m.supportsRisk) ? "" : "none";
+  app.state.chosenRisk = null;
+
+  if (m && m.supportsRisk){
+    $("safeBtn").disabled = false;
+    $("wagnisBtn").disabled = false;
+    $("riskHint").textContent = "Wähle Safe oder Wagnis, dann “Bereit!”.";
   }
-  return correct;
+
+  // Flow hint by mode
+  $("turnFlowHint").textContent = buildFlowHint();
+
+  // Render mode area
+  m?.renderArea?.();
+
+  // For modes that need pre-reveal UI refreshed after Ready, they do it then.
+  renderHeader();
+  renderScoreTable();
+
+  // Enable Ready depending on whether risk is needed
+  if (m && m.supportsRisk){
+    $("readyBtn").disabled = true;
+  } else {
+    $("readyBtn").disabled = false; // no risk needed
+  }
 }
 
-function pickSourcePlayerIndexForWagnis(){
-  const others = players.map((_,idx)=>idx).filter(i=>i !== game.currentPlayerIndex);
-  return others[Math.floor(Math.random() * others.length)];
+function buildFlowHint(){
+  const mode = app.config.mode;
+  if (mode === "timeline"){
+    return "Ablauf: Safe/Wagnis → Bereit (Song startet) → Slot wählen → Reveal → Weiter";
+  }
+  if (mode === "yearRange"){
+    return app.config.party === "allguess"
+      ? "Ablauf: Bereit (Song startet) → alle wählen → Reveal → Weiter"
+      : "Ablauf: Bereit (Song startet) → wählen → Reveal → Weiter";
+  }
+  if (mode === "playlistGuess"){
+    return app.config.party === "allguess"
+      ? "Ablauf: Bereit (Song startet) → alle tippen → Reveal → Weiter"
+      : "Ablauf: Bereit (Song startet) → tippen → Reveal → Weiter";
+  }
+  if (mode === "quick3"){
+    return "Ablauf: Bereit (3 Sekunden) → Reveal → Selbst-Check → Weiter";
+  }
+  return "Ablauf: Bereit → Reveal → Selbst-Check → Weiter";
 }
 
-/* ========== Turn flow ========== */
-async function beginTurn(){
-  resetTurnUI();
-  showModePanels();
-  renderScoreboard();
+/* =========================
+   10) TURN ACTIONS (Ready / PlayToggle / Reveal / Next)
+   ========================= */
+function selectRisk(risk){
+  app.state.chosenRisk = risk;
+  $("readyBtn").disabled = false;
+  $("riskHint").textContent = risk==="safe"
+    ? "Safe: Song aus deiner Playlist."
+    : "Wagnis: Song aus einer anderen Playlist (+2/-1).";
+}
 
-  modePill.textContent = lobby.mode === "timeline" ? "Timeline" : lobby.mode;
-  roundPill.textContent = `Runde ${game.roundIndex}/${lobby.roundsTotal}`;
-  infoPill.textContent = `Zug: ${game.turnIndex+1}`;
+async function onReady(){
+  const mode = app.config.mode;
+  const m = modes[mode];
 
-  turnHint.textContent = "Du bist dran:";
-  turnName.textContent = currentPlayer().name;
+  // Choose source
+  let draw;
+  if (mode === "playlistGuess"){
+    // playlistGuess draws from ANY playlist (otherwise it’s pointless)
+    draw = drawTrackForCurrentTurn({forceFromAny:true});
+  } else if (m && m.supportsRisk){
+    draw = drawTrackForCurrentTurn({risk: app.state.chosenRisk || "safe"});
+  } else {
+    // keep USP: draw from own playlist
+    draw = drawTrackForCurrentTurn({risk: "safe"});
+  }
 
-  if(lobby.mode !== "timeline"){
-    revealTitle.textContent = "Modus noch nicht ausgebaut";
-    revealMeta.textContent = "Timeline funktioniert. Diese Modi sind Platzhalter.";
-    nextBtn.disabled = false;
+  if (!draw || !draw.track){
+    finishGame(null, "Keine Songs mehr übrig.");
     return;
   }
 
-  // Timeline Panel
-  panel_timeline.classList.remove("hidden");
-  renderTimelineUI();
+  const t = draw.track;
+  app.state.currentTrack = t;
+  app.state.currentSourcePlayerId = draw.sourcePlayerId;
 
-  // JETZT: Safe/Wagnis anzeigen (ab erstem echten Turn, nicht Intro)
-  safeWagnisUI.classList.remove("hidden");
-  safeWagnisHint.classList.remove("hidden");
+  // Phase
+  app.state.phase = "placing";
+  $("readyBtn").disabled = true;
+  $("playToggleBtn").disabled = false;
+  $("revealBtn").disabled = false;
+  $("nextBtn").disabled = true;
 
-  revealTitle.textContent = "Wähle SAFE oder WAGNIS";
-  revealMeta.textContent = "Song startet sofort nach deiner Wahl.";
-
-  // Buttons aktivieren
-  safeBtn.disabled = false;
-  wagnisBtn.disabled = false;
-
-  // Reveal erst nach Auswahl/Songstart
-  revealBtn.disabled = true;
-  playPauseBtn.disabled = true;
-}
-
-async function startSongWithChoice(choice){
-  if(game.currentSong || game.revealed) return;
-
-  game.choice = choice;
-
-  // Quelle bestimmen
-  if(choice === "safe"){
-    game.sourcePlayerIndex = game.currentPlayerIndex;
-  }else{
-    game.sourcePlayerIndex = pickSourcePlayerIndexForWagnis();
+  // lock risk buttons after Ready
+  if (m && m.supportsRisk){
+    $("safeBtn").disabled = true;
+    $("wagnisBtn").disabled = true;
   }
 
-  const srcPlayer = players[game.sourcePlayerIndex];
-  const song = pickRandomTrack(srcPlayer.tracks);
-  game.currentSong = song;
+  // Playback start position logic per mode
+  let positionMs = null;
 
-  // UI: Buttons sperren
-  safeBtn.disabled = true;
-  wagnisBtn.disabled = true;
-
-  // Sofort spielen
-  playPauseBtn.disabled = false;
-  await playUri(song.uri).catch(e=>setDebug(debugGame, e.stack||e.message));
-
-  // Jetzt Reveal erlauben
-  revealBtn.disabled = false;
-  revealBtn.classList.add("revealBig");
-
-  // In der Info klar sagen, woher der Song kam (aber Songdaten geheim)
-  infoPill.textContent = (choice === "safe")
-    ? "SAFE: eigene Playlist"
-    : `WAGNIS: Playlist von ${players[game.sourcePlayerIndex].name}`;
-}
-
-/* ========== Reveal / Scoring ========== */
-async function reveal(){
-  if(game.revealed) return;
-  if(!game.currentSong){ return; }
-
-  try{ await pausePlayback(true); }catch{}
-  game.revealed = true;
-
-  // Nach Reveal: Play deaktivieren (kein Loop)
-  playPauseBtn.disabled = true;
-  playback.isPlaying = false;
-  playPauseBtn.textContent = "▶️ Play";
-  revealBtn.classList.remove("revealBig");
-
-  const s = game.currentSong;
-  const artistStr = (s.artists||[]).join(", ");
-  const y = parseInt(s.year,10);
-
-  revealTitle.textContent = s.name;
-  revealMeta.innerHTML = `<b>${esc(artistStr)}</b> · Jahr: <b>${esc(s.year)}</b>`;
-
-  answersBox.innerHTML = "";
-  revealBox.classList.remove("good","bad");
-
-  const p = currentPlayer();
-
-  // Timeline years
-  const years = p.timeline.map(c => parseInt(c.year,10)).filter(v=>!isNaN(v));
-  const correct = correctTimelinePositions(years, y);
-  const chosen = game.pendingInsertIndex;
-  const ok = correct.includes(chosen);
-
-  // Points based on safe/wagnis rules:
-  // SAFE: ok +1, wrong 0
-  // WAGNIS: ok +2, wrong -1
-  let delta = 0;
-  if(game.choice === "safe"){
-    delta = ok ? 1 : 0;
-  }else if(game.choice === "wagnis"){
-    delta = ok ? 2 : -1;
-  }
-
-  if(ok){
-    // nur bei ok einfügen
-    p.timeline.splice(chosen, 0, {
-      year: String(y),
-      title: s.name,
-      artist: artistStr
-    });
-    revealBox.classList.add("good");
-  }else{
-    // bei falsch NICHT einfügen
-    revealBox.classList.add("bad");
-  }
-
-  p.points += delta;
-
-  const srcName = players[game.sourcePlayerIndex]?.name || "?";
-  const row = document.createElement("div");
-  row.className = "ansRow " + (ok ? "good" : "bad");
-  row.innerHTML = `
-    <div class="name">${esc(p.name)} ${ok ? "✅" : "❌"}</div>
-    <div class="muted">
-      Modus: <b>${esc(game.choice || "?")}</b> · Quelle: <b>${esc(srcName)}</b><br>
-      Gewählt: Slot <b>${chosen+1}</b> · Richtig wäre Slot: <b>${correct.map(i=>i+1).join(", ")}</b><br>
-      ${ok ? "Karte eingefügt." : "Karte NICHT eingefügt."}<br>
-      Punkte: <b>${p.points}</b> (${delta >= 0 ? "+" : ""}${delta})
-    </div>
-  `;
-  answersBox.appendChild(row);
-
-  renderTimelineUI();
-  renderScoreboard();
-
-  revealBtn.disabled = true;
-  nextBtn.disabled = false;
-
-  // Win check (Punkte-Ziel)
-  if(players.some(pp => pp.points >= lobby.pointsToWin)){
-    showSessionOverlay("Punkte-Ziel erreicht.");
-  }
-}
-
-async function next(){
-  // Intro → Start Turn 1
-  if(game.inIntro){
-    game.inIntro = false;
-    game.turnIndex = 0;
-    game.roundIndex = 1;
-    game.currentPlayerIndex = 0;
-    await beginTurn();
-    return;
-  }
-
-  game.turnIndex += 1;
-  game.currentPlayerIndex = (game.currentPlayerIndex + 1) % players.length;
-
-  if(game.currentPlayerIndex === 0){
-    game.roundIndex += 1;
-    if(game.roundIndex > lobby.roundsTotal){
-      showSessionOverlay("Runden-Ziel erreicht.");
-      return;
+  if (mode === "quick3"){
+    const startMode = app.state.quick3.mode || "random";
+    const dur = t.durationMs || 180000;
+    if (startMode === "intro"){
+      positionMs = 0;
+    } else {
+      // random: ideally between 30s and (duration - 3s)
+      const min = 30000;
+      const max = Math.max(min, dur - 3000);
+      positionMs = (max <= min) ? 0 : Math.floor(min + Math.random()*(max-min));
     }
   }
 
-  await beginTurn();
-}
+  // Start playback
+  await playTrackUri(t.uri, {positionMs});
+  app.state.isPlaying = true;
+  $("playToggleBtn").textContent = "⏸️ Stop";
 
-/* ========== Session ========== */
-function resetSessionPointsAndTimelines(){
-  players.forEach(p=>{
-    p.points = 0;
-    p.timeline = [];
-    p.referenceYear = null;
-    p.spanMin = null;
-    p.spanMax = null;
-  });
-}
-
-function computeWinners(){
-  const max = Math.max(...players.map(p=>p.points));
-  return players.filter(p=>p.points === max);
-}
-
-function showSessionOverlay(reason){
-  const winners = computeWinners();
-  sessionSummary.innerHTML = `
-    <b>${esc(reason||"Session beendet")}</b><br>
-    Modus: <b>${esc(lobby.mode)}</b><br>
-    Runden gespielt: <b>${Math.max(0, game.roundIndex-1)}</b>
-  `;
-  sessionWinners.innerHTML = "";
-  winners.forEach(w=>{
-    const li = document.createElement("li");
-    li.textContent = `${w.name} – ${w.points} Punkte`;
-    sessionWinners.appendChild(li);
-  });
-  sessionOverlay.style.display = "flex";
-}
-
-function hideSessionOverlay(){ sessionOverlay.style.display = "none"; }
-
-async function startSession(){
-  lobby.roundsTotal = Math.max(1, parseInt(roundsTotalInp.value, 10) || 5);
-  lobby.pointsToWin = Math.max(1, parseInt(pointsToWinInp.value, 10) || 15);
-
-  if(resetPointsChk.checked) resetSessionPointsAndTimelines();
-
-  game.inIntro = true;
-  game.turnIndex = 0;
-  game.roundIndex = 1;
-  game.currentPlayerIndex = 0;
-  game.currentSong = null;
-  game.revealed = false;
-  game.pendingInsertIndex = 0;
-  game.choice = null;
-  game.sourcePlayerIndex = 0;
-
-  initReferenceYearsAndSpan();
-
-  showScreen("game");
-  showModePanels();
-  renderScoreboard();
-  modePill.textContent = lobby.mode === "timeline" ? "Timeline" : lobby.mode;
-  roundPill.textContent = `Runde 1/${lobby.roundsTotal}`;
-  infoPill.textContent = "—";
-
-  showReferenceIntro();
-}
-
-/* ========== Wiring ========== */
-document.getElementById("loginBtn").onclick = ()=> login();
-document.getElementById("logoutBtn").onclick = ()=> logout();
-
-document.getElementById("loadPlaylistsBtn").onclick = ()=> loadPlaylists().catch(e=>{
-  setupStatus.innerHTML = `<span class="bad">❌ ${esc(e.message)}</span>`;
-  setDebug(debugSetup, e.stack || e.message);
-});
-
-document.getElementById("buildPlayersBtn").onclick = ()=> buildPlayerFields();
-
-toLobbyBtn.onclick = ()=> openLobby();
-document.getElementById("backToSetupBtn").onclick = ()=> showScreen("setup");
-document.getElementById("startSessionBtn").onclick = ()=> startSession().catch(e=>{
-  setDebug(debugLobby, e.stack || e.message);
-  alert(e.message);
-});
-
-modeCards.timeline.onclick = ()=> setActiveMode("timeline");
-modeCards.meta.onclick = ()=> setActiveMode("meta");
-modeCards.timewindow.onclick = ()=> setActiveMode("timewindow");
-
-playPauseBtn.onclick = async ()=>{
-  if(!game.currentSong || game.revealed || game.inIntro) return;
-  if(playback.isPlaying){
-    await pausePlayback();
-  }else{
-    await playUri(game.currentSong.uri);
+  // mode-specific ready hook
+  if (mode === "quick3"){
+    await modes.quick3.onReadyPlay();
   }
-};
 
-revealBtn.onclick = ()=> reveal().catch(e=>{
-  setDebug(debugGame, e.stack || e.message);
-  alert(e.message);
-});
+  // mode-specific: yearRange needs to generate options after we know the track year
+  if (mode === "yearRange"){
+    const step = parseInt($("rangeStepSelect").value, 10);
+    const built = modes.yearRange.buildOptionsForYear(t.year, step);
+    modes.yearRange.renderChoices(built);
+  }
 
-nextBtn.onclick = ()=> next().catch(e=>{
-  setDebug(debugGame, e.stack || e.message);
-  alert(e.message);
-});
+  // playlistGuess needs to render guess UI
+  if (mode === "playlistGuess"){
+    modes.playlistGuess.renderGuessUI();
+  }
 
-// Safe/Wagnis buttons
-safeBtn.onclick = ()=> startSongWithChoice("safe").catch(e=>{
-  setDebug(debugGame, e.stack || e.message);
-  alert(e.message);
-});
-wagnisBtn.onclick = ()=> startSongWithChoice("wagnis").catch(e=>{
-  setDebug(debugGame, e.stack || e.message);
-  alert(e.message);
-});
+  // timeline: set default slot at end
+  if (mode === "timeline"){
+    const me = currentPlayer();
+    app.state.timeline.chosenSlot = me.timelineCards.length;
+    modes.timeline.renderArea();
+  }
 
-againBtn.onclick = async ()=>{
-  hideSessionOverlay();
-  await startSession();
-};
-toLobby2Btn.onclick = ()=>{
-  hideSessionOverlay();
-  showScreen("lobby");
-};
-toSetup2Btn.onclick = ()=>{
-  hideSessionOverlay();
-  showScreen("setup");
-};
-
-function boot(){
-  refreshConnStatus();
-  showScreen("setup");
-  setActiveMode("timeline");
+  renderHeader();
 }
-boot();
+
+async function onTogglePlay(){
+  const t = app.state.currentTrack;
+  if (!t) return;
+
+  // stop any quick3 timer
+  clearTimeout(app.state.playTimer);
+  app.state.playTimer = null;
+
+  if (app.state.isPlaying){
+    await pausePlayback();
+    app.state.isPlaying = false;
+    $("playToggleBtn").textContent = "▶️ Play";
+  } else {
+    // simplest resume: play from start
+    await playTrackUri(t.uri, {positionMs: 0});
+    app.state.isPlaying = true;
+    $("playToggleBtn").textContent = "⏸️ Stop";
+
+    // if quick3: restart 3s timer
+    if (app.config.mode === "quick3"){
+      await modes.quick3.onReadyPlay();
+    }
+  }
+}
+
+async function onReveal(){
+  if (!app.state.currentTrack) return;
+
+  // stop music smoothly
+  try { await pausePlayback(); } catch {}
+  app.state.isPlaying = false;
+  clearTimeout(app.state.playTimer);
+  app.state.playTimer = null;
+  $("playToggleBtn").textContent = "▶️ Play";
+  $("playToggleBtn").disabled = true; // prevent replay-loop after reveal
+
+  const t = app.state.currentTrack;
+  const mode = app.config.mode;
+  const m = modes[mode];
+
+  // Mode scoring / correctness
+  const res = m?.onReveal?.() || {correct:null, headline:"Auflösung", detail:""};
+
+  // Reveal text
+  const sourceOwners = (t.owners || []).map(getPlayerName).join(", ");
+  const srcLabel = (mode === "playlistGuess")
+    ? `Song ist in Playlist(s): ${sourceOwners || "?"}`
+    : `Quelle: ${getPlayerName(app.state.currentSourcePlayerId)}`;
+
+  $("revealBox").style.display = "block";
+  $("revealText").innerHTML = `
+    <div style="font-size:18px; font-weight:900;">
+      ${escapeHtml(res.headline)}
+    </div>
+    <div style="margin-top:8px;">
+      <b>${escapeHtml(t.name)}</b><br>
+      <span class="muted">${escapeHtml(t.artists.join(", "))}</span><br>
+      Jahr: <b>${t.year}</b><br>
+      <span class="muted">${escapeHtml(srcLabel)}</span><br>
+      <span class="muted">${escapeHtml(res.detail || "")}</span>
+    </div>
+  `;
+
+  // Mode extras (self-report etc.)
+  $("revealExtra").innerHTML = "";
+  if (mode === "guessSong") modes.guessSong.renderRevealExtras();
+  if (mode === "quick3") modes.quick3.renderRevealExtras();
+
+  renderScoreTable();
+
+  // enable next
+  $("nextBtn").disabled = false;
+  $("revealBtn").disabled = true;
+
+  // win check
+  const winner = checkWinner();
+  if (winner){
+    finishGame(winner, `${winner.name} hat ${winner.score} Punkte erreicht!`);
+  }
+}
+
+function onNext(){
+  // clear track so it can't loop
+  app.state.currentTrack = null;
+  app.state.currentSourcePlayerId = null;
+
+  // next player
+  nextTurn();
+  resetTurnUI();
+}
+
+function finishGame(winnerPlayer, reason){
+  showScreen("screenWinner");
+  $("winnerHeadline").textContent = winnerPlayer ? `${winnerPlayer.name} gewinnt!` : "Spiel beendet";
+  $("winnerSub").textContent = reason || "";
+
+  const rows = [];
+  rows.push(`<tr><th>Spieler</th><th>Punkte</th></tr>`);
+  const sorted = [...app.players].sort((a,b)=>b.score-a.score);
+  for (const p of sorted){
+    rows.push(`<tr><td>${escapeHtml(p.name)}</td><td><b>${p.score}</b></td></tr>`);
+  }
+  $("finalScoreTable").innerHTML = rows.join("");
+}
+
+/* =========================
+   11) START GAME / REFERENCE
+   ========================= */
+function startGame(){
+  app.config.mode = $("modeSelect").value;
+  app.config.party = $("partySelect").value;
+  app.config.targetPoints = Math.max(1, parseInt($("targetPointsInput").value || "15", 10));
+
+  // If mode does not support allguess, force rotate
+  const m = modes[app.config.mode];
+  if (app.config.party === "allguess" && !(m && m.supportsAllGuess)){
+    app.config.party = "rotate";
+    $("partySelect").value = "rotate";
+  }
+
+  resetSession();
+  renderReferenceScreen();
+  showScreen("screenReference");
+}
+
+/* =========================
+   12) WIRING
+   ========================= */
+$("redirectUriPill").textContent = REDIRECT_URI;
+
+$("loginBtn").onclick = ()=> loginSpotify().catch(e=>setDebug(e.message));
+$("logoutBtn").onclick = ()=> logoutSpotify();
+
+$("buildPlayersBtn").onclick = ()=> buildPlayersConfig();
+
+$("loadMyPlaylistsBtn").onclick = async ()=>{
+  try { await loadMyPlaylists(); }
+  catch(e){ $("playlistStatus").textContent = "❌ " + e.message; setDebug(e.stack || e.message); }
+};
+
+$("modeSelect").onchange = ()=>{
+  renderModeHints();
+  // if allguess selected but mode doesn't support it, reset
+  const m = modes[$("modeSelect").value];
+  if ($("partySelect").value === "allguess" && !(m && m.supportsAllGuess)){
+    $("partySelect").value = "rotate";
+  }
+  renderModeHints();
+};
+
+$("partySelect").onchange = ()=>{
+  renderModeHints();
+};
+
+$("startGameBtn").onclick = ()=> startGame();
+
+$("backToSetupBtn").onclick = ()=> showScreen("screenSetup");
+$("refContinueBtn").onclick = ()=>{
+  showScreen("screenGame");
+  resetTurnUI();
+};
+
+$("safeBtn").onclick = ()=> selectRisk("safe");
+$("wagnisBtn").onclick = ()=> selectRisk("wagnis");
+
+$("readyBtn").onclick = ()=> onReady().catch(e=>setGameDebug(e.stack || e.message));
+$("playToggleBtn").onclick = ()=> onTogglePlay().catch(e=>setGameDebug(e.stack || e.message));
+$("revealBtn").onclick = ()=> onReveal().catch(e=>setGameDebug(e.stack || e.message));
+$("nextBtn").onclick = ()=> onNext();
+
+$("endBtn").onclick = ()=>{
+  showScreen("screenSetup");
+  setDebug("");
+  setGameDebug("");
+};
+
+/* =========================
+   13) INIT
+   ========================= */
+function refreshSetupHints(){
+  renderModeHints();
+  $("playlistStatus").textContent = "";
+  refreshConnStatus();
+}
+
+(async function init(){
+  buildPlayersConfig();
+  refreshSetupHints();
+  try { await handleOAuthCallbackIfPresent(); }
+  catch(e){ setDebug(e.stack || e.message); }
+})();
 </script>
 
 </body>
