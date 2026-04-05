@@ -1,5 +1,5 @@
 window.FMQ = window.FMQ || {};
-const FMQ = window.FMQ;
+var FMQ = window.FMQ;
 
 FMQ.randomVerifier = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
