@@ -1,5 +1,5 @@
 window.FMQ = window.FMQ || {};
-var FMQ = window.FMQ;
+const FMQ = window.FMQ;
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
 FMQ.REDIRECT_URI = window.location.origin + window.location.pathname;
