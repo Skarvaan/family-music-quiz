@@ -1,13 +1,8 @@
 window.FMQ = window.FMQ || {};
-var FMQ = window.FMQ;
+const FMQ = window.FMQ;
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
-FMQ.REDIRECT_URI = (() => {
-  const p = window.location.pathname;
-  if (p.endsWith("/")) return window.location.origin + p;
-  if (p.endsWith(".html")) return window.location.origin + p.replace(/[^/]+$/, "");
-  return window.location.origin + p + "/";
-})();
+FMQ.REDIRECT_URI = window.location.origin + window.location.pathname;
 FMQ.SPOTIFY_SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
