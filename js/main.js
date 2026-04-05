@@ -1,5 +1,6 @@
 window.FMQ = window.FMQ || {};
-const FMQ = window.FMQ;
+var FMQ = window.FMQ;
+// Hinweis: main.js orchestriert Ablauf/Events und verbindet alle Module.
 
 FMQ.prepareTrackForTurn = async () => {
   const mode = FMQ.app.config.mode;

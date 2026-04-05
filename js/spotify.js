@@ -1,5 +1,6 @@
 window.FMQ = window.FMQ || {};
-const FMQ = window.FMQ;
+var FMQ = window.FMQ;
+// Hinweis: spotify.js kapselt Auth, Token und Spotify API/Playback.
 
 FMQ.randomVerifier = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

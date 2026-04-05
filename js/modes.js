@@ -1,5 +1,6 @@
 window.FMQ = window.FMQ || {};
-const FMQ = window.FMQ;
+var FMQ = window.FMQ;
+// Hinweis: modes.js enthält nur modus-spezifische Render- und Spielregeln.
 
 FMQ.renderQuick3ActionControls = () => {
   const c = FMQ.$("quick3Controls");
