@@ -37,7 +37,8 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .modeButtonGrid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap:12px; }
 .modeBtn{
   padding:18px 16px;
-  border-radius:10px;
+  min-height:74px;
+  border-radius:6px;
   font-size:17px;
   font-weight:700;
   text-align:left;

@@ -279,7 +279,12 @@ FMQ.setupCanProceed = () => {
   if (step === 1) return !!FMQ.storage.token;
   if (step === 2) return !!FMQ.app.config.party;
   if (step === 3) return !!FMQ.$("modeSelect").value;
-  if (step === 4) return FMQ.app.players.length > 0 && FMQ.app.players.every(p => p.playlistId && (p.tracks?.length || 0) >= 5 && p.refYear);
+  if (step === 4) {
+    const playlistSelects = [...document.querySelectorAll('select[data-role="playlist"]')];
+    const uiHasAllPlaylists = playlistSelects.length > 0 && playlistSelects.every(sel => !!sel.value);
+    const modelHasAllPlaylists = FMQ.app.players.length > 0 && FMQ.app.players.every(p => p.playlistId && (p.tracks?.length || 0) >= 5 && p.refYear);
+    return uiHasAllPlaylists && modelHasAllPlaylists;
+  }
   return true;
 };
 
