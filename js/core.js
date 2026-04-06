@@ -124,6 +124,7 @@ FMQ.rebuildTrackUniverse = () => {
 FMQ.checkReadyToStart = () => {
   const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.every(p => p.name && p.playlistId && (p.tracks?.length || 0) >= 5 && p.refYear);
   FMQ.$("startGameBtn").disabled = !ok;
+  if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };
 
 FMQ.buildPlayersConfig = () => {

@@ -101,10 +101,10 @@
       <button id="startGameBtn" class="primary" disabled>Fertig? Spiel starten</button>
     </div>
 
-    <div class="box" style="margin-top:12px; box-shadow:none;">
-      <h2>Debug</h2>
-      <pre id="debug"></pre>
-    </div>
+    <details class="box" style="margin-top:12px; box-shadow:none;">
+      <summary><b>Debug-Log anzeigen</b></summary>
+      <pre id="debug" style="margin-top:10px;"></pre>
+    </details>
   </div>
 
   <div class="box setupWizardNav">
@@ -112,6 +112,7 @@
       <button id="setupBackBtn">← Zurück</button>
       <button id="setupNextBtn" class="primary">Weiter →</button>
     </div>
+    <div id="setupStepHint" class="muted" style="margin-top:8px;"></div>
   </div>
 </section>
 

@@ -279,7 +279,7 @@ FMQ.setupCanProceed = () => {
   if (step === 1) return !!FMQ.storage.token;
   if (step === 2) return !!FMQ.app.config.party;
   if (step === 3) return !!FMQ.$("modeSelect").value;
-  if (step === 4) return FMQ.app.players.length > 0;
+  if (step === 4) return FMQ.app.players.length > 0 && FMQ.app.players.every(p => p.playlistId && (p.tracks?.length || 0) >= 5 && p.refYear);
   return true;
 };
 
@@ -309,6 +309,13 @@ FMQ.renderSetupWizard = () => {
   FMQ.$("setupBackBtn").disabled = step <= 1;
   FMQ.$("setupNextBtn").style.display = step >= 5 ? "none" : "";
   FMQ.$("setupNextBtn").disabled = !FMQ.setupCanProceed();
+  if (step === 1 && !FMQ.storage.token) {
+    FMQ.$("setupStepHint").textContent = "Verbinde zuerst Spotify, dann wird „Weiter“ aktiv.";
+  } else if (step === 4 && !FMQ.setupCanProceed()) {
+    FMQ.$("setupStepHint").textContent = "Bitte für jeden Spieler eine Playlist laden (mind. 5 Tracks), dann kannst du weiter.";
+  } else {
+    FMQ.$("setupStepHint").textContent = "";
+  }
   FMQ.renderPlayStyleButtons();
   FMQ.renderModeButtons();
 };
