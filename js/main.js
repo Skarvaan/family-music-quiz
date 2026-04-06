@@ -263,7 +263,8 @@ FMQ.renderModeButtons = () => {
 FMQ.renderSetupSummary = () => {
   const players = FMQ.app.players.map(p => `<li>${FMQ.escapeHtml(p.name)} · ${FMQ.escapeHtml(p.playlistName || "keine Playlist")}</li>`).join("");
   FMQ.$("setupSummary").innerHTML = `
-    <div class="box" style="box-shadow:none;">
+    <div class="summaryCard">
+      <h2 style="margin-bottom:8px;">Deine Einstellungen</h2>
       <div><b>Spielart:</b> ${FMQ.app.config.party === "allguess" ? "Party-Modus" : "Eigene Playlists / Reihum"}</div>
       <div><b>Modus:</b> ${FMQ.escapeHtml(FMQ.modes[FMQ.$("modeSelect").value]?.label || FMQ.$("modeSelect").value)}</div>
       <div><b>Zielpunkte:</b> ${FMQ.$("targetPointsInput").value}</div>
@@ -308,7 +309,6 @@ FMQ.renderSetupWizard = () => {
   FMQ.$("setupBackBtn").disabled = step <= 1;
   FMQ.$("setupNextBtn").style.display = step >= 5 ? "none" : "";
   FMQ.$("setupNextBtn").disabled = !FMQ.setupCanProceed();
-  FMQ.$("setupStepLabel").textContent = `Schritt ${step} von 5`;
   FMQ.renderPlayStyleButtons();
   FMQ.renderModeButtons();
 };
