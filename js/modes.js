@@ -52,7 +52,20 @@ FMQ.modes = {
     },
     renderRevealExtras() {
       const me = FMQ.currentPlayer();
-      FMQ.$("revealExtra").innerHTML = `<div class="box" style="box-shadow:none;"><h2>Selbst-Check</h2><label><input type="checkbox" id="chkTitle"> Titel (1)</label><label><input type="checkbox" id="chkArtist"> Interpret (1)</label><label><input type="checkbox" id="chkYear"> Jahr (1)</label><div class="row"><button id="confirmGuessPtsBtn" class="primary">Punkte bestätigen</button><span class="muted" id="guessPtsStatus"></span></div></div>`;
+      FMQ.$("revealExtra").innerHTML = `
+        <div class="box" style="box-shadow:none;">
+          <h2>Selbst-Check</h2>
+          <div class="selfCheckList">
+            <label class="selfCheckItem"><input type="checkbox" id="chkTitle"> Titel (1)</label>
+            <label class="selfCheckItem"><input type="checkbox" id="chkArtist"> Interpret (1)</label>
+            <label class="selfCheckItem"><input type="checkbox" id="chkYear"> Jahr (1)</label>
+          </div>
+          <div class="row selfCheckActions">
+            <button id="confirmGuessPtsBtn" class="primary">Punkte bestätigen</button>
+            <span class="muted" id="guessPtsStatus"></span>
+          </div>
+        </div>
+      `;
       FMQ.$("confirmGuessPtsBtn").onclick = () => {
         const pts = (FMQ.$("chkTitle").checked ? 1 : 0) + (FMQ.$("chkArtist").checked ? 1 : 0) + (FMQ.$("chkYear").checked ? 1 : 0);
         FMQ.awardPoints(me.id, pts);

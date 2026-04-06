@@ -104,6 +104,7 @@ FMQ.onTogglePlay = async () => {
 };
 
 FMQ.onQuick3Play = async (kind) => {
+  if (FMQ.app.state.selfCheckPending) return;
   if (!FMQ.app.state.currentTrack) await FMQ.prepareTrackForTurn();
   const t = FMQ.app.state.currentTrack;
   const startMs = kind === "start"
@@ -145,6 +146,11 @@ FMQ.onReveal = async () => {
 
   if (mode === "guessSong") FMQ.modes.guessSong.renderRevealExtras();
   if (mode === "quick3") FMQ.modes.quick3.renderRevealExtras();
+  if (mode === "quick3") {
+    if (FMQ.$("quick3PlayStartBtn")) FMQ.$("quick3PlayStartBtn").disabled = true;
+    if (FMQ.$("quick3PlayRandomBtn")) FMQ.$("quick3PlayRandomBtn").disabled = true;
+    if (FMQ.$("quick3LenSelect")) FMQ.$("quick3LenSelect").disabled = true;
+  }
 
   FMQ.renderScoreTable();
   FMQ.markFinalRoundIfNeeded();
