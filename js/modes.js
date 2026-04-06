@@ -2,15 +2,6 @@ window.FMQ = window.FMQ || {};
 var FMQ = window.FMQ;
 // Hinweis: modes.js enthält nur modus-spezifische Render- und Spielregeln.
 
-FMQ.renderQuick3ActionControls = () => {
-  const c = FMQ.$("quick3Controls");
-  c.innerHTML = `<select id="quick3LenSelect"><option value="3">3 Sekunden</option><option value="5">5 Sekunden</option><option value="10">10 Sekunden</option></select><button id="quick3PlayStartBtn" class="big">▶️ Play-Start</button><button id="quick3PlayRandomBtn" class="big">🎲 Play-Zufall</button>`;
-  FMQ.$("quick3LenSelect").value = String(FMQ.app.state.quick3.clipSeconds);
-  FMQ.$("quick3LenSelect").onchange = () => FMQ.app.state.quick3.clipSeconds = parseInt(FMQ.$("quick3LenSelect").value, 10);
-  FMQ.$("quick3PlayStartBtn").onclick = () => FMQ.onQuick3Play("start").catch(e => FMQ.setGameDebug(e.stack || e.message));
-  FMQ.$("quick3PlayRandomBtn").onclick = () => FMQ.onQuick3Play("random").catch(e => FMQ.setGameDebug(e.stack || e.message));
-};
-
 FMQ.modes = {
   timeline: {
     label: "Timeline (Einordnen)",
@@ -93,16 +84,27 @@ FMQ.modes = {
         </div>
         <div class="quick3Stage">
           <div class="quick3Panel">
-            <div id="quick3ControlMount"></div>
+            <div class="quick3Controls" id="quick3InlineControls">
+              <select id="quick3LenSelectInline">
+                <option value="3">3 Sekunden</option>
+                <option value="5">5 Sekunden</option>
+                <option value="10">10 Sekunden</option>
+              </select>
+              <button id="quick3PlayStartBtnInline" class="big">▶️ Play-Start</button>
+              <button id="quick3PlayRandomBtnInline" class="big">🎲 Play-Zufall</button>
+            </div>
             <div class="revealCenter">
               <button id="revealBtnInline" class="big">Reveal</button>
             </div>
           </div>
         </div>
       `;
-      FMQ.$("quick3ControlMount").appendChild(FMQ.$("quick3Controls"));
-      FMQ.$("quick3Controls").style.display = "flex";
-      FMQ.renderQuick3ActionControls();
+      FMQ.$("quick3LenSelectInline").value = String(FMQ.app.state.quick3.clipSeconds);
+      FMQ.$("quick3LenSelectInline").onchange = () => {
+        FMQ.app.state.quick3.clipSeconds = parseInt(FMQ.$("quick3LenSelectInline").value, 10);
+      };
+      FMQ.$("quick3PlayStartBtnInline").onclick = () => FMQ.onQuick3Play("start").catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("quick3PlayRandomBtnInline").onclick = () => FMQ.onQuick3Play("random").catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("quick3HelpBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.add("show");
       FMQ.$("revealBtnInline").onclick = () => FMQ.$("revealBtn").click();
     },

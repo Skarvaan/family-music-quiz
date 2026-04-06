@@ -41,6 +41,7 @@ FMQ.resetTurnUI = () => {
   FMQ.$("readyBtn").style.display = "";
   FMQ.$("playToggleBtn").style.display = "";
   FMQ.$("revealBtn").style.display = "";
+  FMQ.$("nextBtn").style.display = "";
   FMQ.$("quick3Controls").style.display = "none";
   FMQ.$("screenGame").classList.remove("quick3Active");
   FMQ.$("readyBtn").disabled = true;
@@ -68,6 +69,7 @@ FMQ.resetTurnUI = () => {
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
+    FMQ.$("nextBtn").style.display = "none";
     FMQ.$("quick3Controls").style.display = "flex";
     FMQ.$("revealBtn").disabled = false;
   } else {
@@ -169,9 +171,9 @@ FMQ.onReveal = async () => {
     FMQ.$("quick3PtsStatus").textContent = "";
     FMQ.$("quick3ConfirmBtn").disabled = false;
     FMQ.$("quick3RevealOverlay").classList.add("show");
-    if (FMQ.$("quick3PlayStartBtn")) FMQ.$("quick3PlayStartBtn").disabled = true;
-    if (FMQ.$("quick3PlayRandomBtn")) FMQ.$("quick3PlayRandomBtn").disabled = true;
-    if (FMQ.$("quick3LenSelect")) FMQ.$("quick3LenSelect").disabled = true;
+    if (FMQ.$("quick3PlayStartBtnInline")) FMQ.$("quick3PlayStartBtnInline").disabled = true;
+    if (FMQ.$("quick3PlayRandomBtnInline")) FMQ.$("quick3PlayRandomBtnInline").disabled = true;
+    if (FMQ.$("quick3LenSelectInline")) FMQ.$("quick3LenSelectInline").disabled = true;
   }
 
   FMQ.renderScoreTable();
@@ -213,6 +215,9 @@ FMQ.quitToMenu = async () => {
   FMQ.app.state.playTimer = null;
   FMQ.showRiskOverlay(false);
   FMQ.showRangeOverlay(false);
+  FMQ.$("quick3RevealOverlay").classList.remove("show");
+  FMQ.$("quick3HelpOverlay").classList.remove("show");
+  FMQ.$("screenGame").classList.remove("quick3Active");
   FMQ.showScreen("screenSetup");
   FMQ.setGameDebug("");
 };
