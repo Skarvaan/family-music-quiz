@@ -248,6 +248,11 @@ FMQ.renderModeButtons = () => {
     { id: "playlistGuess", label: "Welche Playlist ist das?", party: ["rotate", "allguess"] }
   ];
   const allowed = modeMeta.filter(m => m.party.includes(FMQ.app.config.party));
+  if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
+    FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
+    FMQ.app.config.mode = FMQ.$("modeSelect").value;
+    FMQ.renderModeHints();
+  }
   FMQ.$("modeButtons").innerHTML = allowed.map(m => `<button class="modeBtn ${m.id===FMQ.app.config.mode?"active":""}" data-mode-id="${m.id}">${m.label}</button>`).join("");
   FMQ.$("modeButtons").querySelectorAll("[data-mode-id]").forEach(btn => {
     btn.onclick = () => {
