@@ -1,0 +1,58 @@
+/* Hinweis: Zentrale Styles für das Family Music Quiz (aus index.html ausgelagert). */
+:root{
+  --bg:#ffffff; --fg:#111; --muted:#666; --line:#e6e6e6;
+  --ok:#0a7a0a; --bad:#b00020; --card:#fafafa;
+  --shadow: 0 6px 18px rgba(0,0,0,.08);
+  --r:14px;
+}
+body{ font-family: Arial, sans-serif; max-width: 1050px; margin: 22px auto; padding: 0 14px; color:var(--fg); background:var(--bg); }
+h1{ margin:8px 0 6px; }
+h2{ margin:0 0 10px; }
+button{ padding: 10px 12px; margin: 6px 8px 6px 0; cursor:pointer; border:1px solid var(--line); border-radius:10px; background:#fff; }
+button.primary{ background:#111; color:#fff; border-color:#111; }
+button.big{ font-size: 22px; padding: 14px 18px; border-radius: 14px; }
+button:disabled{ opacity:.5; cursor:not-allowed; }
+select,input{ padding: 10px; margin: 6px 8px 6px 0; border:1px solid var(--line); border-radius:10px; }
+.box{ border:1px solid var(--line); padding: 14px; border-radius: var(--r); margin-top: 14px; box-shadow: var(--shadow); background:#fff; }
+.row{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.muted{ color:var(--muted); font-size:12px; }
+.ok{ color:var(--ok); }
+.bad{ color:var(--bad); }
+pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); border:1px solid var(--line); padding:10px; border-radius:10px; }
+.pill{ display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--card); font-size:12px; }
+
+.modeConfig { box-shadow:none; border:1px dashed var(--line); }
+
+.screen{ display:none; }
+.screen.active{ display:block; }
+.turnBanner{ border:1px solid var(--line); border-radius: 14px; padding: 12px 14px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
+.scoreTable{ width:100%; border-collapse: collapse; }
+.scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
+.scoreTable th{ background:#fafafa; }
+.card{ min-width: 150px; max-width: 280px; border:1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--card); }
+.card .year{ font-weight:800; font-size: 18px; }
+.card .title{ margin-top:6px; font-weight:800; font-size: 14px; }
+.card .artist{ margin-top:2px; color:var(--muted); font-size: 12px; }
+.card.bad{ border-color: rgba(176,0,32,.35); background: rgba(176,0,32,.06); }
+.timelineLine{ display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+.slotRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0; }
+.slot{ width: 30px; height: 76px; border-radius: 12px; border:1px dashed #bbb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; font-weight:900; }
+.slot.active{ border-style: solid; border-color:#111; background:#111; color:#fff; }
+.choiceGrid{ display:flex; flex-wrap:wrap; gap:10px; }
+.choiceBtn{ padding: 12px 14px; border-radius: 12px; border:1px solid var(--line); background:#fff; }
+.choiceBtn.selected{ background:#111; color:#fff; border-color:#111; }
+.miniPick{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.miniPick .mini{ padding:8px 10px; border-radius: 10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+.miniPick .mini.selected{ background:#111; color:#fff; border-color:#111; }
+.overlay{ position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; padding: 14px; z-index: 1000; }
+.overlay.show{ display:flex; }
+.overlayCard{ width: min(720px, 100%); background:#fff; border-radius: 18px; box-shadow: var(--shadow); border: 1px solid var(--line); padding: 16px; }
+.overlayCard .bigRow{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
+.overlayCard button{ flex:1; min-width: 250px; }
+.quick3Controls{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.quick3Controls select{ margin:0; }
+.selfCheckList{ display:grid; gap:10px; margin:10px 0 12px; }
+.selfCheckItem{ display:flex; align-items:center; gap:8px; }
+.selfCheckActions{ margin-top: 4px; }
+
+@media (max-width: 820px){ .overlayCard button{ min-width: 180px; } }
