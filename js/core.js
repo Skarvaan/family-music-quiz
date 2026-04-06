@@ -64,7 +64,8 @@ FMQ.app = {
     playlistGuess: { picks: new Map() },
     quick3: { clipSeconds: 3, randomStartMs: null },
     finalRound: { pending: false, roundNumber: null },
-    selfCheckPending: false
+    selfCheckPending: false,
+    setupStep: 1
   }
 };
 

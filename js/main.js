@@ -218,7 +218,9 @@ FMQ.quitToMenu = async () => {
   FMQ.$("quick3RevealOverlay").classList.remove("show");
   FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("screenGame").classList.remove("quick3Active");
+  FMQ.app.state.setupStep = 1;
   FMQ.showScreen("screenSetup");
+  FMQ.renderSetupWizard();
   FMQ.setGameDebug("");
 };
 
@@ -229,6 +231,16 @@ FMQ.startGame = () => {
   FMQ.resetSession();
   FMQ.showScreen("screenGame");
   FMQ.resetTurnUI();
+};
+
+FMQ.renderSetupWizard = () => {
+  const step = FMQ.app.state.setupStep || 1;
+  document.querySelectorAll(".setupStep").forEach(el => {
+    el.classList.toggle("active", parseInt(el.getAttribute("data-setup-step"), 10) === step);
+  });
+  FMQ.$("setupBackBtn").disabled = step <= 1;
+  FMQ.$("setupNextBtn").style.display = step >= 2 ? "none" : "";
+  FMQ.$("setupStepLabel").textContent = `Schritt ${step} von 2`;
 };
 
 FMQ.init = async () => {
@@ -267,6 +279,14 @@ FMQ.init = async () => {
   FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(e => { FMQ.$("playlistStatus").textContent = "❌ " + e.message; FMQ.setDebug(e.stack || e.message); });
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
   FMQ.$("modeSelect").onchange = () => FMQ.renderModeHints();
+  FMQ.$("setupBackBtn").onclick = () => {
+    FMQ.app.state.setupStep = Math.max(1, FMQ.app.state.setupStep - 1);
+    FMQ.renderSetupWizard();
+  };
+  FMQ.$("setupNextBtn").onclick = () => {
+    FMQ.app.state.setupStep = Math.min(2, FMQ.app.state.setupStep + 1);
+    FMQ.renderSetupWizard();
+  };
   FMQ.$("startGameBtn").onclick = () => FMQ.startGame();
   FMQ.$("readyBtn").onclick = () => FMQ.onReady().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("playToggleBtn").onclick = () => FMQ.onTogglePlay().catch(e => FMQ.setGameDebug(e.stack || e.message));
@@ -278,6 +298,7 @@ FMQ.init = async () => {
   FMQ.buildPlayersConfig();
   FMQ.renderModeHints();
   FMQ.refreshConnStatus();
+  FMQ.renderSetupWizard();
 
   try { await FMQ.handleOAuthCallbackIfPresent(); } catch (e) { FMQ.setDebug(e.stack || e.message); }
   if (FMQ.storage.token && !FMQ.app.playlists.length) {

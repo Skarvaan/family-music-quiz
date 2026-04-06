@@ -25,6 +25,9 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 
 .screen{ display:none; }
 .screen.active{ display:block; }
+.setupStep{ display:none; }
+.setupStep.active{ display:block; }
+.setupWizardNav{ position: sticky; bottom: 10px; z-index: 20; }
 .turnBanner{ border:1px solid var(--line); border-radius: 14px; padding: 12px 14px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
 .scoreTable{ width:100%; border-collapse: collapse; }
 .scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
