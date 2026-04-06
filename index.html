@@ -79,7 +79,7 @@
 
 <section id="screenGame" class="screen">
   <div class="box">
-    <div class="turnBanner">
+    <div class="turnBanner" id="gameMetaBanner">
       <div>
         <div class="muted">Modus</div>
         <div style="font-size:18px; font-weight:800;" id="gameModeLabel">–</div>
@@ -91,7 +91,7 @@
       </div>
     </div>
 
-    <div class="turnBanner" style="margin-top:12px;">
+    <div class="turnBanner" id="turnPlayerBanner" style="margin-top:12px;">
       <div>
         <div class="muted">Spieler am Zug</div>
         <div style="font-size:24px; font-weight:900;" id="turnPlayerName">–</div>
@@ -204,7 +204,7 @@
       <label class="selfCheckItem"><input type="checkbox" id="quick3ChkYear"> Jahr (1)</label>
     </div>
     <div class="row selfCheckActions">
-      <button id="quick3ConfirmBtn" class="primary big">Punkte bestätigen</button>
+      <button id="quick3ConfirmBtn" class="primary big">Punkte eintragen und weiter</button>
       <span class="muted" id="quick3PtsStatus"></span>
     </div>
   </div>

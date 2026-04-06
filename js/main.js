@@ -76,7 +76,7 @@ FMQ.resetTurnUI = () => {
   }
 
   FMQ.$("turnFlowHint").textContent = mode === "quick3"
-    ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall (beliebig wiederholen) → Reveal → Selbst-Check → Weiter"
+    ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall → Reveal → Punkte eintragen und weiter"
     : "Ablauf: Bereit → Reveal → Weiter";
 
   FMQ.renderHeader();
@@ -242,9 +242,12 @@ FMQ.init = async () => {
     FMQ.app.state.selfCheckPending = false;
     FMQ.$("quick3PtsStatus").innerHTML = `<span class="ok">+${pts} Punkte bestätigt</span>`;
     FMQ.$("quick3ConfirmBtn").disabled = true;
-    FMQ.$("quick3RevealOverlay").classList.remove("show");
-    FMQ.$("nextBtn").disabled = false;
     FMQ.renderScoreTable();
+    setTimeout(() => {
+      FMQ.$("quick3RevealOverlay").classList.remove("show");
+      FMQ.$("nextBtn").disabled = false;
+      FMQ.onNext();
+    }, 220);
   };
   FMQ.$("rangeOverlay").querySelectorAll("[data-step]").forEach(btn => btn.onclick = () => {
     const step = parseInt(btn.dataset.step, 10);

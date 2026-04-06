@@ -66,5 +66,6 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .quick3Panel .revealCenter{ margin-top:16px; }
 .screen.quick3Active #turnPlayerName{ font-size: clamp(34px, 5vw, 60px) !important; }
 .screen.quick3Active #modeAreaTitle{ display:none; }
+.screen.quick3Active #turnPlayerBanner{ display:none; }
 
 @media (max-width: 820px){ .overlayCard button{ min-width: 180px; } }
