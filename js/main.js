@@ -233,6 +233,55 @@ FMQ.startGame = () => {
   FMQ.resetTurnUI();
 };
 
+FMQ.renderPlayStyleButtons = () => {
+  document.querySelectorAll("[data-play-style]").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-play-style") === FMQ.app.config.party);
+  });
+};
+
+FMQ.renderModeButtons = () => {
+  const modeMeta = [
+    { id: "timeline", label: "Timeline (Einordnen)", party: ["rotate"] },
+    { id: "guessSong", label: "Song raten", party: ["rotate"] },
+    { id: "quick3", label: "3-Sekunden Challenge", party: ["rotate"] },
+    { id: "yearRange", label: "Zeitraum raten (MC)", party: ["rotate", "allguess"] },
+    { id: "playlistGuess", label: "Welche Playlist ist das?", party: ["rotate", "allguess"] }
+  ];
+  const allowed = modeMeta.filter(m => m.party.includes(FMQ.app.config.party));
+  FMQ.$("modeButtons").innerHTML = allowed.map(m => `<button class="modeBtn ${m.id===FMQ.app.config.mode?"active":""}" data-mode-id="${m.id}">${m.label}</button>`).join("");
+  FMQ.$("modeButtons").querySelectorAll("[data-mode-id]").forEach(btn => {
+    btn.onclick = () => {
+      FMQ.$("modeSelect").value = btn.getAttribute("data-mode-id");
+      FMQ.app.config.mode = FMQ.$("modeSelect").value;
+      FMQ.renderModeHints();
+      FMQ.renderModeButtons();
+      FMQ.renderSetupWizard();
+    };
+  });
+};
+
+FMQ.renderSetupSummary = () => {
+  const players = FMQ.app.players.map(p => `<li>${FMQ.escapeHtml(p.name)} · ${FMQ.escapeHtml(p.playlistName || "keine Playlist")}</li>`).join("");
+  FMQ.$("setupSummary").innerHTML = `
+    <div class="box" style="box-shadow:none;">
+      <div><b>Spielart:</b> ${FMQ.app.config.party === "allguess" ? "Party-Modus" : "Eigene Playlists / Reihum"}</div>
+      <div><b>Modus:</b> ${FMQ.escapeHtml(FMQ.modes[FMQ.$("modeSelect").value]?.label || FMQ.$("modeSelect").value)}</div>
+      <div><b>Zielpunkte:</b> ${FMQ.$("targetPointsInput").value}</div>
+      <div><b>Spieler:</b> ${FMQ.app.players.length}</div>
+      <ul>${players}</ul>
+    </div>
+  `;
+};
+
+FMQ.setupCanProceed = () => {
+  const step = FMQ.app.state.setupStep || 1;
+  if (step === 1) return !!FMQ.storage.token;
+  if (step === 2) return !!FMQ.app.config.party;
+  if (step === 3) return !!FMQ.$("modeSelect").value;
+  if (step === 4) return FMQ.app.players.length > 0;
+  return true;
+};
+
 FMQ.renderSetupWizard = () => {
   const step = FMQ.app.state.setupStep || 1;
   document.querySelectorAll(".setupStep").forEach(el => {
@@ -242,13 +291,26 @@ FMQ.renderSetupWizard = () => {
     FMQ.$("setupWizardTitle").textContent = "Schritt 1 · Spotify verbinden";
     FMQ.$("setupWizardSub").textContent = "Verbinde zuerst den Spotify-Host-Account.";
     FMQ.$("setupNextBtn").textContent = "Weiter →";
+  } else if (step === 2) {
+    FMQ.$("setupWizardTitle").textContent = "Schritt 2 · Spielart";
+    FMQ.$("setupWizardSub").textContent = "Wähle zwischen Reihum und Party-Modus.";
+  } else if (step === 3) {
+    FMQ.$("setupWizardTitle").textContent = "Schritt 3 · Modus";
+    FMQ.$("setupWizardSub").textContent = "Wähle den Spielmodus als große Schaltfläche.";
+  } else if (step === 4) {
+    FMQ.$("setupWizardTitle").textContent = "Schritt 4 · Punkte & Spieler";
+    FMQ.$("setupWizardSub").textContent = "Lege Zielpunkte und Spieleranzahl fest.";
   } else {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 2 · Spiel einrichten";
-    FMQ.$("setupWizardSub").textContent = "Wähle Modus, Spieler und starte danach das Spiel.";
+    FMQ.$("setupWizardTitle").textContent = "Schritt 5 · Zusammenfassung";
+    FMQ.$("setupWizardSub").textContent = "Prüfe alles und starte das Spiel.";
+    FMQ.renderSetupSummary();
   }
   FMQ.$("setupBackBtn").disabled = step <= 1;
-  FMQ.$("setupNextBtn").style.display = step >= 2 ? "none" : "";
-  FMQ.$("setupStepLabel").textContent = `Schritt ${step} von 2`;
+  FMQ.$("setupNextBtn").style.display = step >= 5 ? "none" : "";
+  FMQ.$("setupNextBtn").disabled = !FMQ.setupCanProceed();
+  FMQ.$("setupStepLabel").textContent = `Schritt ${step} von 5`;
+  FMQ.renderPlayStyleButtons();
+  FMQ.renderModeButtons();
 };
 
 FMQ.init = async () => {
@@ -286,13 +348,42 @@ FMQ.init = async () => {
   FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
   FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(e => { FMQ.$("playlistStatus").textContent = "❌ " + e.message; FMQ.setDebug(e.stack || e.message); });
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
-  FMQ.$("modeSelect").onchange = () => FMQ.renderModeHints();
+  FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.renderSetupWizard(); };
+  FMQ.$("targetPlusBtn").onclick = () => {
+    FMQ.$("targetPointsInput").value = String(Math.min(999, parseInt(FMQ.$("targetPointsInput").value || "15", 10) + 1));
+  };
+  FMQ.$("targetMinusBtn").onclick = () => {
+    FMQ.$("targetPointsInput").value = String(Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10) - 1));
+  };
+  const rebuildFromPlayerCount = () => {
+    FMQ.buildPlayersConfig();
+    FMQ.renderSetupWizard();
+  };
+  FMQ.$("playerPlusBtn").onclick = () => {
+    FMQ.$("playerCountInput").value = String(Math.min(8, parseInt(FMQ.$("playerCountInput").value || "1", 10) + 1));
+    rebuildFromPlayerCount();
+  };
+  FMQ.$("playerMinusBtn").onclick = () => {
+    FMQ.$("playerCountInput").value = String(Math.max(1, parseInt(FMQ.$("playerCountInput").value || "1", 10) - 1));
+    rebuildFromPlayerCount();
+  };
+  FMQ.$("playerCountInput").addEventListener("change", rebuildFromPlayerCount);
+  document.querySelectorAll("[data-play-style]").forEach(btn => {
+    btn.onclick = () => {
+      const style = btn.getAttribute("data-play-style");
+      FMQ.app.config.party = style;
+      FMQ.$("partySelect").value = style;
+      FMQ.renderModeButtons();
+      FMQ.renderSetupWizard();
+    };
+  });
   FMQ.$("setupBackBtn").onclick = () => {
     FMQ.app.state.setupStep = Math.max(1, FMQ.app.state.setupStep - 1);
     FMQ.renderSetupWizard();
   };
   FMQ.$("setupNextBtn").onclick = () => {
-    FMQ.app.state.setupStep = Math.min(2, FMQ.app.state.setupStep + 1);
+    if (!FMQ.setupCanProceed()) return;
+    FMQ.app.state.setupStep = Math.min(5, FMQ.app.state.setupStep + 1);
     FMQ.renderSetupWizard();
   };
   FMQ.$("startGameBtn").onclick = () => FMQ.startGame();

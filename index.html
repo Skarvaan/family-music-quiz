@@ -40,10 +40,20 @@
   </div>
 
   <div class="box setupStep" data-setup-step="2">
-    <h2>2) Spiel einrichten</h2>
+    <h2>2) Spielart wählen</h2>
+    <div class="modeButtonGrid" id="playStyleButtons">
+      <button class="modeBtn" data-play-style="rotate">Eigene Playlists (Reihum)</button>
+      <button class="modeBtn" data-play-style="allguess">Party-Modus (alle raten, wenn möglich)</button>
+    </div>
+  </div>
 
-    <div class="row">
-      <label><b>Spielmodus</b></label>
+  <div class="box setupStep" data-setup-step="3">
+    <h2>3) Modus wählen</h2>
+    <div id="modeHint" class="muted" style="margin-bottom:8px;"></div>
+    <div class="modeButtonGrid" id="modeButtons"></div>
+
+    <!-- hidden legacy selects for compatibility -->
+    <div style="display:none;">
       <select id="modeSelect">
         <option value="timeline">Timeline (Einordnen)</option>
         <option value="guessSong">Song raten (Titel/Interpret/Jahr)</option>
@@ -51,35 +61,58 @@
         <option value="yearRange">Zeitraum raten (MC)</option>
         <option value="playlistGuess">Welche Playlist ist das?</option>
       </select>
-      <span class="muted" id="modeHint"></span>
+      <select id="partySelect">
+        <option value="rotate">Reihum (jeder ist dran)</option>
+        <option value="allguess">Alle raten gleichzeitig</option>
+      </select>
     </div>
+  </div>
 
-    <div id="modeConfigArea" class="box modeConfig"></div>
-
+  <div class="box setupStep" data-setup-step="4">
+    <h2>4) Punkte & Spieler</h2>
     <div class="row">
       <label><b>Zielpunkte</b></label>
-      <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px;">
-      <span class="muted">Sobald jemand die Zielpunkte erreicht, wird die aktuelle Runde fair zu Ende gespielt.</span>
+      <div class="stepper">
+        <button id="targetMinusBtn">−</button>
+        <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px; text-align:center;">
+        <button id="targetPlusBtn">+</button>
+      </div>
     </div>
 
     <div class="row">
       <label><b>Spieleranzahl</b></label>
-      <input id="playerCountInput" type="number" min="1" max="8" value="3" style="width:110px;">
-      <button id="buildPlayersBtn">Spieler anlegen</button>
+      <div class="stepper">
+        <button id="playerMinusBtn">−</button>
+        <input id="playerCountInput" type="number" min="1" max="8" value="3" style="width:110px; text-align:center;">
+        <button id="playerPlusBtn">+</button>
+      </div>
+      <button id="buildPlayersBtn" style="display:none;">Spieler anlegen</button>
     </div>
 
     <div class="muted">Playlist-Dropdown lädt automatisch <b>alle Tracks</b> (Pagination), sobald du auswählst.</div>
-
     <div id="playersConfig" style="margin-top:10px;"></div>
+    <div id="modeConfigArea" class="box modeConfig" style="display:none;"></div>
+  </div>
 
+  <div class="box setupStep" data-setup-step="5">
+    <h2>5) Zusammenfassung</h2>
+    <div id="setupSummary"></div>
     <div class="row" style="margin-top:14px;">
-      <button id="startGameBtn" class="primary" disabled>Spiel starten</button>
+      <button id="startGameBtn" class="primary" disabled>Fertig? Spiel starten</button>
+    </div>
+
+    <div class="box" style="margin-top:12px; box-shadow:none;">
+      <h2>Debug</h2>
+      <pre id="debug"></pre>
     </div>
   </div>
 
-  <div class="box setupStep" data-setup-step="2">
-    <h2>Debug</h2>
-    <pre id="debug"></pre>
+  <div class="box setupWizardNav">
+    <div class="row" style="justify-content:space-between;">
+      <button id="setupBackBtn">← Zurück</button>
+      <span class="pill" id="setupStepLabel">Schritt 1 von 5</span>
+      <button id="setupNextBtn" class="primary">Weiter →</button>
+    </div>
   </div>
 
   <div class="box setupWizardNav">

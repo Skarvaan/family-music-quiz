@@ -204,6 +204,7 @@ FMQ.refreshConnStatus = () => {
     ? `<span class="ok">✅ Verbunden</span> <span class="muted">(${FMQ.escapeHtml(FMQ.storage.scope || "scopes?")})</span>`
     : `<span class="bad">❌ Nicht verbunden</span>`;
   FMQ.checkReadyToStart();
+  if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };
 
 FMQ.resetSession = () => {
