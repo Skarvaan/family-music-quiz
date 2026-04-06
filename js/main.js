@@ -27,6 +27,8 @@ FMQ.resetTurnUI = () => {
   FMQ.$("revealBox").style.display = "none";
   FMQ.$("revealText").innerHTML = "";
   FMQ.$("revealExtra").innerHTML = "";
+  FMQ.$("quick3RevealOverlay").classList.remove("show");
+  FMQ.$("quick3HelpOverlay").classList.remove("show");
 
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
@@ -38,7 +40,9 @@ FMQ.resetTurnUI = () => {
 
   FMQ.$("readyBtn").style.display = "";
   FMQ.$("playToggleBtn").style.display = "";
+  FMQ.$("revealBtn").style.display = "";
   FMQ.$("quick3Controls").style.display = "none";
+  FMQ.$("screenGame").classList.remove("quick3Active");
   FMQ.$("readyBtn").disabled = true;
   FMQ.$("revealBtn").disabled = true;
   FMQ.$("nextBtn").disabled = true;
@@ -60,9 +64,12 @@ FMQ.resetTurnUI = () => {
     FMQ.showRangeOverlay(true);
     FMQ.$("readyBtn").disabled = true;
   } else if (mode === "quick3") {
+    FMQ.$("screenGame").classList.add("quick3Active");
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
+    FMQ.$("revealBtn").style.display = "none";
     FMQ.$("quick3Controls").style.display = "flex";
+    FMQ.$("revealBtn").disabled = false;
   } else {
     FMQ.$("readyBtn").disabled = false;
     FMQ.$("revealBtn").disabled = false;
@@ -145,8 +152,23 @@ FMQ.onReveal = async () => {
   FMQ.$("revealText").innerHTML = `<div style="font-size:18px; font-weight:900;">${FMQ.escapeHtml(res.headline)}</div><div><b>${FMQ.escapeHtml(t.name)}</b><br><span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>Jahr: <b>${t.year}</b><br><span class="muted">${FMQ.escapeHtml(mode === "playlistGuess" ? `Song ist in Playlist(s): ${owners}` : `Quelle: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}`)}</span><br><span class="muted">${FMQ.escapeHtml(res.detail || "")}</span></div>`;
 
   if (mode === "guessSong") FMQ.modes.guessSong.renderRevealExtras();
-  if (mode === "quick3") FMQ.modes.quick3.renderRevealExtras();
+
   if (mode === "quick3") {
+    FMQ.$("revealBox").style.display = "none";
+    FMQ.$("quick3RevealContent").innerHTML = `
+      <div style="font-size:20px; font-weight:900; margin-bottom:8px;">${FMQ.escapeHtml(res.headline)}</div>
+      <div>
+        <b>${FMQ.escapeHtml(t.name)}</b><br>
+        <span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>
+        Jahr: <b>${t.year}</b>
+      </div>
+    `;
+    FMQ.$("quick3ChkTitle").checked = false;
+    FMQ.$("quick3ChkArtist").checked = false;
+    FMQ.$("quick3ChkYear").checked = false;
+    FMQ.$("quick3PtsStatus").textContent = "";
+    FMQ.$("quick3ConfirmBtn").disabled = false;
+    FMQ.$("quick3RevealOverlay").classList.add("show");
     if (FMQ.$("quick3PlayStartBtn")) FMQ.$("quick3PlayStartBtn").disabled = true;
     if (FMQ.$("quick3PlayRandomBtn")) FMQ.$("quick3PlayRandomBtn").disabled = true;
     if (FMQ.$("quick3LenSelect")) FMQ.$("quick3LenSelect").disabled = true;
@@ -209,6 +231,21 @@ FMQ.init = async () => {
 
   FMQ.$("overlaySafeBtn").onclick = () => { FMQ.app.state.timeline.chosenRisk = "safe"; FMQ.showRiskOverlay(false); };
   FMQ.$("overlayWagnisBtn").onclick = () => { FMQ.app.state.timeline.chosenRisk = "wagnis"; FMQ.showRiskOverlay(false); };
+  FMQ.$("quick3HelpCloseBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.remove("show");
+  FMQ.$("quick3ConfirmBtn").onclick = () => {
+    const me = FMQ.currentPlayer();
+    const pts =
+      (FMQ.$("quick3ChkTitle").checked ? 1 : 0) +
+      (FMQ.$("quick3ChkArtist").checked ? 1 : 0) +
+      (FMQ.$("quick3ChkYear").checked ? 1 : 0);
+    FMQ.awardPoints(me.id, pts);
+    FMQ.app.state.selfCheckPending = false;
+    FMQ.$("quick3PtsStatus").innerHTML = `<span class="ok">+${pts} Punkte bestätigt</span>`;
+    FMQ.$("quick3ConfirmBtn").disabled = true;
+    FMQ.$("quick3RevealOverlay").classList.remove("show");
+    FMQ.$("nextBtn").disabled = false;
+    FMQ.renderScoreTable();
+  };
   FMQ.$("rangeOverlay").querySelectorAll("[data-step]").forEach(btn => btn.onclick = () => {
     const step = parseInt(btn.dataset.step, 10);
     FMQ.app.state.yearRange.step = step;

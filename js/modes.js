@@ -81,9 +81,30 @@ FMQ.modes = {
     label: "3-Sekunden Challenge",
     supportsAllGuess: false,
     renderArea() {
+      const me = FMQ.currentPlayer();
       FMQ.$("modeAreaTitle").textContent = "3-Sekunden Challenge";
-      FMQ.$("modeArea").innerHTML = '<div class="muted">Wähle Länge und nutze dann Play-Start oder Play-Zufall. Bis Reveal bleibt die gleiche Sequenz gespeichert.</div>';
+      FMQ.$("modeArea").innerHTML = `
+        <div class="quick3Hero">
+          <div class="name">${FMQ.escapeHtml(me.name)}</div>
+          <div class="sub muted">Wähle Sekunden und starte mit Play-Start oder Play-Zufall.</div>
+          <div class="row" style="justify-content:center; margin-top:8px;">
+            <button id="quick3HelpBtn">Anleitung</button>
+          </div>
+        </div>
+        <div class="quick3Stage">
+          <div class="quick3Panel">
+            <div id="quick3ControlMount"></div>
+            <div class="revealCenter">
+              <button id="revealBtnInline" class="big">Reveal</button>
+            </div>
+          </div>
+        </div>
+      `;
+      FMQ.$("quick3ControlMount").appendChild(FMQ.$("quick3Controls"));
+      FMQ.$("quick3Controls").style.display = "flex";
       FMQ.renderQuick3ActionControls();
+      FMQ.$("quick3HelpBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.add("show");
+      FMQ.$("revealBtnInline").onclick = () => FMQ.$("revealBtn").click();
     },
     getClipSeconds() { return FMQ.app.state.quick3.clipSeconds || 3; },
     randomStartMs(track) {

@@ -179,6 +179,37 @@
   </div>
 </div>
 
+<div id="quick3HelpOverlay" class="overlay">
+  <div class="overlayCard">
+    <h2>Anleitung · 3-Sekunden-Challenge</h2>
+    <div class="muted">
+      1) Wähle 3 / 5 / 10 Sekunden.<br>
+      2) <b>Play-Start</b> spielt immer vom Songanfang.<br>
+      3) <b>Play-Zufall</b> spielt eine gespeicherte Zufallsstelle für diesen Zug.<br>
+      4) Bei <b>Reveal</b> siehst du Lösung + Self-Check zusammen.
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button id="quick3HelpCloseBtn" class="primary big">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<div id="quick3RevealOverlay" class="overlay">
+  <div class="overlayCard">
+    <h2>Auflösung + Selbst-Check</h2>
+    <div id="quick3RevealContent"></div>
+    <div class="selfCheckList" style="margin-top:12px;">
+      <label class="selfCheckItem"><input type="checkbox" id="quick3ChkTitle"> Titel (1)</label>
+      <label class="selfCheckItem"><input type="checkbox" id="quick3ChkArtist"> Interpret (1)</label>
+      <label class="selfCheckItem"><input type="checkbox" id="quick3ChkYear"> Jahr (1)</label>
+    </div>
+    <div class="row selfCheckActions">
+      <button id="quick3ConfirmBtn" class="primary big">Punkte bestätigen</button>
+      <span class="muted" id="quick3PtsStatus"></span>
+    </div>
+  </div>
+</div>
+
 <script src="/family-music-quiz/js/core.js" defer></script>
 <script src="/family-music-quiz/js/spotify.js" defer></script>
 <script src="/family-music-quiz/js/modes.js" defer></script>
