@@ -8,15 +8,18 @@ FMQ.modes = {
     supportsAllGuess: false,
     renderArea() {
       const me = FMQ.currentPlayer();
-      const slots = Array.from({ length: me.timelineCards.length + 1 }, (_, i) => `<div class="slot ${i === FMQ.app.state.timeline.chosenSlot ? "active" : ""}" data-slot="${i}">+</div>`).join("");
-      const cards = me.timelineCards.map(c => c.isReference ? `<div class="card"><div class="year">${c.year}</div><div class="artist muted">Referenz</div></div>` : `<div class="card"><div class="year">${c.year}</div><div class="title">${FMQ.escapeHtml(c.name)}</div><div class="artist">${FMQ.escapeHtml(c.artists.join(", "))}</div></div>`).join("");
+      const cards = me.timelineCards.map(c => c.isReference ? `<div class="card"><div class="year">${c.year}</div><div class="artist muted">Referenz</div></div>` : `<div class="card"><div class="year">${c.year}</div><div class="title">${FMQ.escapeHtml(c.name)}</div><div class="artist">${FMQ.escapeHtml(c.artists.join(", "))}</div></div>`);
+      const lineParts = [];
+      for (let i = 0; i < cards.length + 1; i++) {
+        lineParts.push(`<div class="slot ${i === FMQ.app.state.timeline.chosenSlot ? "active" : ""}" data-slot="${i}">+</div>`);
+        if (cards[i]) lineParts.push(cards[i]);
+      }
       FMQ.$("modeAreaTitle").textContent = "Timeline";
       FMQ.$("modeArea").innerHTML = `
         <div class="modeStage">
           <div class="modePanel theme-timeline">
             <h3>Ordne den Song in deine Timeline ein</h3>
-            <div class="slotRow" id="timelineSlots">${slots}</div>
-            <div class="timelineLine">${cards}</div>
+            <div class="timelineLine" id="timelineSlots">${lineParts.join("")}</div>
           </div>
         </div>
       `;

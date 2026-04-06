@@ -44,11 +44,12 @@ FMQ.resetTurnUI = () => {
   FMQ.$("nextBtn").style.display = "";
   FMQ.$("quick3Controls").style.display = "none";
   FMQ.$("screenGame").classList.remove("quick3Active");
+  FMQ.$("readyBtn").textContent = "▶️ Play-Start";
   FMQ.$("readyBtn").disabled = true;
   FMQ.$("revealBtn").disabled = true;
   FMQ.$("nextBtn").disabled = true;
   FMQ.$("playToggleBtn").disabled = true;
-  FMQ.$("playToggleBtn").textContent = "▶️ Play";
+  FMQ.$("playToggleBtn").textContent = "↻ Play von vorn";
 
   const mode = FMQ.app.config.mode;
   FMQ.modes[mode].renderArea();
@@ -79,14 +80,16 @@ FMQ.resetTurnUI = () => {
 
   FMQ.$("turnFlowHint").textContent = mode === "quick3"
     ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall → Reveal → Punkte eintragen und weiter"
-    : "Ablauf: Bereit → Reveal → Weiter";
+    : "Ablauf: Play-Start → optional Stop/Play von vorn → Reveal → Weiter";
 
   FMQ.renderHeader();
   FMQ.renderScoreTable();
 };
 
 FMQ.onReady = async () => {
-  await FMQ.prepareTrackForTurn();
+  if (!FMQ.app.state.currentTrack) {
+    await FMQ.prepareTrackForTurn();
+  }
   FMQ.showRiskOverlay(false);
   FMQ.showRangeOverlay(false);
 
@@ -104,7 +107,7 @@ FMQ.onTogglePlay = async () => {
   if (FMQ.app.state.isPlaying) {
     await FMQ.pausePlayback();
     FMQ.app.state.isPlaying = false;
-    FMQ.$("playToggleBtn").textContent = "▶️ Play";
+    FMQ.$("playToggleBtn").textContent = "↻ Play von vorn";
   } else {
     await FMQ.playTrackUri(FMQ.app.state.currentTrack.uri, { positionMs: 0 });
     FMQ.app.state.isPlaying = true;
