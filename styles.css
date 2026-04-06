@@ -28,6 +28,10 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .setupStep{ display:none; }
 .setupStep.active{ display:block; }
 .setupWizardNav{ position: sticky; bottom: 10px; z-index: 20; }
+.setupWizardHeader{ background: linear-gradient(180deg,#fff,#f8fafc); }
+#screenSetup .setupStep.active{ max-width: 960px; margin-left:auto; margin-right:auto; }
+#screenSetup .setupWizardNav{ max-width: 960px; margin-left:auto; margin-right:auto; }
+#screenSetup .setupWizardNav button{ min-width: 140px; }
 .turnBanner{ border:1px solid var(--line); border-radius: 14px; padding: 12px 14px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
 .scoreTable{ width:100%; border-collapse: collapse; }
 .scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }

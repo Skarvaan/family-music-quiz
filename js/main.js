@@ -238,6 +238,14 @@ FMQ.renderSetupWizard = () => {
   document.querySelectorAll(".setupStep").forEach(el => {
     el.classList.toggle("active", parseInt(el.getAttribute("data-setup-step"), 10) === step);
   });
+  if (step === 1) {
+    FMQ.$("setupWizardTitle").textContent = "Schritt 1 · Spotify verbinden";
+    FMQ.$("setupWizardSub").textContent = "Verbinde zuerst den Spotify-Host-Account.";
+    FMQ.$("setupNextBtn").textContent = "Weiter →";
+  } else {
+    FMQ.$("setupWizardTitle").textContent = "Schritt 2 · Spiel einrichten";
+    FMQ.$("setupWizardSub").textContent = "Wähle Modus, Spieler und starte danach das Spiel.";
+  }
   FMQ.$("setupBackBtn").disabled = step <= 1;
   FMQ.$("setupNextBtn").style.display = step >= 2 ? "none" : "";
   FMQ.$("setupStepLabel").textContent = `Schritt ${step} von 2`;
