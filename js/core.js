@@ -57,6 +57,7 @@ FMQ.app = {
     yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
     playlistGuess: { picks: new Map() },
     quick3: { clipSeconds: 3, randomStartMs: null },
+    social: null,
     finalRound: { pending: false, roundNumber: null },
     selfCheckPending: false,
     setupStep: 1
@@ -214,6 +215,7 @@ FMQ.resetSession = () => {
   FMQ.app.state.yearRange = { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() };
   FMQ.app.state.playlistGuess = { picks: new Map() };
   FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null };
+  FMQ.app.state.social = null;
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
   FMQ.app.state.selfCheckPending = false;
 

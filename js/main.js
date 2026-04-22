@@ -12,6 +12,22 @@ FMQ.prepareTrackForTurn = async () => {
   FMQ.app.state.currentTrack = draw.track;
   FMQ.app.state.currentSourcePlayerId = draw.sourcePlayerId;
 
+  if (mode === "bestFit") {
+    const me = FMQ.currentPlayer();
+    const ownIds = FMQ.shuffle((me.tracks || []).map(t => t.id).filter(id => id && !FMQ.app.usedTrackIds.has(id)));
+    if (ownIds.length < 2) throw new Error("Für Song A/B werden mindestens 2 ungenutzte Songs in der Haupt-Playlist benötigt.");
+    const aId = ownIds.pop();
+    const bId = ownIds.pop();
+    FMQ.app.usedTrackIds.add(aId);
+    FMQ.app.usedTrackIds.add(bId);
+    FMQ.app.state.bestFitTracks = {
+      a: FMQ.app.trackMap.get(aId),
+      b: FMQ.app.trackMap.get(bId)
+    };
+    FMQ.app.state.currentTrack = FMQ.app.state.bestFitTracks.a;
+    FMQ.app.state.currentSourcePlayerId = me.id;
+  }
+
   if (mode === "yearRange") {
     const me = FMQ.currentPlayer();
     const built = FMQ.modes.yearRange.buildOptionsForYear(draw.track.year, FMQ.app.state.yearRange.step, me.spanMin, me.spanMax);
@@ -36,6 +52,7 @@ FMQ.resetTurnUI = () => {
   FMQ.app.state.isPlaying = false;
   FMQ.app.state.currentTrack = null;
   FMQ.app.state.currentSourcePlayerId = null;
+  FMQ.app.state.bestFitTracks = null;
   FMQ.app.state.selfCheckPending = false;
   FMQ.app.state.quick3.randomStartMs = null;
 
@@ -158,6 +175,15 @@ FMQ.onReveal = async () => {
   const t = FMQ.app.state.currentTrack;
   const mode = FMQ.app.config.mode;
   const res = FMQ.modes[mode].onReveal();
+  if (res?.skipReveal) {
+    FMQ.$("revealBox").style.display = "none";
+    FMQ.$("revealText").innerHTML = "";
+    FMQ.$("revealExtra").innerHTML = "";
+    FMQ.$("revealBtn").disabled = !!res.disableReveal;
+    FMQ.$("nextBtn").disabled = true;
+    FMQ.renderScoreTable();
+    return;
+  }
   if (FMQ.app.state.speed?.timer) clearInterval(FMQ.app.state.speed.timer);
   const owners = (t.owners || []).map(FMQ.getPlayerName).join(", ");
 
