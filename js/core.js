@@ -36,13 +36,8 @@ FMQ.yearFromReleaseDate = (d) => {
 };
 FMQ.calcYearStats = (years) => {
   const ys = years.filter(Number.isFinite).sort((a, b) => a - b);
-  if (!ys.length) return { median: null, p10: null, p90: null };
-  const p = q => ys[Math.floor((ys.length - 1) * q)];
-  return {
-    median: ys.length % 2 ? ys[(ys.length - 1) / 2] : Math.round((ys[ys.length / 2 - 1] + ys[ys.length / 2]) / 2),
-    p10: p(0.1),
-    p90: p(0.9)
-  };
+  if (!ys.length) return { min: null, max: null };
+  return { min: ys[0], max: ys[ys.length - 1] };
 };
 
 FMQ.storage = {
@@ -56,10 +51,9 @@ FMQ.storage = {
 
 FMQ.app = {
   playlists: [], players: [], trackMap: new Map(), usedTrackIds: new Set(), globalDeck: [],
-  config: { mode: "timeline", party: "rotate", targetPoints: 15 },
+  config: { category: "self", mode: "guessSong", party: "rotate", targetPoints: 15 },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
-    timeline: { chosenSlot: 0, chosenRisk: null },
     yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
     playlistGuess: { picks: new Map() },
     quick3: { clipSeconds: 3, randomStartMs: null },
@@ -93,7 +87,7 @@ FMQ.renderModeConfig = () => {
 
 FMQ.renderModeHints = () => {
   const mode = FMQ.$("modeSelect").value;
-  const hints = { timeline: "Einordnen in eigene Timeline", guessSong: "Selbst-Check auf Titel/Interpret/Jahr", quick3: "Kurze Snippets merken", yearRange: "Jahr per Multiple Choice", playlistGuess: "Besitzer-Playlist erkennen" };
+  const hints = { guessSong: "Selbst-Check auf Titel/Interpret/Jahr", quick3: "Kurze Snippets merken", yearRange: "Jahr per Multiple Choice", playlistGuess: "Besitzer-Playlist erkennen" };
   FMQ.$("modeHint").textContent = hints[mode] || "";
   FMQ.renderModeConfig();
 };
@@ -122,7 +116,7 @@ FMQ.rebuildTrackUniverse = () => {
 };
 
 FMQ.checkReadyToStart = () => {
-  const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.every(p => p.name && p.playlistId && (p.tracks?.length || 0) >= 5 && p.refYear);
+  const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.every(p => p.name && p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax);
   FMQ.$("startGameBtn").disabled = !ok;
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };
@@ -141,7 +135,7 @@ FMQ.buildPlayersConfig = () => {
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
-    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], refYear: prev.refYear || null, spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, timelineCards: [], wrongTimeline: [] };
+    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0 };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "row";
@@ -170,7 +164,7 @@ FMQ.buildPlayersConfig = () => {
 
     if (!p.playlistId) {
       p.tracks = [];
-      p.refYear = p.spanMin = p.spanMax = null;
+      p.spanMin = p.spanMax = null;
       statusEl.textContent = "noch nicht geladen";
       FMQ.rebuildTrackUniverse();
       FMQ.checkReadyToStart();
@@ -182,14 +176,13 @@ FMQ.buildPlayersConfig = () => {
       const tracks = await FMQ.loadAllTracksForPlaylist(p.playlistId);
       p.tracks = tracks;
       const s = FMQ.calcYearStats(tracks.map(t => t.year));
-      p.refYear = s.median;
-      p.spanMin = s.p10;
-      p.spanMax = s.p90;
-      statusEl.innerHTML = `<span class="ok">✅ ${tracks.length} Tracks</span> <span class="muted">(Ref ${p.refYear ?? "?"}, ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`;
+      p.spanMin = s.min;
+      p.spanMax = s.max;
+      statusEl.innerHTML = `<span class="ok">✅ ${tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`;
     } catch (e) {
       statusEl.innerHTML = `<span class="bad">❌ ${FMQ.escapeHtml(e.message)}</span>`;
       p.tracks = [];
-      p.refYear = p.spanMin = p.spanMax = null;
+      p.spanMin = p.spanMax = null;
     }
 
     FMQ.rebuildTrackUniverse();
@@ -218,7 +211,6 @@ FMQ.resetSession = () => {
   FMQ.app.state.isPlaying = false;
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
-  FMQ.app.state.timeline = { chosenSlot: 0, chosenRisk: null };
   FMQ.app.state.yearRange = { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() };
   FMQ.app.state.playlistGuess = { picks: new Map() };
   FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null };
@@ -227,11 +219,6 @@ FMQ.resetSession = () => {
 
   FMQ.app.players.forEach(p => {
     p.score = 0;
-    p.timelineCards = [];
-    p.wrongTimeline = [];
-    if (FMQ.app.config.mode === "timeline") {
-      p.timelineCards = [{ id: "ref-" + p.id, uri: "", name: "Referenz", artists: [], year: p.refYear, durationMs: 0, isReference: true }];
-    }
   });
 };
 
@@ -280,7 +267,7 @@ FMQ.awardPoints = (pid, delta) => {
 };
 
 FMQ.renderScoreTable = () => {
-  FMQ.$("scoreTable").innerHTML = ["<tr><th>Spieler</th><th>Punkte</th><th>Ref</th><th>Spanne</th></tr>", ...FMQ.app.players.map(p => `<tr><td>${FMQ.escapeHtml(p.name)}</td><td><b>${p.score}</b> / ${FMQ.app.config.targetPoints}</td><td>${p.refYear ?? "?"}</td><td>${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</td></tr>`)].join("");
+  FMQ.$("scoreTable").innerHTML = ["<tr><th>Spieler</th><th>Punkte</th><th>Spanne</th></tr>", ...FMQ.app.players.map(p => `<tr><td>${FMQ.escapeHtml(p.name)}</td><td><b>${p.score}</b> / ${FMQ.app.config.targetPoints}</td><td>${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</td></tr>`)].join("");
 };
 
 FMQ.renderHeader = () => {
@@ -289,9 +276,8 @@ FMQ.renderHeader = () => {
   FMQ.$("gameModeSub").textContent = FMQ.app.config.party === "allguess" ? "Alle raten" : "Reihum";
   FMQ.$("roundLabel").textContent = `Runde ${FMQ.app.state.round}`;
   FMQ.$("turnPlayerName").textContent = me.name;
-  FMQ.$("turnInfo").textContent = `Ref: ${me.refYear ?? "?"} · Spanne: ${(me.spanMin && me.spanMax) ? `${me.spanMin}–${me.spanMax}` : "?"}`;
+  FMQ.$("turnInfo").textContent = `Spanne: ${(me.spanMin && me.spanMax) ? `${me.spanMin}–${me.spanMax}` : "?"}`;
   FMQ.$("globalUsedLabel").textContent = String(FMQ.app.usedTrackIds.size);
 };
 
-FMQ.showRiskOverlay = (show) => FMQ.$("riskOverlay").classList.toggle("show", !!show);
 FMQ.showRangeOverlay = (show) => FMQ.$("rangeOverlay").classList.toggle("show", !!show);

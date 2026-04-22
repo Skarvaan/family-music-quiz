@@ -40,10 +40,10 @@
   </div>
 
   <div class="box setupStep" data-setup-step="2">
-    <h2>2) Spielart wählen</h2>
+    <h2>2) Hauptkategorie wählen</h2>
     <div class="modeButtonGrid" id="playStyleButtons">
-      <button class="modeBtn" data-play-style="rotate">Eigene Playlists (Reihum)</button>
-      <button class="modeBtn" data-play-style="allguess">Party-Modus (alle raten, wenn möglich)</button>
+      <button class="modeBtn" data-category="self">Ich & meine Playlist</button>
+      <button class="modeBtn" data-category="social">Wer kennt meinen Geschmack?</button>
     </div>
   </div>
 
@@ -55,11 +55,12 @@
     <!-- hidden legacy selects for compatibility -->
     <div style="display:none;">
       <select id="modeSelect">
-        <option value="timeline">Timeline (Einordnen)</option>
-        <option value="guessSong">Song raten (Titel/Interpret/Jahr)</option>
-        <option value="quick3">3-Sekunden Challenge</option>
+        <option value="guessSong">Song erkennen</option>
+        <option value="speedGuess">Zeitdruck</option>
         <option value="yearRange">Zeitraum raten (MC)</option>
-        <option value="playlistGuess">Welche Playlist ist das?</option>
+        <option value="ratingGuess">Song-Bewertung einschätzen</option>
+        <option value="knowledgeGuess">Was weiß ich wirklich?</option>
+        <option value="bestFit">Song A oder B – was passt besser?</option>
       </select>
       <select id="partySelect">
         <option value="rotate">Reihum (jeder ist dran)</option>
@@ -190,20 +191,6 @@
     </div>
   </div>
 </section>
-
-<div id="riskOverlay" class="overlay">
-  <div class="overlayCard">
-    <h2>Safe oder Wagnis?</h2>
-    <div class="muted">
-      <b>Safe</b>: Song aus deiner Playlist (+1 bei richtig, 0 bei falsch)<br>
-      <b>Wagnis</b>: Song aus einer anderen Playlist (+2 bei richtig, -1 bei falsch)
-    </div>
-    <div class="bigRow">
-      <button id="overlaySafeBtn" class="primary big">Safe</button>
-      <button id="overlayWagnisBtn" class="big">Wagnis</button>
-    </div>
-  </div>
-</div>
 
 <div id="rangeOverlay" class="overlay">
   <div class="overlayCard">

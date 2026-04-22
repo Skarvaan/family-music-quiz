@@ -61,15 +61,6 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .scoreTable{ width:100%; border-collapse: collapse; }
 .scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
 .scoreTable th{ background:#fafafa; }
-.card{ min-width: 150px; max-width: 280px; border:1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--card); }
-.card .year{ font-weight:800; font-size: 18px; }
-.card .title{ margin-top:6px; font-weight:800; font-size: 14px; }
-.card .artist{ margin-top:2px; color:var(--muted); font-size: 12px; }
-.card.bad{ border-color: rgba(176,0,32,.35); background: rgba(176,0,32,.06); }
-.timelineLine{ display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
-.slotRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0; }
-.slot{ width: 30px; height: 76px; border-radius: 12px; border:1px dashed #bbb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; font-weight:900; }
-.slot.active{ border-style: solid; border-color:#111; background:#111; color:#fff; }
 .choiceGrid{ display:flex; flex-wrap:wrap; gap:10px; }
 .choiceBtn{ padding: 12px 14px; border-radius: 12px; border:1px solid var(--line); background:#fff; }
 .choiceBtn.selected{ background:var(--primary); color:#fff; border-color:var(--primary-dark); }
@@ -103,7 +94,6 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .modeStage{ display:flex; justify-content:center; margin-top:8px; }
 .modePanel{ width:min(860px,100%); border:1px solid var(--line); border-radius:18px; padding:18px; background:#fff; box-shadow: var(--shadow); }
 .modePanel h3{ margin:0 0 8px; }
-.modePanel.theme-timeline{ background: linear-gradient(180deg,rgba(37,99,235,.08),#fff); }
 .modePanel.theme-guess{ background: linear-gradient(180deg,rgba(16,185,129,.08),#fff); }
 .modePanel.theme-range{ background: linear-gradient(180deg,rgba(139,92,246,.08),#fff); }
 .modePanel.theme-playlist{ background: linear-gradient(180deg,rgba(249,115,22,.08),#fff); }
