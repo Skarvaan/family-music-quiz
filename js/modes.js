@@ -123,6 +123,7 @@ FMQ.modes = {
                 <option value="3">3 Sekunden</option>
                 <option value="5">5 Sekunden</option>
                 <option value="10">10 Sekunden</option>
+                <option value="full">Ganzer Song</option>
               </select>
               <button id="quick3PlayStartBtnInline" class="big">▶️ Play-Start</button>
               <button id="quick3PlayRandomBtnInline" class="big">🎲 Play-Zufall</button>
@@ -135,7 +136,8 @@ FMQ.modes = {
       `;
       FMQ.$("quick3LenSelectInline").value = String(FMQ.app.state.quick3.clipSeconds);
       FMQ.$("quick3LenSelectInline").onchange = () => {
-        FMQ.app.state.quick3.clipSeconds = parseInt(FMQ.$("quick3LenSelectInline").value, 10);
+        const nextVal = FMQ.$("quick3LenSelectInline").value;
+        FMQ.app.state.quick3.clipSeconds = nextVal === "full" ? "full" : parseInt(nextVal, 10);
       };
       FMQ.$("quick3PlayStartBtnInline").onclick = () => FMQ.onQuick3Play("start").catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("quick3PlayRandomBtnInline").onclick = () => FMQ.onQuick3Play("random").catch(e => FMQ.setGameDebug(e.stack || e.message));
@@ -145,7 +147,8 @@ FMQ.modes = {
     getClipSeconds() { return FMQ.app.state.quick3.clipSeconds || 3; },
     randomStartMs(track) {
       const dur = track.durationMs || 180000;
-      const clip = this.getClipSeconds() * 1000;
+      const clipSeconds = this.getClipSeconds();
+      const clip = clipSeconds === "full" ? 15000 : clipSeconds * 1000;
       const min = 20000;
       const max = Math.max(min, dur - 20000 - clip);
       return max <= min ? 0 : Math.floor(min + Math.random() * (max - min));
@@ -153,10 +156,14 @@ FMQ.modes = {
     async playStored(track, startMs) {
       await FMQ.playTrackUri(track.uri, { positionMs: startMs });
       clearTimeout(FMQ.app.state.playTimer);
-      FMQ.app.state.playTimer = setTimeout(async () => {
-        try { await FMQ.pausePlayback(); } catch {}
-        FMQ.app.state.isPlaying = false;
-      }, this.getClipSeconds() * 1000);
+      FMQ.app.state.playTimer = null;
+      const clipSeconds = this.getClipSeconds();
+      if (clipSeconds !== "full") {
+        FMQ.app.state.playTimer = setTimeout(async () => {
+          try { await FMQ.pausePlayback(); } catch {}
+          FMQ.app.state.isPlaying = false;
+        }, clipSeconds * 1000);
+      }
       FMQ.app.state.isPlaying = true;
     },
     onReveal() {

@@ -251,7 +251,7 @@ FMQ.renderPlayStyleButtons = () => {
 
 FMQ.renderModeButtons = () => {
   const modeMeta = [
-    { id: "guessSong", label: "A) Song erkennen", category: "self" },
+    { id: "quick3", label: "A) Quick3 / Ganzer Song", category: "self" },
     { id: "speedGuess", label: "B) Zeitdruck", category: "self" },
     { id: "yearRange", label: "C) Zeitraum/Jahr raten", category: "self" },
     { id: "ratingGuess", label: "D) Song-Bewertung einschätzen", category: "social" },
@@ -260,7 +260,7 @@ FMQ.renderModeButtons = () => {
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
-    FMQ.$("modeSelect").value = allowed[0]?.id || "guessSong";
+    FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
     FMQ.renderModeHints();
   }

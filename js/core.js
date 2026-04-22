@@ -51,7 +51,7 @@ FMQ.storage = {
 
 FMQ.app = {
   playlists: [], players: [], trackMap: new Map(), usedTrackIds: new Set(), globalDeck: [],
-  config: { category: "self", mode: "guessSong", party: "rotate", targetPoints: 15 },
+  config: { category: "self", mode: "quick3", party: "rotate", targetPoints: 15 },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
     yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
