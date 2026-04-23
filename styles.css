@@ -1,20 +1,20 @@
 /* Hinweis: Zentrale Styles für das Family Music Quiz (aus index.html ausgelagert). */
 :root{
-  --bg:#ffffff; --fg:#111; --muted:#666; --line:#e6e6e6;
+  --bg:#f3f6ff; --fg:#0f172a; --muted:#5b6475; --line:#d8deef;
   --ok:#0a7a0a; --bad:#b00020; --card:#fafafa;
-  --primary:#2563eb; --primary-dark:#1d4ed8;
-  --shadow: 0 6px 18px rgba(0,0,0,.08);
-  --r:14px;
+  --primary:#4f46e5; --primary-dark:#3730a3;
+  --shadow: 0 14px 32px rgba(55,48,163,.12);
+  --r:18px;
 }
-body{ font-family: Arial, sans-serif; max-width: 1050px; margin: 22px auto; padding: 0 14px; color:var(--fg); background:var(--bg); }
+body{ font-family: Inter, Arial, sans-serif; max-width: 1080px; margin: 16px auto 26px; padding: 0 14px; color:var(--fg); background:linear-gradient(180deg,#eef2ff,#f8faff); }
 h1{ margin:8px 0 6px; }
 h2{ margin:0 0 10px; }
-button{ padding: 12px 14px; min-height:48px; margin: 6px 8px 6px 0; cursor:pointer; border:1px solid var(--line); border-radius:8px; background:#fff; }
+button{ padding: 12px 16px; min-height:50px; margin: 6px 8px 6px 0; cursor:pointer; border:1px solid var(--line); border-radius:12px; background:#fff; font-weight:700; }
 button.primary{ background:var(--primary); color:#fff; border-color:var(--primary-dark); }
-button.big{ font-size: 22px; padding: 14px 18px; border-radius: 10px; min-height:56px; }
+button.big{ font-size: 22px; padding: 16px 20px; border-radius: 14px; min-height:60px; }
 button:disabled{ opacity:.5; cursor:not-allowed; }
-select,input{ padding: 10px; margin: 6px 8px 6px 0; border:1px solid var(--line); border-radius:10px; }
-.box{ border:1px solid var(--line); padding: 14px; border-radius: var(--r); margin-top: 14px; box-shadow: var(--shadow); background:#fff; }
+select,input{ padding: 12px 12px; margin: 6px 8px 6px 0; border:1px solid var(--line); border-radius:12px; font-size:16px; }
+.box{ border:1px solid var(--line); padding: 16px; border-radius: var(--r); margin-top: 14px; box-shadow: var(--shadow); background:#fff; }
 .row{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
 .muted{ color:var(--muted); font-size:12px; }
 .ok{ color:var(--ok); }
@@ -29,7 +29,7 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .setupStep{ display:none; }
 .setupStep.active{ display:block; }
 .setupWizardNav{ position: static; }
-.setupWizardHeader{ background: linear-gradient(135deg,#111,#2b2b2b); color:#fff; }
+.setupWizardHeader{ background: linear-gradient(120deg,#4f46e5,#7c3aed); color:#fff; }
 .setupWizardHeader .muted{ color:#e7e7e7; }
 #screenSetup .setupStep.active{ max-width: 960px; margin-left:auto; margin-right:auto; }
 #screenSetup .setupWizardNav{ max-width: 960px; margin-left:auto; margin-right:auto; }
@@ -57,12 +57,14 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 #setupSummary .summaryCard{ text-align:center; border:1px solid var(--line); border-radius:16px; padding:16px; background:#fff; }
 #setupSummary ul{ list-style:none; padding:0; margin:10px auto 0; max-width:540px; text-align:left; }
 #setupSummary li{ padding:8px 10px; border:1px solid var(--line); border-radius:10px; margin-top:8px; background:#fafafa; }
-.turnBanner{ border:1px solid var(--line); border-radius: 14px; padding: 12px 14px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
-.scoreTable{ width:100%; border-collapse: collapse; }
-.scoreTable td, .scoreTable th{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
-.scoreTable th{ background:#fafafa; }
+.turnBanner{ border:1px solid var(--line); border-radius: 16px; padding: 14px 16px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
+.scoreGrid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+.scoreCard{ border:1px solid var(--line); border-radius:14px; padding:12px; background:#f8faff; }
+.scoreCard .name{ font-size:16px; font-weight:800; }
+.scoreCard .pts{ margin-top:4px; font-size:20px; font-weight:900; color:var(--primary-dark); }
+.scoreCard .span{ margin-top:4px; font-size:12px; color:var(--muted); }
 .choiceGrid{ display:flex; flex-wrap:wrap; gap:10px; }
-.choiceBtn{ padding: 12px 14px; border-radius: 12px; border:1px solid var(--line); background:#fff; }
+.choiceBtn{ padding: 14px 18px; border-radius: 14px; border:1px solid var(--line); background:#fff; font-size:18px; }
 .choiceBtn.selected{ background:var(--primary); color:#fff; border-color:var(--primary-dark); }
 .miniPick{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .miniPick .mini{ padding:8px 10px; border-radius: 10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
@@ -109,6 +111,6 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .modePanel.theme-guess{ background: linear-gradient(180deg,rgba(16,185,129,.08),#fff); }
 .modePanel.theme-range{ background: linear-gradient(180deg,rgba(139,92,246,.08),#fff); }
 .modePanel.theme-playlist{ background: linear-gradient(180deg,rgba(249,115,22,.08),#fff); }
-.choiceBtn{ min-height:52px; font-weight:700; }
+.choiceBtn{ min-height:58px; font-weight:700; }
 
 @media (max-width: 820px){ .overlayCard button{ min-width: 180px; } }

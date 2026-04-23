@@ -11,7 +11,7 @@
 
 <h1>Family Music Quiz</h1>
 <div class="muted">
-  Prototype · Spotify Premium Host · Fokus: <b>Meine Songs kennen & einordnen</b> · Global <b>No-Duplicates</b> pro Session
+  Spotify Premium Host · Fokus: <b>Meine Songs kennen & einordnen</b> · Global <b>No-Duplicates</b> pro Session
 </div>
 
 <section id="screenSetup" class="screen active">
@@ -24,8 +24,7 @@
   <div class="box setupStep" data-setup-step="1">
     <h2>1) Spotify verbinden</h2>
     <div class="row">
-      <button id="loginBtn" class="primary">Mit Spotify verbinden</button>
-      <button id="logoutBtn">Logout</button>
+      <button id="loginBtn" class="primary">Verbinden</button>
       <span id="connStatus" class="pill"></span>
     </div>
     <div class="muted">
@@ -33,10 +32,7 @@
       <br><span class="pill" id="redirectUriPill"></span>
     </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button id="loadMyPlaylistsBtn">Playlists neu laden (Backup)</button>
-      <span class="muted" id="playlistStatus"></span>
-    </div>
+    <div class="row" style="margin-top:10px;"><span class="muted" id="playlistStatus"></span></div>
   </div>
 
   <div class="box setupStep" data-setup-step="2">
@@ -102,10 +98,6 @@
       <button id="startGameBtn" class="primary" disabled>Fertig? Spiel starten</button>
     </div>
 
-    <details class="box" style="margin-top:12px; box-shadow:none;">
-      <summary><b>Debug-Log anzeigen</b></summary>
-      <pre id="debug" style="margin-top:10px;"></pre>
-    </details>
   </div>
 
   <div class="box setupWizardNav">
@@ -165,12 +157,7 @@
 
     <div class="box" style="margin-top:14px;">
       <h2>Scores</h2>
-      <table class="scoreTable" id="scoreTable"></table>
-    </div>
-
-    <div class="box" style="margin-top:14px;">
-      <h2>Debug</h2>
-      <pre id="debugGame"></pre>
+      <div class="scoreGrid" id="scoreTable"></div>
     </div>
   </div>
 </section>
@@ -183,7 +170,7 @@
 
     <div class="box" style="margin-top:12px;">
       <h2>Endstand</h2>
-      <table class="scoreTable" id="finalScoreTable"></table>
+      <div class="scoreGrid" id="finalScoreTable"></div>
     </div>
 
     <div class="row" style="margin-top:14px;">

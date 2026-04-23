@@ -40,7 +40,7 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   const code = url.searchParams.get("code");
   const err = url.searchParams.get("error");
   if (err) {
-    FMQ.setDebug("OAuth Fehler: " + err);
+    FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     url.searchParams.delete("error");
     window.history.replaceState({}, "", url.toString());
     return;
@@ -48,7 +48,7 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   if (!code) return;
 
   if (!FMQ.storage.verifier) {
-    FMQ.setDebug("Fehler: PKCE verifier fehlt. Bitte nochmal Login drücken.");
+    FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     return;
   }
 
@@ -67,7 +67,7 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   });
   const data = await res.json();
   if (!data.access_token) {
-    FMQ.setDebug("Token Fehler:\n" + JSON.stringify(data, null, 2));
+    FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     return;
   }
 
@@ -78,7 +78,7 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   window.history.replaceState({}, "", url.toString());
   FMQ.refreshConnStatus();
 
-  try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "❌ " + e.message; }
+  try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; }
 };
 
 FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000 } = {}) => {
@@ -130,14 +130,16 @@ FMQ.pausePlayback = async () => {
 
 FMQ.loadMyPlaylists = async () => {
   if (!FMQ.storage.token) {
-    FMQ.$("playlistStatus").textContent = "❌ Bitte erst verbinden.";
+    FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     return;
   }
   FMQ.$("playlistStatus").textContent = "Lade Playlists…";
-  const data = await FMQ.apiFetch("https://api.spotify.com/v1/me/playlists?limit=50");
+  const data = await FMQ.apiFetch("https://api.spotify.com/v1/me/playlists?limit=50").catch(() => {
+    FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
+    throw new Error("Bitte neu verbinden!");
+  });
   FMQ.app.playlists = data.items || [];
-  FMQ.$("playlistStatus").textContent = `✅ ${FMQ.app.playlists.length} Playlists geladen`;
-  FMQ.setDebug(JSON.stringify(FMQ.app.playlists.map(p => ({ name: p.name, id: p.id, total: p.tracks?.total })), null, 2));
+  FMQ.$("playlistStatus").textContent = `${FMQ.app.playlists.length} Playlists geladen`;
   FMQ.refreshPlaylistDropdowns();
 };
 

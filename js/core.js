@@ -19,8 +19,8 @@ FMQ.SPOTIFY_SCOPES = [
 FMQ.$ = (id) => document.getElementById(id);
 FMQ.escapeHtml = (s) => String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 FMQ.showScreen = (id) => document.querySelectorAll(".screen").forEach(el => el.classList.toggle("active", el.id === id));
-FMQ.setDebug = (text) => FMQ.$("debug").textContent = text || "";
-FMQ.setGameDebug = (text) => FMQ.$("debugGame").textContent = text || "";
+FMQ.setDebug = (text) => { const el = FMQ.$("debug"); if (el) el.textContent = text || ""; };
+FMQ.setGameDebug = (text) => { const el = FMQ.$("debugGame"); if (el) el.textContent = text || ""; };
 FMQ.shuffle = (arr) => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -196,8 +196,8 @@ FMQ.buildPlayersConfig = () => {
 
 FMQ.refreshConnStatus = () => {
   FMQ.$("connStatus").innerHTML = FMQ.storage.token
-    ? `<span class="ok">✅ Verbunden</span> <span class="muted">(${FMQ.escapeHtml(FMQ.storage.scope || "scopes?")})</span>`
-    : `<span class="bad">❌ Nicht verbunden</span>`;
+    ? `<span class="ok">✅</span>`
+    : `<span class="bad">❌</span>`;
   FMQ.checkReadyToStart();
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };
@@ -269,7 +269,9 @@ FMQ.awardPoints = (pid, delta) => {
 };
 
 FMQ.renderScoreTable = () => {
-  FMQ.$("scoreTable").innerHTML = ["<tr><th>Spieler</th><th>Punkte</th><th>Spanne</th></tr>", ...FMQ.app.players.map(p => `<tr><td>${FMQ.escapeHtml(p.name)}</td><td><b>${p.score}</b> / ${FMQ.app.config.targetPoints}</td><td>${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</td></tr>`)].join("");
+  FMQ.$("scoreTable").innerHTML = FMQ.app.players
+    .map(p => `<div class="scoreCard"><div class="name">${FMQ.escapeHtml(p.name)}</div><div class="pts">${p.score} / ${FMQ.app.config.targetPoints}</div><div class="span">Spanne: ${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</div></div>`)
+    .join("");
 };
 
 FMQ.renderHeader = () => {

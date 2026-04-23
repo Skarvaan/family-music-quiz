@@ -232,7 +232,10 @@ FMQ.finishGame = (winnerPlayer, reason) => {
   FMQ.showScreen("screenWinner");
   FMQ.$("winnerHeadline").textContent = winnerPlayer ? `${winnerPlayer.name} gewinnt!` : "Spiel beendet";
   FMQ.$("winnerSub").textContent = reason || "";
-  FMQ.$("finalScoreTable").innerHTML = ["<tr><th>Spieler</th><th>Punkte</th></tr>", ...[...FMQ.app.players].sort((a, b) => b.score - a.score).map(p => `<tr><td>${FMQ.escapeHtml(p.name)}</td><td><b>${p.score}</b></td></tr>`)].join("");
+  FMQ.$("finalScoreTable").innerHTML = [...FMQ.app.players]
+    .sort((a, b) => b.score - a.score)
+    .map(p => `<div class="scoreCard"><div class="name">${FMQ.escapeHtml(p.name)}</div><div class="pts">${p.score} Punkte</div></div>`)
+    .join("");
 };
 
 FMQ.onNext = () => {
@@ -403,9 +406,9 @@ FMQ.init = async () => {
     FMQ.$("readyBtn").disabled = false;
   });
 
-  FMQ.$("loginBtn").onclick = () => FMQ.loginSpotify().catch(e => FMQ.setDebug(e.message));
-  FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
-  FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(e => { FMQ.$("playlistStatus").textContent = "❌ " + e.message; FMQ.setDebug(e.stack || e.message); });
+  FMQ.$("loginBtn").onclick = () => FMQ.loginSpotify().catch(() => FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!");
+  if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
+  if (FMQ.$("loadMyPlaylistsBtn")) FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(() => { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; });
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
   FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.renderSetupWizard(); };
   FMQ.$("targetPlusBtn").onclick = () => {
@@ -461,7 +464,7 @@ FMQ.init = async () => {
 
   try { await FMQ.handleOAuthCallbackIfPresent(); } catch (e) { FMQ.setDebug(e.stack || e.message); }
   if (FMQ.storage.token && !FMQ.app.playlists.length) {
-    try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "❌ " + e.message; }
+    try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; }
   }
 };
 
