@@ -14,7 +14,7 @@
   Spotify Premium Host · Fokus: <b>Meine Songs kennen & einordnen</b> · Global <b>No-Duplicates</b> pro Session
 </div>
 
-<section id="screenSetup" class="screen active">
+<section id="screenSetup" class="screen active" aria-label="Setup">
   <div class="box setupWizardHeader">
     <div class="muted">Setup-Assistent</div>
     <h2 id="setupWizardTitle" style="margin:6px 0 4px;">Schritt 1 · Spotify verbinden</h2>
@@ -24,15 +24,15 @@
   <div class="box setupStep" data-setup-step="1">
     <h2>1) Spotify verbinden</h2>
     <div class="row">
-      <button id="loginBtn" class="primary">Verbinden</button>
-      <span id="connStatus" class="pill"></span>
+      <button id="loginBtn" class="primary" aria-label="Spotify verbinden">Verbinden</button>
+      <span id="connStatus" class="pill" aria-live="polite"></span>
     </div>
     <div class="muted">
       Redirect URI ist diese Seite. In Spotify Developer musst du als Redirect URL exakt eintragen:
       <br><span class="pill" id="redirectUriPill"></span>
     </div>
 
-    <div class="row" style="margin-top:10px;"><span class="muted" id="playlistStatus"></span></div>
+    <div class="row" style="margin-top:10px;"><span class="muted" id="playlistStatus" aria-live="polite"></span></div>
   </div>
 
   <div class="box setupStep" data-setup-step="2">
@@ -109,7 +109,7 @@
   </div>
 </section>
 
-<section id="screenGame" class="screen">
+<section id="screenGame" class="screen" aria-label="Spiel">
   <div class="box">
     <div class="turnBanner" id="gameMetaBanner">
       <div>
@@ -136,12 +136,12 @@
     </div>
 
     <div class="row" style="margin-top:12px;">
-      <button id="readyBtn" class="primary big" disabled>Bereit!</button>
-      <button id="playToggleBtn" class="big" disabled>▶️ Play</button>
+      <button id="readyBtn" class="primary big" disabled aria-label="Starten">Bereit!</button>
+      <button id="playToggleBtn" class="big" disabled aria-label="Wiedergabe steuern">▶️ Play</button>
       <div id="quick3Controls" class="quick3Controls" style="display:none;"></div>
-      <button id="revealBtn" class="big" disabled>Reveal</button>
-      <button id="nextBtn" class="primary big" disabled>Weiter</button>
-      <button id="quitBtn" class="big">Beenden</button>
+      <button id="revealBtn" class="big" disabled aria-label="Auflösen">Reveal</button>
+      <button id="nextBtn" class="primary big" disabled aria-label="Nächster Zug">Weiter</button>
+      <button id="quitBtn" class="big" aria-label="Spiel beenden">Beenden</button>
     </div>
     <div class="muted" id="turnFlowHint" style="margin-top:6px;"></div>
 
@@ -162,7 +162,7 @@
   </div>
 </section>
 
-<section id="screenWinner" class="screen">
+<section id="screenWinner" class="screen" aria-label="Ergebnis">
   <div class="box">
     <h2>🏆 Gewinner</h2>
     <div id="winnerHeadline" style="font-size:24px; font-weight:900;"></div>
@@ -174,7 +174,7 @@
     </div>
 
     <div class="row" style="margin-top:14px;">
-      <button id="endBtn" class="primary big">Beenden</button>
+      <button id="endBtn" class="primary big" aria-label="Zum Setup zurück">Beenden</button>
     </div>
   </div>
 </section>

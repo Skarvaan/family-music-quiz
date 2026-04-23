@@ -118,4 +118,28 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .modePanel.theme-playlist{ background: linear-gradient(180deg,rgba(249,115,22,.08),#fff); }
 .choiceBtn{ min-height:58px; font-weight:700; }
 
-@media (max-width: 820px){ .overlayCard button{ min-width: 180px; } }
+@media (max-width: 820px){
+  .overlayCard button{ min-width: 180px; }
+}
+
+/* =========================================================
+   MOBILE TYPOGRAFIE / SPACING PASS
+   ========================================================= */
+@media (max-width: 640px){
+  body{ padding: 0 10px; margin: 8px auto 18px; }
+  h1{ font-size: 28px; margin: 10px 0; }
+  .box{ padding: 12px; border-radius: 14px; margin-top: 10px; }
+  .turnBanner{ padding: 10px 12px; border-radius: 12px; }
+  .muted{ font-size: 13px; }
+  button{ width: 100%; margin: 6px 0; font-size: 18px; min-height: 54px; }
+  button.big{ font-size: 20px; min-height: 58px; }
+  .row{ gap:8px; }
+  .quick3Controls{ width:100%; }
+  .quick3Controls select{ width:100%; min-height:50px; }
+  .choiceGrid{ display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); width:100%; }
+  .choiceBtn{ width:100%; font-size: 20px; }
+  .socialTurnLabel{ font-size:24px; }
+  .socialTruthLine{ font-size:30px; }
+  .socialPointsBlock{ font-size:22px; }
+  .scoreGrid{ grid-template-columns: 1fr; }
+}

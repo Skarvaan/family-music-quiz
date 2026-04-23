@@ -17,6 +17,7 @@ FMQ.renderModeLikeQuick3 = ({ heading, subtitle, bodyHtml, panelClass = "", hero
       </div>
     </div>
   `;
+  if (typeof FMQ.applyAccessibilityLabels === "function") FMQ.applyAccessibilityLabels();
 };
 
 FMQ.initSocialRound = ({ modeId, startPhase = "othersGuessing" }) => {

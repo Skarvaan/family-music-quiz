@@ -2,6 +2,25 @@ window.FMQ = window.FMQ || {};
 var FMQ = window.FMQ;
 // Hinweis: main.js orchestriert Ablauf/Events und verbindet alle Module.
 
+// =========================================================
+// ACCESSIBILITY-HELPER
+// =========================================================
+FMQ.applyAccessibilityLabels = () => {
+  document.querySelectorAll("button, select, input").forEach(el => {
+    if (el.getAttribute("aria-label")) return;
+    const id = el.id || "";
+    const txt = (el.textContent || "").trim();
+    const labelFromFor = id ? document.querySelector(`label[for="${id}"]`)?.textContent?.trim() : "";
+    const wrappedLabel = el.closest("label")?.textContent?.trim() || "";
+    const placeholder = el.getAttribute("placeholder") || "";
+    const fallback = labelFromFor || wrappedLabel || placeholder || txt || id || "Interaktives Element";
+    el.setAttribute("aria-label", fallback);
+  });
+};
+
+// =========================================================
+// TURN-VORBEREITUNG / ZIEHLOGIK
+// =========================================================
 FMQ.prepareTrackForTurn = async () => {
   const mode = FMQ.app.config.mode;
   const draw = mode === "playlistGuess"
@@ -106,6 +125,7 @@ FMQ.resetTurnUI = () => {
 
   FMQ.renderHeader();
   FMQ.renderScoreTable();
+  FMQ.applyAccessibilityLabels();
 };
 
 FMQ.onReady = async () => {
@@ -219,6 +239,7 @@ FMQ.onReveal = async () => {
   FMQ.markFinalRoundIfNeeded();
   FMQ.$("revealBtn").disabled = true;
   FMQ.$("nextBtn").disabled = FMQ.app.state.selfCheckPending;
+  FMQ.applyAccessibilityLabels();
 };
 
 FMQ.finishGame = (winnerPlayer, reason) => {
@@ -369,6 +390,7 @@ FMQ.renderSetupWizard = () => {
   }
   FMQ.renderPlayStyleButtons();
   FMQ.renderModeButtons();
+  FMQ.applyAccessibilityLabels();
 };
 
 FMQ.init = async () => {
@@ -455,6 +477,7 @@ FMQ.init = async () => {
   FMQ.renderModeHints();
   FMQ.refreshConnStatus();
   FMQ.renderSetupWizard();
+  FMQ.applyAccessibilityLabels();
 
   try { await FMQ.handleOAuthCallbackIfPresent(); } catch (e) { FMQ.setDebug(e.stack || e.message); }
   if (FMQ.storage.token && !FMQ.app.playlists.length) {
