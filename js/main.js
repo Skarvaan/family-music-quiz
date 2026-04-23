@@ -86,12 +86,9 @@ FMQ.resetTurnUI = () => {
     FMQ.$("revealBtn").disabled = false;
   } else if (["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)) {
     FMQ.$("readyBtn").style.display = "none";
-    FMQ.$("playToggleBtn").style.display = "";
-    FMQ.$("playToggleBtn").disabled = true;
-    FMQ.$("playToggleBtn").textContent = "↻ Nochmal von vorn";
-    FMQ.$("revealBtn").style.display = "";
-    FMQ.$("revealBtn").textContent = "Weiter";
-    FMQ.$("revealBtn").disabled = true;
+    FMQ.$("playToggleBtn").style.display = "none";
+    FMQ.$("revealBtn").style.display = "none";
+    FMQ.$("nextBtn").style.display = "none";
   } else {
     FMQ.$("readyBtn").disabled = false;
     FMQ.$("revealBtn").disabled = false;
@@ -100,7 +97,7 @@ FMQ.resetTurnUI = () => {
   FMQ.$("turnFlowHint").textContent = mode === "quick3"
     ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall → Reveal → Punkte eintragen und weiter"
     : ["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)
-      ? "Ablauf: Großer Start im Modusbereich → Stop/Nochmal von vorn → Weiter/Reveal → Nächster Zug"
+      ? "Ablauf: Alles direkt im Modusbereich (Start, Weiter, Reveal, Nächster Zug)"
     : "Ablauf: Play-Start → optional Stop/Play von vorn → Reveal → Weiter";
 
   FMQ.renderHeader();
