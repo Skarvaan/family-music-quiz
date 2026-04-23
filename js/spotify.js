@@ -186,3 +186,13 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
 
   return [...new Map(tracks.map(t => [t.id, t])).values()];
 };
+
+FMQ.validateSpotifySession = async () => {
+  if (!FMQ.storage.token) return false;
+  try {
+    await FMQ.apiFetch("https://api.spotify.com/v1/me", { timeoutMs: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
+};

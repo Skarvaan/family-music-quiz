@@ -64,7 +64,7 @@ FMQ.storage = {
 
 FMQ.app = {
   playlists: [], players: [], trackMap: new Map(), usedTrackIds: new Set(), globalDeck: [],
-  config: { category: "self", mode: "quick3", party: "rotate", targetPoints: 15 },
+  config: { category: "self", mode: "quick3", party: "rotate", targetPoints: 15, ratingScoring: "classic" },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
     yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
@@ -92,11 +92,17 @@ FMQ.renderModeConfig = () => {
   const area = FMQ.$("modeConfigArea");
   if (mode === "yearRange" || mode === "playlistGuess") {
     area.innerHTML = `<div class="row"><label><b>Party-Option</b></label><select id="partySelect"><option value="rotate">Reihum (jeder ist dran)</option><option value="allguess">Alle raten gleichzeitig</option></select><span class="muted">Dieser Modus unterstützt beide Varianten.</span></div>`;
+  } else if (mode === "ratingGuess") {
+    area.innerHTML = `<div class="row"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select></div>`;
   } else {
     area.innerHTML = `<div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select><span class="muted">In diesem Modus immer Reihum (übersichtlicher für Anfänger).</span></div>`;
   }
   FMQ.$("partySelect").value = FMQ.app.config.party;
   FMQ.$("partySelect").onchange = () => FMQ.app.config.party = FMQ.$("partySelect").value;
+  if (FMQ.$("ratingScoringSelect")) {
+    FMQ.$("ratingScoringSelect").value = FMQ.app.config.ratingScoring || "classic";
+    FMQ.$("ratingScoringSelect").onchange = () => FMQ.app.config.ratingScoring = FMQ.$("ratingScoringSelect").value;
+  }
 };
 
 FMQ.renderModeHints = () => {
@@ -207,9 +213,16 @@ FMQ.buildPlayersConfig = () => {
 };
 
 FMQ.refreshConnStatus = () => {
-  FMQ.$("connStatus").innerHTML = FMQ.storage.token
-    ? `<span class="ok">✅</span>`
-    : `<span class="bad">❌</span>`;
+  FMQ.$("connStatus").innerHTML = FMQ.storage.token ? `<span class="ok">✅</span>` : `<span class="bad">❌</span>`;
+  if (FMQ.storage.token && typeof FMQ.validateSpotifySession === "function") {
+    FMQ.validateSpotifySession().then(valid => {
+      if (!valid) {
+        FMQ.storage.token = null;
+        FMQ.$("connStatus").innerHTML = `<span class="bad">❌</span>`;
+        if (FMQ.$("playlistStatus")) FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
+      }
+    }).catch(() => {});
+  }
   FMQ.checkReadyToStart();
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };

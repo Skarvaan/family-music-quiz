@@ -90,37 +90,63 @@ FMQ.modes = {
       FMQ.$("modeAreaTitle").textContent = "Zeitdruck";
       FMQ.renderModeLikeQuick3({
         heading: "Zeitdruck",
-        subtitle: "Punkte sinken mit der Zeit. Klicke „Reveal“, wenn du deine Antwort abgeben willst.",
+        subtitle: "Je länger du brauchst, desto weniger Punkte. Stoppe, wenn du sicher bist.",
         panelClass: "theme-guess",
-        bodyHtml: `<div style="margin-top:10px;"><b>Aktuelle Punkte: <span id="speedPtsLabel">4</span></b></div>`
+        bodyHtml: `<div class="speedWrap"><div class="speedBar"><div id="speedBarFill" class="speedBarFill"></div></div><div class="speedStats"><b>Punkte: <span id="speedPtsLabel">4</span></b> · Nächster Abzug in <span id="speedTickLabel">6</span>s</div><div class="row" style="justify-content:center;"><button id="speedStopBtn" class="big primary">Stop, ich weiß es!</button></div><div class="row" style="justify-content:center;"><button id="speedRevealInlineBtn" class="big" disabled>Reveal</button></div></div>`
       });
+      FMQ.$("speedStopBtn").onclick = async () => {
+        try { await FMQ.pausePlayback(); } catch {}
+        FMQ.app.state.speed = FMQ.app.state.speed || { currentPoints: 4 };
+        FMQ.app.state.speed.locked = true;
+        FMQ.$("speedRevealInlineBtn").disabled = false;
+        FMQ.$("speedStopBtn").disabled = true;
+      };
+      FMQ.$("speedRevealInlineBtn").onclick = () => FMQ.$("revealBtn").click();
+    },
+    startCountdown() {
+      FMQ.app.state.speed = { currentPoints: 4, timer: null, elapsed: 0, stepSec: 6, locked: false };
+      const tick = () => {
+        const s = FMQ.app.state.speed;
+        if (!s || s.locked) return;
+        s.elapsed += 0.2;
+        const dec = Math.floor(s.elapsed / s.stepSec);
+        s.currentPoints = Math.max(0, 4 - dec);
+        const untilNext = Math.max(0, s.stepSec - (s.elapsed % s.stepSec));
+        const total = 4 * s.stepSec;
+        const leftPct = Math.max(0, ((total - s.elapsed) / total) * 100);
+        if (FMQ.$("speedPtsLabel")) FMQ.$("speedPtsLabel").textContent = String(s.currentPoints);
+        if (FMQ.$("speedTickLabel")) FMQ.$("speedTickLabel").textContent = String(Math.ceil(untilNext));
+        if (FMQ.$("speedBarFill")) FMQ.$("speedBarFill").style.width = `${leftPct}%`;
+      };
+      FMQ.app.state.speed.timer = setInterval(tick, 200);
     },
     onReveal() {
       FMQ.app.state.selfCheckPending = true;
-      return { headline: "Auflösung", detail: "War deine Antwort richtig?" };
+      return { headline: "Auflösung", detail: "Selbst-Check wie im Ausschnitt-Modus." };
     },
     renderRevealExtras() {
       const me = FMQ.currentPlayer();
       FMQ.$("revealExtra").innerHTML = `
         <div class="box" style="box-shadow:none;">
-          <h2>Treffer?</h2>
-          <div class="row"><button id="speedYesBtn" class="primary">Ja, richtig</button><button id="speedNoBtn">Nein</button></div>
+          <h2>Selbst-Check</h2>
+          <div class="selfCheckList">
+            <label class="selfCheckItem"><input type="checkbox" id="speedChkTitle"> Titel (1)</label>
+            <label class="selfCheckItem"><input type="checkbox" id="speedChkArtist"> Interpret (1)</label>
+            <label class="selfCheckItem"><input type="checkbox" id="speedChkYear"> Jahr (1)</label>
+          </div>
+          <div class="row" style="justify-content:center;">
+            <button id="speedConfirmBtn" class="big primary">Punkte eintragen und weiter</button>
+          </div>
         </div>
       `;
-      const pts = Math.max(0, FMQ.app.state.speed?.currentPoints ?? 0);
-      FMQ.$("speedYesBtn").onclick = () => {
-        FMQ.awardPoints(me.id, pts);
+      FMQ.$("speedConfirmBtn").onclick = () => {
+        const selfPts = (FMQ.$("speedChkTitle").checked ? 1 : 0) + (FMQ.$("speedChkArtist").checked ? 1 : 0) + (FMQ.$("speedChkYear").checked ? 1 : 0);
+        const timePts = Math.max(0, FMQ.app.state.speed?.currentPoints ?? 0);
+        FMQ.awardPoints(me.id, selfPts + timePts);
         FMQ.app.state.selfCheckPending = false;
-        FMQ.$("nextBtn").disabled = false;
-        FMQ.$("speedYesBtn").disabled = true;
-        FMQ.$("speedNoBtn").disabled = true;
         FMQ.renderScoreTable();
-      };
-      FMQ.$("speedNoBtn").onclick = () => {
-        FMQ.app.state.selfCheckPending = false;
-        FMQ.$("nextBtn").disabled = false;
-        FMQ.$("speedYesBtn").disabled = true;
-        FMQ.$("speedNoBtn").disabled = true;
+        FMQ.markFinalRoundIfNeeded();
+        FMQ.onNext();
       };
     }
   },
@@ -212,8 +238,9 @@ FMQ.modes = {
       const minBound = Number.isFinite(spanMin) ? spanMin : 1900;
       const maxBound = Math.min(Number.isFinite(spanMax) ? spanMax : nowYear, nowYear);
       const bucket = step === 1 ? year : Math.floor(year / step) * step;
+      const alignedMin = step === 10 ? Math.floor(minBound / 10) * 10 : minBound;
       const allStarts = [];
-      for (let s = minBound; s <= maxBound; s += step) allStarts.push(s);
+      for (let s = alignedMin; s <= maxBound; s += step) allStarts.push(s);
       if (!allStarts.includes(bucket)) allStarts.push(bucket);
       const sortedStarts = [...new Set(allStarts)].sort((a, b) => a - b);
       const pos = Math.max(0, sortedStarts.indexOf(bucket));
@@ -228,7 +255,7 @@ FMQ.modes = {
     renderChoices() {
       const step = FMQ.app.state.yearRange.step;
       const buckets = FMQ.app.state.yearRange.options;
-      FMQ.$("yearChoices").innerHTML = `<div class="choiceGrid">${buckets.map((b, i) => `<button class="choiceBtn" data-choice="${i}">${step === 10 ? `${b.start}er` : step === 1 ? `${b.start}` : `${b.start}–${b.end}`}</button>`).join("")}</div>`;
+      FMQ.$("yearChoices").innerHTML = `<div class="choiceGrid">${buckets.map((b, i) => `<button class="choiceBtn" data-choice="${i}">${step === 10 ? `${Math.floor(b.start / 10) * 10}er` : step === 1 ? `${b.start}` : `${b.start}–${b.end}`}</button>`).join("")}</div>`;
       FMQ.app.state.yearRange.picks = new Map();
       if (FMQ.app.config.party === "rotate") {
         FMQ.$("yearChoices").querySelectorAll("[data-choice]").forEach(btn => btn.onclick = () => {
@@ -407,17 +434,20 @@ FMQ.modes = {
             if (p.id === s.mainPlayerId) continue;
             const val = parseInt(String(s.answers.get(p.id) || 0), 10);
             const diff = Math.abs(truth - (val || 0));
-            const pts = diff === 0 ? 3 : diff === 1 ? 2 : diff === 2 ? 1 : 0;
+            const pts = FMQ.app.config.ratingScoring === "light"
+              ? (diff === 0 ? 2 : diff === 1 ? 1 : 0)
+              : (diff === 0 ? 3 : diff === 1 ? 2 : diff === 2 ? 1 : 0);
             FMQ.awardPoints(p.id, pts);
             lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${val || "-"} → <b>+${pts}</b></div>`);
           }
+          FMQ.pausePlayback().catch(() => {});
           const t = FMQ.app.state.currentTrack;
           FMQ.renderModeLikeQuick3({
             heading: `Auflösung: ${mainName}`,
             subtitle: "",
             heroName: "",
             panelClass: "theme-playlist",
-            bodyHtml: `<div class="socialRevealBig"><div><b>${FMQ.escapeHtml(t.name)}</b> · ${FMQ.escapeHtml(t.artists.join(", "))} · ${t.year}</div><div class="socialTruthLine">"${mainName}" sagte: <b>${truth}/10</b></div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>`
+            bodyHtml: `<div class="socialRevealBig"><div><b>${FMQ.escapeHtml(t.name)}</b> · ${FMQ.escapeHtml(t.artists.join(", "))} · ${t.year}</div><div class="socialTruthLine">"${mainName}" sagte: <b>${truth}/10</b></div><div class="muted" style="font-size:16px;">Punktesystem: ${FMQ.app.config.ratingScoring === "light" ? "Light (2/1/0)" : "Klassisch (3/2/1/0)"}</div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>`
           });
           FMQ.app.state.social = null;
           FMQ.renderScoreTable();
@@ -542,7 +572,7 @@ FMQ.modes = {
       if (s.phase === "listen") {
         if (!trackA || !trackB) {
           FMQ.renderModeLikeQuick3({
-            heading: `Großer Start für ${mainName}`,
+            heading: `Bereit für das A/B-Duell von ${mainName}?`,
             subtitle: "Es werden zwei Songs (A/B) geladen.",
             heroName: "",
             panelClass: "theme-playlist",

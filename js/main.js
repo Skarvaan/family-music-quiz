@@ -84,6 +84,10 @@ FMQ.resetTurnUI = () => {
     FMQ.$("nextBtn").style.display = "none";
     FMQ.$("quick3Controls").style.display = "flex";
     FMQ.$("revealBtn").disabled = false;
+  } else if (mode === "speedGuess") {
+    FMQ.$("revealBtn").style.display = "none";
+    FMQ.$("nextBtn").style.display = "none";
+    FMQ.$("readyBtn").disabled = false;
   } else if (FMQ.isSocialMode(mode)) {
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
@@ -118,17 +122,7 @@ FMQ.onReady = async () => {
   FMQ.$("playToggleBtn").disabled = false;
   FMQ.$("playToggleBtn").textContent = "⏸️ Stop";
   if (mode === "speedGuess") {
-    FMQ.app.state.speed = { currentPoints: 4, timer: null };
-    const label = FMQ.$("speedPtsLabel");
-    if (label) label.textContent = "4";
-    FMQ.app.state.speed.timer = setInterval(() => {
-      if (!FMQ.app.state.speed) return;
-      FMQ.app.state.speed.currentPoints = Math.max(0, FMQ.app.state.speed.currentPoints - 1);
-      if (label) label.textContent = String(FMQ.app.state.speed.currentPoints);
-      if (FMQ.app.state.speed.currentPoints <= 0 && FMQ.app.state.speed.timer) {
-        clearInterval(FMQ.app.state.speed.timer);
-      }
-    }, 5000);
+    FMQ.modes.speedGuess.startCountdown();
   }
   FMQ.renderHeader();
 };
@@ -264,7 +258,7 @@ FMQ.quitToMenu = async () => {
   FMQ.$("quick3RevealOverlay").classList.remove("show");
   FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("screenGame").classList.remove("quick3Active");
-  FMQ.app.state.setupStep = 1;
+  FMQ.app.state.setupStep = 3;
   FMQ.showScreen("screenSetup");
   FMQ.renderSetupWizard();
   FMQ.setGameDebug("");
