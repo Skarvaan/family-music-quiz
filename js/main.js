@@ -84,7 +84,7 @@ FMQ.resetTurnUI = () => {
     FMQ.$("nextBtn").style.display = "none";
     FMQ.$("quick3Controls").style.display = "flex";
     FMQ.$("revealBtn").disabled = false;
-  } else if (["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)) {
+  } else if (FMQ.isSocialMode(mode)) {
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
@@ -96,7 +96,7 @@ FMQ.resetTurnUI = () => {
 
   FMQ.$("turnFlowHint").textContent = mode === "quick3"
     ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall → Reveal → Punkte eintragen und weiter"
-    : ["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)
+    : FMQ.isSocialMode(mode)
       ? "Ablauf: Alles direkt im Modusbereich (Start, Weiter, Reveal, Nächster Zug)"
     : "Ablauf: Play-Start → optional Stop/Play von vorn → Reveal → Weiter";
 
@@ -287,12 +287,12 @@ FMQ.renderPlayStyleButtons = () => {
 
 FMQ.renderModeButtons = () => {
   const modeMeta = [
-    { id: "quick3", label: "A) Songausschnitt raten", category: "self" },
-    { id: "speedGuess", label: "B) Zeitdruck", category: "self" },
-    { id: "yearRange", label: "C) Zeitraum/Jahr raten", category: "self" },
-    { id: "ratingGuess", label: "D) Song-Bewertung einschätzen", category: "social" },
-    { id: "knowledgeGuess", label: "E) Was weiß ich wirklich?", category: "social" },
-    { id: "bestFit", label: "F) Song A oder B", category: "social" }
+    { id: "quick3", label: `A) ${FMQ.MODE_INFO.quick3.label}`, category: FMQ.MODE_INFO.quick3.category },
+    { id: "speedGuess", label: `B) ${FMQ.MODE_INFO.speedGuess.label}`, category: FMQ.MODE_INFO.speedGuess.category },
+    { id: "yearRange", label: `C) ${FMQ.MODE_INFO.yearRange.label}`, category: FMQ.MODE_INFO.yearRange.category },
+    { id: "ratingGuess", label: `D) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
+    { id: "knowledgeGuess", label: `E) ${FMQ.MODE_INFO.knowledgeGuess.label}`, category: FMQ.MODE_INFO.knowledgeGuess.category },
+    { id: "bestFit", label: `F) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category }
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {

@@ -2,6 +2,19 @@ window.FMQ = window.FMQ || {};
 var FMQ = window.FMQ;
 // Hinweis: core.js enthält Shared-State, Helpers und Setup-Basislogik.
 
+// =========================================================
+// APP-METADATEN / MODUS-KATALOG
+// =========================================================
+FMQ.MODE_INFO = {
+  quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
+  speedGuess: { label: "Zeitdruck", category: "self", hint: "Schnell reagieren, Punkte sinken mit Zeit" },
+  yearRange: { label: "Zeitraum/Jahr raten", category: "self", hint: "Jahr per Multiple Choice einordnen" },
+  ratingGuess: { label: "Song-Bewertung einschätzen", category: "social", hint: "Wie schätzen andere den Geschmack ein?" },
+  knowledgeGuess: { label: "Was weiß ich wirklich?", category: "social", hint: "Wissens-Selbstbild vs. Fremdeinschätzung" },
+  bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" }
+};
+FMQ.isSocialMode = (modeId) => ["ratingGuess", "knowledgeGuess", "bestFit"].includes(modeId);
+
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
 FMQ.REDIRECT_URI = (() => {
   const p = window.location.pathname;
@@ -88,8 +101,7 @@ FMQ.renderModeConfig = () => {
 
 FMQ.renderModeHints = () => {
   const mode = FMQ.$("modeSelect").value;
-  const hints = { guessSong: "Selbst-Check auf Titel/Interpret/Jahr", quick3: "Ausschnitt oder ganzer Song raten", yearRange: "Jahr per Multiple Choice", playlistGuess: "Besitzer-Playlist erkennen" };
-  FMQ.$("modeHint").textContent = hints[mode] || "";
+  FMQ.$("modeHint").textContent = FMQ.MODE_INFO[mode]?.hint || "";
   FMQ.renderModeConfig();
 };
 

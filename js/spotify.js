@@ -2,6 +2,10 @@ window.FMQ = window.FMQ || {};
 var FMQ = window.FMQ;
 // Hinweis: spotify.js kapselt Auth, Token und Spotify API/Playback.
 
+// =========================================================
+// AUTH / PKCE
+// =========================================================
+
 FMQ.randomVerifier = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const bytes = crypto.getRandomValues(new Uint8Array(64));
@@ -108,6 +112,9 @@ FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000 
   }
 };
 
+// =========================================================
+// PLAYER-DEVICE / PLAYBACK
+// =========================================================
 FMQ.getActiveDeviceId = async () => {
   const data = await FMQ.apiFetch("https://api.spotify.com/v1/me/player/devices");
   const devices = data.devices || [];
@@ -128,6 +135,9 @@ FMQ.pausePlayback = async () => {
   await FMQ.apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT" });
 };
 
+// =========================================================
+// PLAYLISTS / TRACK-LADEN
+// =========================================================
 FMQ.loadMyPlaylists = async () => {
   if (!FMQ.storage.token) {
     FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
