@@ -84,6 +84,14 @@ FMQ.resetTurnUI = () => {
     FMQ.$("nextBtn").style.display = "none";
     FMQ.$("quick3Controls").style.display = "flex";
     FMQ.$("revealBtn").disabled = false;
+  } else if (["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)) {
+    FMQ.$("readyBtn").style.display = "none";
+    FMQ.$("playToggleBtn").style.display = "";
+    FMQ.$("playToggleBtn").disabled = true;
+    FMQ.$("playToggleBtn").textContent = "↻ Nochmal von vorn";
+    FMQ.$("revealBtn").style.display = "";
+    FMQ.$("revealBtn").textContent = "Weiter";
+    FMQ.$("revealBtn").disabled = true;
   } else {
     FMQ.$("readyBtn").disabled = false;
     FMQ.$("revealBtn").disabled = false;
@@ -91,6 +99,8 @@ FMQ.resetTurnUI = () => {
 
   FMQ.$("turnFlowHint").textContent = mode === "quick3"
     ? "Ablauf: Clip-Länge wählen → Play-Start/Play-Zufall → Reveal → Punkte eintragen und weiter"
+    : ["ratingGuess", "knowledgeGuess", "bestFit"].includes(mode)
+      ? "Ablauf: Großer Start im Modusbereich → Stop/Nochmal von vorn → Weiter/Reveal → Nächster Zug"
     : "Ablauf: Play-Start → optional Stop/Play von vorn → Reveal → Weiter";
 
   FMQ.renderHeader();
@@ -277,7 +287,7 @@ FMQ.renderPlayStyleButtons = () => {
 
 FMQ.renderModeButtons = () => {
   const modeMeta = [
-    { id: "quick3", label: "A) Quick3 / Ganzer Song", category: "self" },
+    { id: "quick3", label: "A) Songausschnitt raten", category: "self" },
     { id: "speedGuess", label: "B) Zeitdruck", category: "self" },
     { id: "yearRange", label: "C) Zeitraum/Jahr raten", category: "self" },
     { id: "ratingGuess", label: "D) Song-Bewertung einschätzen", category: "social" },

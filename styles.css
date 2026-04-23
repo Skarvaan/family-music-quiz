@@ -77,6 +77,13 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .selfCheckList{ display:grid; gap:10px; margin:10px 0 12px; }
 .selfCheckItem{ display:flex; align-items:center; gap:8px; }
 .selfCheckActions{ margin-top: 4px; }
+.socialCheckGrid{ display:grid; gap:16px; margin-top:10px; }
+.socialCheckItem{ display:flex; align-items:flex-start; gap:14px; font-size:20px; line-height:1.35; padding:12px 10px; border:1px solid var(--line); border-radius:12px; }
+.socialCheckItem input{ width:28px; height:28px; margin-top:2px; flex:0 0 auto; }
+.abListenButtons{ display:flex; justify-content:center; flex-wrap:wrap; gap:14px; margin-top:8px; }
+.abListenButtons .big{ min-width:240px; min-height:68px; font-size:28px; }
+.abReminder{ display:flex; justify-content:center; gap:10px; margin-top:6px; }
+.abReminder .mini{ font-size:13px; padding:8px 12px; min-height:unset; opacity:.85; }
 
 /* Quick3 focus layout */
 .quick3Hero{ text-align:center; padding: 18px 12px; }

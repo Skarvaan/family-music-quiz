@@ -88,7 +88,7 @@ FMQ.renderModeConfig = () => {
 
 FMQ.renderModeHints = () => {
   const mode = FMQ.$("modeSelect").value;
-  const hints = { guessSong: "Selbst-Check auf Titel/Interpret/Jahr", quick3: "Kurze Snippets merken", yearRange: "Jahr per Multiple Choice", playlistGuess: "Besitzer-Playlist erkennen" };
+  const hints = { guessSong: "Selbst-Check auf Titel/Interpret/Jahr", quick3: "Ausschnitt oder ganzer Song raten", yearRange: "Jahr per Multiple Choice", playlistGuess: "Besitzer-Playlist erkennen" };
   FMQ.$("modeHint").textContent = hints[mode] || "";
   FMQ.renderModeConfig();
 };
