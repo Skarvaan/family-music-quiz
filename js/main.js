@@ -172,6 +172,7 @@ FMQ.onQuick3Play = async (kind) => {
 };
 
 FMQ.markFinalRoundIfNeeded = () => {
+  if (FMQ.app.config.endType !== "points") return;
   const hasReached = FMQ.app.players.some(p => p.score >= FMQ.app.config.targetPoints);
   if (hasReached && !FMQ.app.state.finalRound.pending) {
     FMQ.app.state.finalRound.pending = true;
@@ -180,6 +181,7 @@ FMQ.markFinalRoundIfNeeded = () => {
 };
 
 FMQ.checkFinishAfterNext = () => {
+  if (FMQ.app.config.endType !== "points") return null;
   if (!FMQ.app.state.finalRound.pending) return null;
   if (FMQ.app.state.round <= FMQ.app.state.finalRound.roundNumber) return null;
   return [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
@@ -254,9 +256,13 @@ FMQ.finishGame = (winnerPlayer, reason) => {
 };
 
 FMQ.onNext = () => {
+  if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
+    FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
+    return;
+  }
   const winner = FMQ.checkFinishAfterNext();
   if (winner) {
-    FMQ.finishGame(winner, `Zielpunkte wurden in Runde ${FMQ.app.state.finalRound.roundNumber} erreicht. Runde wurde fair zu Ende gespielt.`);
+    FMQ.finishGame(winner, `Ziel ${FMQ.getEndTargetText()} wurde in Runde ${FMQ.app.state.finalRound.roundNumber} erreicht. Runde wurde fair zu Ende gespielt.`);
     return;
   }
 
@@ -264,7 +270,12 @@ FMQ.onNext = () => {
 
   const winnerAfterAdvance = FMQ.checkFinishAfterNext();
   if (winnerAfterAdvance) {
-    FMQ.finishGame(winnerAfterAdvance, `Zielpunkte wurden in Runde ${FMQ.app.state.finalRound.roundNumber} erreicht. Runde wurde fair zu Ende gespielt.`);
+    FMQ.finishGame(winnerAfterAdvance, `Ziel ${FMQ.getEndTargetText()} wurde in Runde ${FMQ.app.state.finalRound.roundNumber} erreicht. Runde wurde fair zu Ende gespielt.`);
+    return;
+  }
+
+  if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
+    FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
     return;
   }
 
@@ -288,7 +299,9 @@ FMQ.quitToMenu = async () => {
 FMQ.startGame = () => {
   FMQ.app.config.mode = FMQ.$("modeSelect").value;
   FMQ.app.config.party = FMQ.$("partySelect").value;
+  FMQ.app.config.endType = FMQ.$("endTypeSelect").value;
   FMQ.app.config.targetPoints = Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10));
+  FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "5", 10));
   FMQ.resetSession();
   FMQ.showScreen("screenGame");
   FMQ.resetTurnUI();
@@ -303,11 +316,9 @@ FMQ.renderPlayStyleButtons = () => {
 FMQ.renderModeButtons = () => {
   const modeMeta = [
     { id: "quick3", label: `A) ${FMQ.MODE_INFO.quick3.label}`, category: FMQ.MODE_INFO.quick3.category },
-    { id: "speedGuess", label: `B) ${FMQ.MODE_INFO.speedGuess.label}`, category: FMQ.MODE_INFO.speedGuess.category },
-    { id: "yearRange", label: `C) ${FMQ.MODE_INFO.yearRange.label}`, category: FMQ.MODE_INFO.yearRange.category },
-    { id: "ratingGuess", label: `D) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
-    { id: "knowledgeGuess", label: `E) ${FMQ.MODE_INFO.knowledgeGuess.label}`, category: FMQ.MODE_INFO.knowledgeGuess.category },
-    { id: "bestFit", label: `F) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category }
+    { id: "yearRange", label: `B) ${FMQ.MODE_INFO.yearRange.label}`, category: FMQ.MODE_INFO.yearRange.category },
+    { id: "ratingGuess", label: `C) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
+    { id: "bestFit", label: `D) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category }
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
@@ -325,20 +336,6 @@ FMQ.renderModeButtons = () => {
       FMQ.renderSetupWizard();
     };
   });
-};
-
-FMQ.renderSetupSummary = () => {
-  const players = FMQ.app.players.map(p => `<li>${FMQ.escapeHtml(p.name)} · ${FMQ.escapeHtml(p.playlistName || "keine Playlist")}</li>`).join("");
-  FMQ.$("setupSummary").innerHTML = `
-    <div class="summaryCard">
-      <h2 style="margin-bottom:8px;">Deine Einstellungen</h2>
-      <div><b>Kategorie:</b> ${FMQ.app.config.category === "social" ? "Wer kennt meinen Geschmack?" : "Ich & meine Playlist"}</div>
-      <div><b>Modus:</b> ${FMQ.escapeHtml(FMQ.modes[FMQ.$("modeSelect").value]?.label || FMQ.$("modeSelect").value)}</div>
-      <div><b>Zielpunkte:</b> ${FMQ.$("targetPointsInput").value}</div>
-      <div><b>Spieler:</b> ${FMQ.app.players.length}</div>
-      <ul>${players}</ul>
-    </div>
-  `;
 };
 
 FMQ.setupCanProceed = () => {
@@ -372,19 +369,16 @@ FMQ.renderSetupWizard = () => {
     FMQ.$("setupWizardSub").textContent = "Wähle den Spielmodus als große Schaltfläche.";
   } else if (step === 4) {
     FMQ.$("setupWizardTitle").textContent = "Schritt 4 · Punkte & Spieler";
-    FMQ.$("setupWizardSub").textContent = "Lege Zielpunkte und Spieleranzahl fest.";
-  } else {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 5 · Zusammenfassung";
-    FMQ.$("setupWizardSub").textContent = "Prüfe alles und starte das Spiel.";
-    FMQ.renderSetupSummary();
+    FMQ.$("setupWizardSub").textContent = "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
   }
   FMQ.$("setupBackBtn").disabled = step <= 1;
-  FMQ.$("setupNextBtn").style.display = step >= 5 ? "none" : "";
+  FMQ.$("setupNextBtn").style.display = "";
+  FMQ.$("setupNextBtn").textContent = step === 4 ? "Starten!" : "Weiter →";
   FMQ.$("setupNextBtn").disabled = !FMQ.setupCanProceed();
   if (step === 1 && !FMQ.storage.token) {
     FMQ.$("setupStepHint").textContent = "Verbinde zuerst Spotify, dann wird „Weiter“ aktiv.";
   } else if (step === 4 && !FMQ.setupCanProceed()) {
-    FMQ.$("setupStepHint").textContent = "Bitte für jeden Spieler eine Playlist laden (mind. 5 Tracks), dann kannst du weiter.";
+    FMQ.$("setupStepHint").textContent = "Bitte für jeden Spieler eine Playlist laden (mind. 5 Tracks), dann kannst du starten.";
   } else {
     FMQ.$("setupStepHint").textContent = "";
   }
@@ -428,10 +422,24 @@ FMQ.init = async () => {
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
   FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.renderSetupWizard(); };
   FMQ.$("targetPlusBtn").onclick = () => {
-    FMQ.$("targetPointsInput").value = String(Math.min(999, parseInt(FMQ.$("targetPointsInput").value || "15", 10) + 1));
+    const endType = FMQ.$("endTypeSelect").value;
+    const fieldId = endType === "points" ? "targetPointsInput" : "targetRoundsInput";
+    const max = endType === "points" ? 999 : 50;
+    const def = endType === "points" ? "15" : "5";
+    FMQ.$(fieldId).value = String(Math.min(max, parseInt(FMQ.$(fieldId).value || def, 10) + 1));
   };
   FMQ.$("targetMinusBtn").onclick = () => {
-    FMQ.$("targetPointsInput").value = String(Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10) - 1));
+    const endType = FMQ.$("endTypeSelect").value;
+    const fieldId = endType === "points" ? "targetPointsInput" : "targetRoundsInput";
+    const def = endType === "points" ? "15" : "5";
+    FMQ.$(fieldId).value = String(Math.max(1, parseInt(FMQ.$(fieldId).value || def, 10) - 1));
+  };
+  FMQ.$("endTypeSelect").onchange = () => {
+    const points = FMQ.$("endTypeSelect").value === "points";
+    FMQ.$("targetLabelText").textContent = points ? "Punkte" : "Runden";
+    FMQ.$("targetPointsInput").style.display = points ? "" : "none";
+    FMQ.$("targetRoundsInput").style.display = points ? "none" : "";
+    FMQ.renderSetupWizard();
   };
   const rebuildFromPlayerCount = () => {
     FMQ.buildPlayersConfig();
@@ -462,10 +470,13 @@ FMQ.init = async () => {
   };
   FMQ.$("setupNextBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
-    FMQ.app.state.setupStep = Math.min(5, FMQ.app.state.setupStep + 1);
+    if (FMQ.app.state.setupStep === 4) {
+      FMQ.startGame();
+      return;
+    }
+    FMQ.app.state.setupStep = Math.min(4, FMQ.app.state.setupStep + 1);
     FMQ.renderSetupWizard();
   };
-  FMQ.$("startGameBtn").onclick = () => FMQ.startGame();
   FMQ.$("readyBtn").onclick = () => FMQ.onReady().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("playToggleBtn").onclick = () => FMQ.onTogglePlay().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("revealBtn").onclick = () => FMQ.onReveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
@@ -474,6 +485,7 @@ FMQ.init = async () => {
   FMQ.$("endBtn").onclick = () => FMQ.quitToMenu();
 
   FMQ.buildPlayersConfig();
+  FMQ.$("endTypeSelect").dispatchEvent(new Event("change"));
   FMQ.renderModeHints();
   FMQ.refreshConnStatus();
   FMQ.renderSetupWizard();

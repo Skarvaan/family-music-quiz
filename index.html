@@ -52,10 +52,8 @@
     <div style="display:none;">
       <select id="modeSelect">
         <option value="quick3">Songausschnitt raten</option>
-        <option value="speedGuess">Zeitdruck</option>
         <option value="yearRange">Zeitraum raten (MC)</option>
         <option value="ratingGuess">Song-Bewertung einschätzen</option>
-        <option value="knowledgeGuess">Was weiß ich wirklich?</option>
         <option value="bestFit">Song A oder B – was passt besser?</option>
       </select>
       <select id="partySelect">
@@ -68,11 +66,19 @@
   <div class="box setupStep" data-setup-step="4">
     <h2>4) Punkte & Spieler</h2>
     <div class="row">
-      <label><b>Zielpunkte</b></label>
+      <label><b>Spielende</b></label>
+      <select id="endTypeSelect" style="min-width:180px;">
+        <option value="rounds">Nach Runden</option>
+        <option value="points">Nach Punkten</option>
+      </select>
+    </div>
+    <div class="row">
+      <label><b id="targetLabelText">Runden</b></label>
       <div class="stepper">
-        <button id="targetMinusBtn">−</button>
-        <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px; text-align:center;">
-        <button id="targetPlusBtn">+</button>
+        <button id="targetMinusBtn" aria-label="Ziel reduzieren">−</button>
+        <input id="targetRoundsInput" type="number" min="1" max="50" value="5" style="width:110px; text-align:center;">
+        <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px; text-align:center; display:none;">
+        <button id="targetPlusBtn" aria-label="Ziel erhöhen">+</button>
       </div>
     </div>
 
@@ -89,15 +95,6 @@
     <div class="muted">Playlist-Dropdown lädt automatisch <b>alle Tracks</b> (Pagination), sobald du auswählst.</div>
     <div id="playersConfig" style="margin-top:10px;"></div>
     <div id="modeConfigArea" class="box modeConfig" style="display:none;"></div>
-  </div>
-
-  <div class="box setupStep" data-setup-step="5">
-    <h2>5) Zusammenfassung</h2>
-    <div id="setupSummary"></div>
-    <div class="row" style="margin-top:14px;">
-      <button id="startGameBtn" class="primary" disabled>Fertig? Spiel starten</button>
-    </div>
-
   </div>
 
   <div class="box setupWizardNav">

@@ -7,13 +7,11 @@ var FMQ = window.FMQ;
 // =========================================================
 FMQ.MODE_INFO = {
   quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
-  speedGuess: { label: "Zeitdruck", category: "self", hint: "Schnell reagieren, Punkte sinken mit Zeit" },
   yearRange: { label: "Zeitraum/Jahr raten", category: "self", hint: "Jahr per Multiple Choice einordnen" },
   ratingGuess: { label: "Song-Bewertung einschätzen", category: "social", hint: "Wie schätzen andere den Geschmack ein?" },
-  knowledgeGuess: { label: "Was weiß ich wirklich?", category: "social", hint: "Wissens-Selbstbild vs. Fremdeinschätzung" },
   bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" }
 };
-FMQ.isSocialMode = (modeId) => ["ratingGuess", "knowledgeGuess", "bestFit"].includes(modeId);
+FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit"].includes(modeId);
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
 FMQ.REDIRECT_URI = (() => {
@@ -64,7 +62,15 @@ FMQ.storage = {
 
 FMQ.app = {
   playlists: [], players: [], trackMap: new Map(), usedTrackIds: new Set(), globalDeck: [],
-  config: { category: "self", mode: "quick3", party: "rotate", targetPoints: 15, ratingScoring: "classic" },
+  config: {
+    category: "self",
+    mode: "quick3",
+    party: "rotate",
+    endType: "rounds",
+    targetPoints: 15,
+    targetRounds: 5,
+    ratingScoring: "classic"
+  },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
     yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
@@ -115,7 +121,12 @@ FMQ.refreshPlaylistDropdowns = () => {
   FMQ.$("playersConfig")?.querySelectorAll('select[data-role="playlist"]').forEach(sel => {
     const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
     const cur = p?.playlistId || "";
-    sel.innerHTML = ['<option value="">(Playlist wählen…)</option>', ...FMQ.app.playlists.map(pl => `<option value="${FMQ.escapeHtml(pl.id)}" ${pl.id === cur ? "selected" : ""}>${FMQ.escapeHtml(pl.name)} (${typeof pl.tracks?.total === "number" ? pl.tracks.total : "?"})</option>`)].join("");
+    sel.innerHTML = ['<option value="">(Playlist wählen…)</option>', ...FMQ.app.playlists.map(pl => {
+      const cnt = typeof pl.tracks?.total === "number" ? pl.tracks.total : "?";
+      const maxLen = 38;
+      const shortName = pl.name.length > maxLen ? `${pl.name.slice(0, maxLen - 1)}…` : pl.name;
+      return `<option value="${FMQ.escapeHtml(pl.id)}" ${pl.id === cur ? "selected" : ""} title="${FMQ.escapeHtml(pl.name)}">${FMQ.escapeHtml(shortName)} (${cnt})</option>`;
+    })].join("");
   });
 };
 
@@ -136,9 +147,15 @@ FMQ.rebuildTrackUniverse = () => {
 
 FMQ.checkReadyToStart = () => {
   const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.every(p => p.name && p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax);
-  FMQ.$("startGameBtn").disabled = !ok;
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
+  return ok;
 };
+
+FMQ.getEndTargetText = () => FMQ.app.config.endType === "points"
+  ? `${FMQ.app.config.targetPoints} Punkte`
+  : `${FMQ.app.config.targetRounds} Runden`;
+
+FMQ.getWinnerByScore = () => [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
 
 FMQ.buildPlayersConfig = () => {
   const n = Math.max(1, Math.min(8, parseInt(FMQ.$("playerCountInput").value || "1", 10)));
@@ -159,7 +176,7 @@ FMQ.buildPlayersConfig = () => {
     const row = document.createElement("div");
     row.className = "row";
     row.style.margin = "8px 0";
-    row.innerHTML = `<span class="pill">#${i + 1}</span><input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}" style="min-width:180px;"><select data-role="playlist" data-pid="${p.id}" style="min-width:320px;"><option value="">(Playlist wählen…)</option></select><span class="muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>`;
+    row.innerHTML = `<span class="pill">#${i + 1}</span><input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}" style="min-width:180px;"><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button><select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect" style="min-width:320px;"><option value="">(Playlist wählen…)</option></select><span class="muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>`;
     wrap.appendChild(row);
   }
 
@@ -169,6 +186,16 @@ FMQ.buildPlayersConfig = () => {
   FMQ.$("playersConfig").querySelectorAll('input[data-role="name"]').forEach(inp => inp.addEventListener("input", () => {
     const p = FMQ.app.players.find(x => x.id === inp.dataset.pid);
     if (p) p.name = inp.value.trim() || "Spieler";
+    FMQ.checkReadyToStart();
+  }));
+  FMQ.$("playersConfig").querySelectorAll('button[data-role="clear-name"]').forEach(btn => btn.addEventListener("click", () => {
+    const pid = btn.getAttribute("data-pid");
+    const inp = FMQ.$("playersConfig").querySelector(`input[data-role="name"][data-pid="${pid}"]`);
+    const p = FMQ.app.players.find(x => x.id === pid);
+    if (!inp || !p) return;
+    inp.value = "";
+    p.name = "Spieler";
+    inp.focus();
     FMQ.checkReadyToStart();
   }));
 
@@ -295,7 +322,7 @@ FMQ.awardPoints = (pid, delta) => {
 
 FMQ.renderScoreTable = () => {
   FMQ.$("scoreTable").innerHTML = FMQ.app.players
-    .map(p => `<div class="scoreCard"><div class="name">${FMQ.escapeHtml(p.name)}</div><div class="pts">${p.score} / ${FMQ.app.config.targetPoints}</div><div class="span">Spanne: ${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</div></div>`)
+    .map(p => `<div class="scoreCard"><div class="name">${FMQ.escapeHtml(p.name)}</div><div class="pts">${FMQ.app.config.endType === "points" ? `${p.score} / ${FMQ.app.config.targetPoints}` : `${p.score} Punkte`}</div><div class="span">Spanne: ${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</div></div>`)
     .join("");
 };
 
