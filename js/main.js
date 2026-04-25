@@ -18,6 +18,36 @@ FMQ.applyAccessibilityLabels = () => {
   });
 };
 
+FMQ.renderPlayerSwitchPanel = () => {
+  const panel = FMQ.$("playerSwitchPanel");
+  if (!panel) return;
+  panel.innerHTML = FMQ.app.players.map(p => `
+    <label class="playerSwitchRow">
+      <span>${FMQ.escapeHtml(p.name)}</span>
+      <input type="checkbox" data-role="active-switch" data-pid="${p.id}" ${p.active !== false ? "checked" : ""}>
+    </label>
+  `).join("");
+  panel.querySelectorAll('input[data-role="active-switch"]').forEach(inp => inp.onchange = async () => {
+    const pid = inp.getAttribute("data-pid");
+    const p = FMQ.app.players.find(x => x.id === pid);
+    if (!p) return;
+    p.active = !!inp.checked;
+    if (!FMQ.activePlayers().length) {
+      p.active = true;
+      inp.checked = true;
+      return;
+    }
+    if (!p.active && FMQ.currentPlayer()?.id === p.id && FMQ.$("screenGame").classList.contains("active")) {
+      try { await FMQ.pausePlayback(); } catch {}
+      FMQ.advanceTurn();
+      FMQ.resetTurnUI();
+      return;
+    }
+    FMQ.renderHeader();
+    FMQ.renderScoreTable();
+  });
+};
+
 // =========================================================
 // TURN-VORBEREITUNG / ZIEHLOGIK
 // =========================================================
@@ -92,9 +122,11 @@ FMQ.resetTurnUI = () => {
   FMQ.modes[mode].renderArea();
 
   if (mode === "yearRange") {
-    FMQ.app.state.yearRange = { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() };
-    FMQ.showRangeOverlay(true);
-    FMQ.$("readyBtn").disabled = true;
+    FMQ.app.state.yearRange = { step: 10, points: FMQ.modes.yearRange.stepPoints(10), options: [], correctIdx: -1, picks: new Map() };
+    FMQ.$("readyBtn").style.display = "none";
+    FMQ.$("playToggleBtn").style.display = "none";
+    FMQ.$("revealBtn").style.display = "none";
+    FMQ.$("nextBtn").style.display = "none";
   } else if (mode === "quick3") {
     FMQ.$("screenGame").classList.add("quick3Active");
     FMQ.$("readyBtn").style.display = "none";
@@ -125,6 +157,7 @@ FMQ.resetTurnUI = () => {
 
   FMQ.renderHeader();
   FMQ.renderScoreTable();
+  FMQ.renderPlayerSwitchPanel();
   FMQ.applyAccessibilityLabels();
 };
 
@@ -144,6 +177,7 @@ FMQ.onReady = async () => {
   if (mode === "speedGuess") {
     FMQ.modes.speedGuess.startCountdown();
   }
+  if (mode === "yearRange" && FMQ.modes.yearRange.syncControlStates) FMQ.modes.yearRange.syncControlStates();
   FMQ.renderHeader();
 };
 
@@ -241,6 +275,7 @@ FMQ.onReveal = async () => {
   FMQ.markFinalRoundIfNeeded();
   FMQ.$("revealBtn").disabled = true;
   FMQ.$("nextBtn").disabled = FMQ.app.state.selfCheckPending;
+  if (mode === "yearRange" && FMQ.modes.yearRange.syncControlStates) FMQ.modes.yearRange.syncControlStates();
   FMQ.applyAccessibilityLabels();
 };
 
@@ -485,6 +520,7 @@ FMQ.init = async () => {
   FMQ.$("endBtn").onclick = () => FMQ.quitToMenu();
 
   FMQ.buildPlayersConfig();
+  FMQ.renderPlayerSwitchPanel();
   FMQ.$("endTypeSelect").dispatchEvent(new Event("change"));
   FMQ.renderModeHints();
   FMQ.refreshConnStatus();

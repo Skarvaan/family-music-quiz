@@ -83,14 +83,23 @@ FMQ.app = {
   }
 };
 
-FMQ.currentPlayer = () => FMQ.app.players[FMQ.app.state.turnIndex];
+FMQ.activePlayers = () => FMQ.app.players.filter(p => p.active !== false);
+FMQ.currentPlayer = () => {
+  const cur = FMQ.app.players[FMQ.app.state.turnIndex];
+  if (cur && cur.active !== false) return cur;
+  return FMQ.activePlayers()[0] || FMQ.app.players[0] || null;
+};
 FMQ.getPlayerName = (id) => FMQ.app.players.find(p => p.id === id)?.name || "Unbekannt";
 FMQ.advanceTurn = () => {
-  FMQ.app.state.turnIndex++;
-  if (FMQ.app.state.turnIndex >= FMQ.app.players.length) {
-    FMQ.app.state.turnIndex = 0;
-    FMQ.app.state.round++;
-  }
+  const active = FMQ.activePlayers();
+  if (!active.length) return;
+  const currentId = FMQ.currentPlayer()?.id || active[0].id;
+  const curPos = Math.max(0, active.findIndex(p => p.id === currentId));
+  const nextPos = (curPos + 1) % active.length;
+  const wrapped = nextPos === 0;
+  const nextId = active[nextPos].id;
+  FMQ.app.state.turnIndex = Math.max(0, FMQ.app.players.findIndex(p => p.id === nextId));
+  if (wrapped) FMQ.app.state.round++;
 };
 
 FMQ.renderModeConfig = () => {
@@ -171,7 +180,7 @@ FMQ.buildPlayersConfig = () => {
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
-    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0 };
+    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, active: prev.active !== false };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "row";
@@ -268,6 +277,7 @@ FMQ.resetSession = () => {
   FMQ.app.state.playlistGuess = { picks: new Map() };
   FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null };
   FMQ.app.state.social = null;
+  FMQ.app.state.socialPlayback = null;
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
   FMQ.app.state.selfCheckPending = false;
 
@@ -288,6 +298,8 @@ FMQ.drawFromDeck = (deck) => {
 
 FMQ.drawTrackForCurrentTurn = ({ risk = null, forceFromAny = false } = {}) => {
   const me = FMQ.currentPlayer();
+  const active = FMQ.activePlayers();
+  if (!me || !active.length) return null;
   const drawFromPlayer = (p) => {
     const deck = FMQ.shuffle((p.tracks || []).map(t => t.id).filter(id => id && !FMQ.app.usedTrackIds.has(id)));
     while (deck.length) {
@@ -300,14 +312,19 @@ FMQ.drawTrackForCurrentTurn = ({ risk = null, forceFromAny = false } = {}) => {
   };
 
   if (forceFromAny) {
-    const track = FMQ.drawFromDeck(FMQ.app.globalDeck) || FMQ.drawFromDeck(FMQ.shuffle([...FMQ.app.trackMap.keys()].filter(id => !FMQ.app.usedTrackIds.has(id))));
+    const activeIds = new Set(active.map(p => p.id));
+    const candidateIds = [...FMQ.app.trackMap.entries()]
+      .filter(([, t]) => (t.owners || []).some(id => activeIds.has(id)))
+      .map(([id]) => id)
+      .filter(id => !FMQ.app.usedTrackIds.has(id));
+    const track = FMQ.drawFromDeck(FMQ.shuffle(candidateIds));
     if (!track) return null;
-    const owners = track.owners || [];
+    const owners = (track.owners || []).filter(id => activeIds.has(id));
     return { track, sourcePlayerId: owners[Math.floor(Math.random() * owners.length)] || me.id };
   }
 
-  if (risk === "wagnis" && FMQ.app.players.length >= 2) {
-    const src = FMQ.shuffle(FMQ.app.players.filter(p => p.id !== me.id))[0];
+  if (risk === "wagnis" && active.length >= 2) {
+    const src = FMQ.shuffle(active.filter(p => p.id !== me.id))[0];
     const res = src && drawFromPlayer(src);
     if (res) return res;
   }
@@ -328,6 +345,7 @@ FMQ.renderScoreTable = () => {
 
 FMQ.renderHeader = () => {
   const me = FMQ.currentPlayer();
+  if (!me) return;
   FMQ.$("gameModeLabel").textContent = FMQ.modes[FMQ.app.config.mode]?.label || FMQ.app.config.mode;
   FMQ.$("gameModeSub").textContent = FMQ.app.config.party === "allguess" ? "Alle raten" : "Reihum";
   FMQ.$("roundLabel").textContent = `Runde ${FMQ.app.state.round}`;

@@ -61,6 +61,14 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
   white-space: nowrap;
   overflow: hidden;
 }
+.playerSwitchBox summary{ cursor:pointer; font-weight:700; }
+.playerSwitchRow{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.playerSwitchRow:last-child{ border-bottom:none; }
+.yearRangeToolbar{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+.yearRangeToolbar select{ min-height:48px; }
+.abTransport{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:10px; }
+.choiceGridBig{ justify-content:center; }
+.abChoiceBig{ min-width:220px; min-height:92px; font-size:32px; font-weight:900; }
 .turnBanner{ border:1px solid var(--line); border-radius: 16px; padding: 14px 16px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow: var(--shadow); }
 .scoreGrid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
 .scoreCard{ border:1px solid var(--line); border-radius:14px; padding:12px; background:#f8faff; }

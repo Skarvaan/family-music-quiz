@@ -22,11 +22,12 @@ FMQ.renderModeLikeQuick3 = ({ heading, subtitle, bodyHtml, panelClass = "", hero
 
 FMQ.initSocialRound = ({ modeId, startPhase = "othersGuessing" }) => {
   const mainPlayerId = FMQ.app.state.currentSourcePlayerId || FMQ.currentPlayer().id;
+  const activePlayers = FMQ.activePlayers();
   FMQ.app.state.social = {
     modeId,
     phase: startPhase,
     mainPlayerId,
-    respondingPlayersQueue: FMQ.app.players.filter(p => p.id !== mainPlayerId).map(p => p.id),
+    respondingPlayersQueue: activePlayers.filter(p => p.id !== mainPlayerId).map(p => p.id),
     currentResponderIndex: 0,
     answers: new Map(),
     mainAnswer: null
@@ -36,6 +37,28 @@ FMQ.getSocialResponderId = () => {
   const s = FMQ.app.state.social;
   if (!s) return null;
   return s.respondingPlayersQueue[s.currentResponderIndex] || null;
+};
+
+FMQ.socialPlaybackStart = async (uri, { fromStart = false, key = "default" } = {}) => {
+  if (!FMQ.app.state.socialPlayback) FMQ.app.state.socialPlayback = {};
+  if (!FMQ.app.state.socialPlayback[key]) FMQ.app.state.socialPlayback[key] = { uri, posMs: 0, startedAt: null, basePosMs: 0 };
+  const pb = FMQ.app.state.socialPlayback[key];
+  if (fromStart || pb.uri !== uri) pb.posMs = 0;
+  pb.uri = uri;
+  pb.basePosMs = pb.posMs || 0;
+  pb.startedAt = Date.now();
+  await FMQ.playTrackUri(uri, { positionMs: pb.basePosMs });
+  FMQ.app.state.isPlaying = true;
+};
+
+FMQ.socialPlaybackPause = async ({ key = "default" } = {}) => {
+  const pb = FMQ.app.state.socialPlayback?.[key];
+  if (pb?.startedAt) {
+    pb.posMs = Math.max(0, pb.basePosMs + (Date.now() - pb.startedAt));
+    pb.startedAt = null;
+  }
+  await FMQ.pausePlayback();
+  FMQ.app.state.isPlaying = false;
 };
 
 // =========================================================
@@ -230,8 +253,31 @@ FMQ.modes = {
         heading: "Zeitraum raten",
         subtitle: "Wähle den richtigen Zeitraum.",
         panelClass: "theme-range",
-        bodyHtml: `<div id="yearChoices"></div><div id="allGuessPanel" style="margin-top:10px;"></div>`
+        bodyHtml: `<div class="yearRangeToolbar"><select id="yearStepSelect"><option value="10">Jahrzehnt (+1)</option><option value="5">5 Jahre (+2)</option><option value="2">2 Jahre (+3)</option><option value="1">Exaktes Jahr (+4)</option></select><button id="yearStartBtn" class="big primary">▶️ Start</button><button id="yearStopBtn" class="big">⏸️ Stop</button><button id="yearRevealBtn" class="big">Reveal</button><button id="yearNextBtn" class="big primary">Weiter</button></div><div id="yearChoices" style="margin-top:10px;"></div><div id="allGuessPanel" style="margin-top:10px;"></div>`
       });
+      FMQ.$("yearStepSelect").value = String(FMQ.app.state.yearRange.step || 10);
+      FMQ.$("yearStepSelect").onchange = async () => {
+        const step = parseInt(FMQ.$("yearStepSelect").value, 10);
+        FMQ.app.state.yearRange.step = step;
+        FMQ.app.state.yearRange.points = FMQ.modes.yearRange.stepPoints(step);
+        if (FMQ.app.state.currentTrack) {
+          const me = FMQ.currentPlayer();
+          const built = FMQ.modes.yearRange.buildOptionsForYear(FMQ.app.state.currentTrack.year, step, me.spanMin, me.spanMax);
+          FMQ.app.state.yearRange.options = built.buckets;
+          FMQ.app.state.yearRange.correctIdx = built.correctIdx;
+          FMQ.modes.yearRange.renderChoices();
+        }
+      };
+      FMQ.$("yearStartBtn").onclick = () => FMQ.$("readyBtn").click();
+      FMQ.$("yearStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+      FMQ.$("yearRevealBtn").onclick = () => FMQ.$("revealBtn").click();
+      FMQ.$("yearNextBtn").onclick = () => FMQ.$("nextBtn").click();
+      FMQ.modes.yearRange.syncControlStates();
+    },
+    syncControlStates() {
+      if (!FMQ.$("yearStartBtn")) return;
+      FMQ.$("yearRevealBtn").disabled = FMQ.$("revealBtn").disabled;
+      FMQ.$("yearNextBtn").disabled = FMQ.$("nextBtn").disabled;
     },
     stepPoints(step) { return step === 10 ? 1 : step === 5 ? 2 : step === 2 ? 3 : 4; },
     buildOptionsForYear(year, step, spanMin, spanMax) {
@@ -243,10 +289,21 @@ FMQ.modes = {
       const allStarts = [];
       for (let s = alignedMin; s <= maxBound; s += step) allStarts.push(s);
       if (!allStarts.includes(bucket)) allStarts.push(bucket);
-      const sortedStarts = [...new Set(allStarts)].sort((a, b) => a - b);
+      let sortedStarts = [...new Set(allStarts)].sort((a, b) => a - b);
+      let probe = sortedStarts[0] ?? bucket;
+      while (sortedStarts.length < 4) {
+        probe -= step;
+        if (probe < 1900) break;
+        sortedStarts.unshift(probe);
+      }
+      sortedStarts = [...new Set(sortedStarts)].sort((a, b) => a - b);
       const pos = Math.max(0, sortedStarts.indexOf(bucket));
       const from = Math.max(0, Math.min(pos - 1, sortedStarts.length - 4));
-      const starts = sortedStarts.slice(from, from + 4);
+      let starts = sortedStarts.slice(from, from + 4);
+      if (starts.length < 4) {
+        const last = starts[starts.length - 1] ?? bucket;
+        for (let i = starts.length; i < 4; i++) starts.push(last + ((i - starts.length + 1) * step));
+      }
       const buckets = starts.map(s => {
         const end = step === 1 ? s : Math.min(s + step - 1, maxBound);
         return { start: s, end };
@@ -264,10 +321,12 @@ FMQ.modes = {
           btn.classList.add("selected");
           FMQ.app.state.yearRange.picks.set(FMQ.currentPlayer().id, parseInt(btn.dataset.choice, 10));
           FMQ.$("revealBtn").disabled = false;
+          FMQ.modes.yearRange.syncControlStates();
         });
         FMQ.$("allGuessPanel").innerHTML = "";
       } else {
-        FMQ.$("allGuessPanel").innerHTML = FMQ.app.players.map(p => `
+        const activePlayers = FMQ.activePlayers();
+        FMQ.$("allGuessPanel").innerHTML = activePlayers.map(p => `
           <div class="row" style="margin:8px 0;">
             <span class="pill">${FMQ.escapeHtml(p.name)}</span>
             <div class="choiceGrid" data-player-pick="${p.id}">
@@ -282,7 +341,8 @@ FMQ.modes = {
             row.querySelectorAll(".choiceBtn").forEach(x=>x.classList.remove("selected"));
             btn.classList.add("selected");
             FMQ.app.state.yearRange.picks.set(pid, parseInt(btn.getAttribute("data-choice"), 10));
-            FMQ.$("revealBtn").disabled = FMQ.app.state.yearRange.picks.size !== FMQ.app.players.length;
+            FMQ.$("revealBtn").disabled = FMQ.app.state.yearRange.picks.size !== activePlayers.length;
+            FMQ.modes.yearRange.syncControlStates();
           };
         });
       }
@@ -290,7 +350,7 @@ FMQ.modes = {
     onReveal() {
       if (FMQ.app.config.party === "allguess") {
         let cnt = 0;
-        for (const p of FMQ.app.players) {
+        for (const p of FMQ.activePlayers()) {
           const correct = FMQ.app.state.yearRange.picks.get(p.id) === FMQ.app.state.yearRange.correctIdx;
           if (correct) { FMQ.awardPoints(p.id, FMQ.app.state.yearRange.points); cnt++; }
         }
@@ -316,7 +376,8 @@ FMQ.modes = {
     },
     renderGuessUI() {
       const c = FMQ.$("plGuessPanel");
-      c.innerHTML = `<div class="choiceGrid">${FMQ.app.players.map(p => `<button class="choiceBtn" data-owner="${p.id}">${FMQ.escapeHtml(p.name)}</button>`).join("")}</div>`;
+      const activePlayers = FMQ.activePlayers();
+      c.innerHTML = `<div class="choiceGrid">${activePlayers.map(p => `<button class="choiceBtn" data-owner="${p.id}">${FMQ.escapeHtml(p.name)}</button>`).join("")}</div>`;
       FMQ.app.state.playlistGuess.picks = new Map();
       if (FMQ.app.config.party === "rotate") {
         c.querySelectorAll("[data-owner]").forEach(btn => btn.onclick = () => {
@@ -326,11 +387,11 @@ FMQ.modes = {
           FMQ.$("revealBtn").disabled = false;
         });
       } else {
-        c.innerHTML = FMQ.app.players.map(p => `
+        c.innerHTML = activePlayers.map(p => `
           <div class="row" style="margin:8px 0;">
             <span class="pill">${FMQ.escapeHtml(p.name)}</span>
             <div class="choiceGrid" data-owner-row="${p.id}">
-              ${FMQ.app.players.map(o=>`<button class="choiceBtn" data-owner="${o.id}" data-pid="${p.id}">${FMQ.escapeHtml(o.name)}</button>`).join("")}
+              ${activePlayers.map(o=>`<button class="choiceBtn" data-owner="${o.id}" data-pid="${p.id}">${FMQ.escapeHtml(o.name)}</button>`).join("")}
             </div>
           </div>
         `).join("");
@@ -341,7 +402,7 @@ FMQ.modes = {
             row.querySelectorAll(".choiceBtn").forEach(x=>x.classList.remove("selected"));
             btn.classList.add("selected");
             FMQ.app.state.playlistGuess.picks.set(pid, btn.getAttribute("data-owner"));
-            FMQ.$("revealBtn").disabled = FMQ.app.state.playlistGuess.picks.size !== FMQ.app.players.length;
+            FMQ.$("revealBtn").disabled = FMQ.app.state.playlistGuess.picks.size !== activePlayers.length;
           };
         });
       }
@@ -350,7 +411,7 @@ FMQ.modes = {
       const valid = new Set(FMQ.app.state.currentTrack.owners || []);
       if (FMQ.app.config.party === "allguess") {
         let cnt = 0;
-        for (const p of FMQ.app.players) {
+        for (const p of FMQ.activePlayers()) {
           const ok = valid.has(FMQ.app.state.playlistGuess.picks.get(p.id));
           if (ok) { FMQ.awardPoints(p.id, 1); cnt++; }
         }
@@ -368,6 +429,16 @@ FMQ.modes = {
   ratingGuess: {
     label: "Song-Bewertung einschätzen",
     supportsAllGuess: false,
+    transportHtml() {
+      return `<div class="row ratingTransportRow" style="justify-content:center;"><button id="ratingPlayStartBtn" class="big">⏮️ Von vorne</button><button id="ratingPlayResumeBtn" class="big">▶️ Weiter</button><button id="ratingStopBtn" class="big">⏸️ Stop</button></div>`;
+    },
+    bindTransport() {
+      const t = FMQ.app.state.currentTrack;
+      if (!t) return;
+      FMQ.$("ratingPlayStartBtn").onclick = () => FMQ.socialPlaybackStart(t.uri, { fromStart: true, key: "rating" }).catch(() => {});
+      FMQ.$("ratingPlayResumeBtn").onclick = () => FMQ.socialPlaybackStart(t.uri, { fromStart: false, key: "rating" }).catch(() => {});
+      FMQ.$("ratingStopBtn").onclick = () => FMQ.socialPlaybackPause({ key: "rating" }).catch(() => {});
+    },
     renderArea() {
       FMQ.$("modeAreaTitle").textContent = "Wie gut findet … diesen Song?";
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "ratingGuess") FMQ.initSocialRound({ modeId: "ratingGuess", startPhase: "listen" });
@@ -379,35 +450,43 @@ FMQ.modes = {
           subtitle: "",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="row" style="justify-content:center;"><button id="ratingStartBtn" class="big primary">▶️ Song starten</button><button id="ratingStopBtn" class="big">⏹ Stop</button></div><div class="row" style="justify-content:center;"><button id="ratingListenNextBtn" class="big" disabled>Weiter</button></div>`
+          bodyHtml: `${FMQ.modes.ratingGuess.transportHtml()}<div class="row" style="justify-content:center;"><button id="ratingListenNextBtn" class="big primary">Weiter</button></div>`
         });
-        FMQ.$("ratingStartBtn").onclick = async () => {
+        if (!FMQ.app.state.currentTrack) {
+          FMQ.prepareTrackForTurn().then(() => FMQ.modes.ratingGuess.bindTransport()).catch(e => FMQ.setGameDebug(e.stack || e.message));
+        } else {
+          FMQ.modes.ratingGuess.bindTransport();
+        }
+        FMQ.$("ratingListenNextBtn").onclick = async () => {
+          try { await FMQ.socialPlaybackPause({ key: "rating" }); } catch {}
           if (!FMQ.app.state.currentTrack) await FMQ.prepareTrackForTurn();
-          await FMQ.playTrackUri(FMQ.app.state.currentTrack.uri, { positionMs: 0 });
-          FMQ.app.state.isPlaying = true;
-          FMQ.$("ratingListenNextBtn").disabled = false;
+          s.phase = "othersGuessing";
+          FMQ.modes.ratingGuess.renderArea();
         };
-        FMQ.$("ratingStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
-        FMQ.$("ratingListenNextBtn").onclick = () => { s.phase = "othersGuessing"; FMQ.modes.ratingGuess.renderArea(); };
       } else if (s.phase === "othersGuessing") {
         const pid = FMQ.getSocialResponderId();
+        if (!pid) {
+          s.phase = "mainAnswer";
+          FMQ.modes.ratingGuess.renderArea();
+          return;
+        }
         const responder = FMQ.getPlayerName(pid);
         FMQ.renderModeLikeQuick3({
           heading: `Wie findet "${mainName}" diesen Song?`,
           subtitle: `Wie bewertet ${mainName} diesen Song (1-10)?`,
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="socialTurnLabel">${FMQ.escapeHtml(responder)} ist dran</div><div class="row" style="justify-content:center;"><button id="ratingReplayBtn">▶️ Nochmal</button><button id="ratingStopBtn">⏹ Stop</button></div><div class="choiceGrid">${[1,2,3,4,5,6,7,8,9,10].map(v=>`<button class="choiceBtn socialScaleBtn" data-rate="${v}">${v}</button>`).join("")}</div><div class="row" style="justify-content:center;"><button id="ratingNextBtn" class="big primary" disabled>Weiter</button></div>`
+          bodyHtml: `<div class="socialTurnLabel">${FMQ.escapeHtml(responder)} ist dran</div>${FMQ.modes.ratingGuess.transportHtml()}<div class="choiceGrid">${[1,2,3,4,5,6,7,8,9,10].map(v=>`<button class="choiceBtn socialScaleBtn" data-rate="${v}">${v}</button>`).join("")}</div><div class="row" style="justify-content:center;"><button id="ratingNextBtn" class="big primary" disabled>Weiter</button></div>`
         });
-        FMQ.$("ratingReplayBtn").onclick = () => FMQ.playTrackUri(FMQ.app.state.currentTrack.uri, { positionMs: 0 }).catch(() => {});
-        FMQ.$("ratingStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+        FMQ.modes.ratingGuess.bindTransport();
         FMQ.$("modeArea").querySelectorAll("[data-rate]").forEach(btn => btn.onclick = () => {
           FMQ.$("modeArea").querySelectorAll("[data-rate]").forEach(x => x.classList.remove("selected"));
           btn.classList.add("selected");
           s.answers.set(pid, parseInt(btn.getAttribute("data-rate"), 10));
           FMQ.$("ratingNextBtn").disabled = false;
         });
-        FMQ.$("ratingNextBtn").onclick = () => {
+        FMQ.$("ratingNextBtn").onclick = async () => {
+          try { await FMQ.socialPlaybackPause({ key: "rating" }); } catch {}
           s.currentResponderIndex++;
           s.phase = s.currentResponderIndex >= s.respondingPlayersQueue.length ? "mainAnswer" : "othersGuessing";
           FMQ.modes.ratingGuess.renderArea();
@@ -418,20 +497,20 @@ FMQ.modes = {
           subtitle: "",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="row" style="justify-content:center;"><button id="ratingReplayBtn">▶️ Nochmal</button><button id="ratingStopBtn">⏹ Stop</button></div><div class="choiceGrid">${[1,2,3,4,5,6,7,8,9,10].map(v=>`<button class="choiceBtn socialScaleBtn" data-main-rate="${v}">${v}</button>`).join("")}</div><div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary" disabled>Reveal</button></div>`
+          bodyHtml: `${FMQ.modes.ratingGuess.transportHtml()}<div class="choiceGrid">${[1,2,3,4,5,6,7,8,9,10].map(v=>`<button class="choiceBtn socialScaleBtn" data-main-rate="${v}">${v}</button>`).join("")}</div><div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary" disabled>Reveal</button></div>`
         });
-        FMQ.$("ratingReplayBtn").onclick = () => FMQ.playTrackUri(FMQ.app.state.currentTrack.uri, { positionMs: 0 }).catch(() => {});
-        FMQ.$("ratingStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+        FMQ.modes.ratingGuess.bindTransport();
         FMQ.$("modeArea").querySelectorAll("[data-main-rate]").forEach(btn => btn.onclick = () => {
           FMQ.$("modeArea").querySelectorAll("[data-main-rate]").forEach(x => x.classList.remove("selected"));
           btn.classList.add("selected");
           s.mainAnswer = parseInt(btn.getAttribute("data-main-rate"), 10);
           FMQ.$("ratingRevealBtn").disabled = false;
         });
-        FMQ.$("ratingRevealBtn").onclick = () => {
+        FMQ.$("ratingRevealBtn").onclick = async () => {
+          try { await FMQ.socialPlaybackPause({ key: "rating" }); } catch {}
           const truth = Math.max(1, Math.min(10, parseInt(String(s.mainAnswer || "0"), 10)));
           const lines = [];
-          for (const p of FMQ.app.players) {
+          for (const p of FMQ.activePlayers()) {
             if (p.id === s.mainPlayerId) continue;
             const val = parseInt(String(s.answers.get(p.id) || 0), 10);
             const diff = Math.abs(truth - (val || 0));
@@ -441,7 +520,6 @@ FMQ.modes = {
             FMQ.awardPoints(p.id, pts);
             lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${val || "-"} → <b>+${pts}</b></div>`);
           }
-          FMQ.pausePlayback().catch(() => {});
           const t = FMQ.app.state.currentTrack;
           FMQ.renderModeLikeQuick3({
             heading: `Auflösung: ${mainName}`,
@@ -563,6 +641,19 @@ FMQ.modes = {
   bestFit: {
     label: "Song A oder B",
     supportsAllGuess: false,
+    transportHtml() {
+      return `<div class="abTransport"><button id="playAFromStartBtn" class="big">⏮️ A von vorne</button><button id="playAResumeBtn" class="big">▶️ A weiter</button><button id="playBFromStartBtn" class="big">⏮️ B von vorne</button><button id="playBResumeBtn" class="big">▶️ B weiter</button><button id="bestFitStopBtn" class="big">⏸️ Stop</button></div>`;
+    },
+    bindTransport(trackA, trackB) {
+      FMQ.$("playAFromStartBtn").onclick = () => FMQ.socialPlaybackStart(trackA.uri, { fromStart: true, key: "bestFitA" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("playAResumeBtn").onclick = () => FMQ.socialPlaybackStart(trackA.uri, { fromStart: false, key: "bestFitA" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("playBFromStartBtn").onclick = () => FMQ.socialPlaybackStart(trackB.uri, { fromStart: true, key: "bestFitB" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("playBResumeBtn").onclick = () => FMQ.socialPlaybackStart(trackB.uri, { fromStart: false, key: "bestFitB" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("bestFitStopBtn").onclick = async () => {
+        try { await FMQ.socialPlaybackPause({ key: "bestFitA" }); } catch {}
+        try { await FMQ.socialPlaybackPause({ key: "bestFitB" }); } catch {}
+      };
+    },
     renderArea() {
       FMQ.$("modeAreaTitle").textContent = "Song A oder Song B";
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "bestFit") FMQ.initSocialRound({ modeId: "bestFit", startPhase: "listen" });
@@ -572,17 +663,13 @@ FMQ.modes = {
       const trackB = FMQ.app.state.bestFitTracks?.b;
       if (s.phase === "listen") {
         if (!trackA || !trackB) {
-          FMQ.renderModeLikeQuick3({
-            heading: `Bereit für das A/B-Duell von ${mainName}?`,
-            subtitle: "Es werden zwei Songs (A/B) geladen.",
-            heroName: "",
-            panelClass: "theme-playlist",
-            bodyHtml: `<div class="row" style="justify-content:center;"><button id="bestFitStartBtn" class="big primary">▶️ Song A/B vorbereiten</button></div>`
-          });
-          FMQ.$("bestFitStartBtn").onclick = async () => {
-            await FMQ.prepareTrackForTurn();
-            FMQ.modes.bestFit.renderArea();
-          };
+          FMQ.renderModeLikeQuick3({ heading: `Song A/B wird vorbereitet …`, subtitle: "", heroName: "", panelClass: "theme-playlist" });
+          if (!s.loading) {
+            s.loading = true;
+            FMQ.prepareTrackForTurn()
+              .then(() => { s.loading = false; FMQ.modes.bestFit.renderArea(); })
+              .catch(e => FMQ.setGameDebug(e.stack || e.message));
+          }
           return;
         }
         FMQ.renderModeLikeQuick3({
@@ -590,24 +677,25 @@ FMQ.modes = {
           subtitle: "",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="abListenButtons"><button id="playABtn" class="big">▶️ Song A</button><button id="playBBtn" class="big">▶️ Song B</button><button id="bestFitStopBtn" class="big">⏹ Stop</button></div><div class="row" style="justify-content:center; margin-top:10px;"><button id="bestFitContinueBtn" class="primary big">Weiter zur Tipp-Runde</button></div>`
+          bodyHtml: `${FMQ.modes.bestFit.transportHtml()}<div class="row" style="justify-content:center; margin-top:10px;"><button id="bestFitContinueBtn" class="primary big">Weiter zur Tipp-Runde</button></div>`
         });
-        FMQ.$("playABtn").onclick = () => { FMQ.app.state.currentTrack = trackA; FMQ.playTrackUri(trackA.uri, { positionMs: 0 }).then(()=>{ FMQ.app.state.isPlaying = true; FMQ.$("playToggleBtn").textContent = "⏸️ Stop"; }).catch(e => FMQ.setGameDebug(e.stack || e.message)); };
-        FMQ.$("playBBtn").onclick = () => { FMQ.app.state.currentTrack = trackB; FMQ.playTrackUri(trackB.uri, { positionMs: 0 }).then(()=>{ FMQ.app.state.isPlaying = true; FMQ.$("playToggleBtn").textContent = "⏸️ Stop"; }).catch(e => FMQ.setGameDebug(e.stack || e.message)); };
-        FMQ.$("bestFitStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+        FMQ.modes.bestFit.bindTransport(trackA, trackB);
         FMQ.$("bestFitContinueBtn").onclick = () => { s.phase = "othersGuessing"; FMQ.modes.bestFit.renderArea(); };
       } else if (s.phase === "othersGuessing") {
         const pid = FMQ.getSocialResponderId();
+        if (!pid) {
+          s.phase = "mainAnswer";
+          FMQ.modes.bestFit.renderArea();
+          return;
+        }
         FMQ.renderModeLikeQuick3({
           heading: `Welchen Song findet "${mainName}" besser?`,
           subtitle: "",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="socialTurnLabel">${FMQ.escapeHtml(FMQ.getPlayerName(pid))} ist dran</div><div class="quick3Controls" style="justify-content:center; margin-bottom:8px;"><button id="playABtn">▶️ Play Song A</button><button id="playBBtn">▶️ Play Song B</button><button id="bestFitStopBtn">⏹ Stop</button></div><div class="choiceGrid" style="margin-top:10px;"><button class="choiceBtn big" data-pick="A">Song A</button><button class="choiceBtn big" data-pick="B">Song B</button></div><div class="row" style="justify-content:center;"><button id="bfNextBtn" class="big primary" disabled>Weiter</button></div>`
+          bodyHtml: `<div class="socialTurnLabel">${FMQ.escapeHtml(FMQ.getPlayerName(pid))} ist dran</div>${FMQ.modes.bestFit.transportHtml()}<div class="choiceGrid choiceGridBig" style="margin-top:10px;"><button class="choiceBtn abChoiceBig" data-pick="A">Song A</button><button class="choiceBtn abChoiceBig" data-pick="B">Song B</button></div><div class="row" style="justify-content:center;"><button id="bfNextBtn" class="big primary" disabled>Weiter</button></div>`
         });
-        FMQ.$("playABtn").onclick = () => FMQ.playTrackUri(trackA.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-        FMQ.$("playBBtn").onclick = () => FMQ.playTrackUri(trackB.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-        FMQ.$("bestFitStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+        FMQ.modes.bestFit.bindTransport(trackA, trackB);
         FMQ.$("modeArea").querySelectorAll("[data-pick]").forEach(btn => btn.onclick = () => {
           FMQ.$("modeArea").querySelectorAll("[data-pick]").forEach(x => x.classList.remove("selected"));
           btn.classList.add("selected");
@@ -625,11 +713,9 @@ FMQ.modes = {
           subtitle: `${mainName} ist dran`,
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="quick3Controls" style="justify-content:center; margin-bottom:8px;"><button id="playABtn">▶️ Play Song A</button><button id="playBBtn">▶️ Play Song B</button><button id="bestFitStopBtn">⏹ Stop</button></div><div class="abListenButtons"><button class="big choiceBtn" data-main-pick="A">Song A</button><button class="big choiceBtn" data-main-pick="B">Song B</button></div><div class="row" style="justify-content:center;"><button id="bfRevealBtn" class="big primary" disabled>Reveal</button></div>`
+          bodyHtml: `${FMQ.modes.bestFit.transportHtml()}<div class="choiceGrid choiceGridBig"><button class="choiceBtn abChoiceBig" data-main-pick="A">Song A</button><button class="choiceBtn abChoiceBig" data-main-pick="B">Song B</button></div><div class="row" style="justify-content:center;"><button id="bfRevealBtn" class="big primary" disabled>Reveal</button></div>`
         });
-        FMQ.$("playABtn").onclick = () => FMQ.playTrackUri(trackA.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-        FMQ.$("playBBtn").onclick = () => FMQ.playTrackUri(trackB.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-        FMQ.$("bestFitStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+        FMQ.modes.bestFit.bindTransport(trackA, trackB);
         FMQ.$("modeArea").querySelectorAll("[data-main-pick]").forEach(btn => btn.onclick = () => {
           FMQ.$("modeArea").querySelectorAll("[data-main-pick]").forEach(x => x.classList.remove("selected"));
           btn.classList.add("selected");
@@ -639,13 +725,14 @@ FMQ.modes = {
         FMQ.$("bfRevealBtn").onclick = () => {
           const truth = s.mainAnswer || "A";
           const lines = [];
-          for (const p of FMQ.app.players) {
+          for (const p of FMQ.activePlayers()) {
             if (p.id === s.mainPlayerId) continue;
             const guessed = s.answers.get(p.id);
             const pts = guessed === truth ? 1 : 0;
             if (pts) FMQ.awardPoints(p.id, pts);
             lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${guessed || "-"} → <b>+${pts}</b></div>`);
           }
+          FMQ.pausePlayback().catch(() => {});
           FMQ.renderModeLikeQuick3({
             heading: `Auflösung: ${mainName}`,
             subtitle: "",
