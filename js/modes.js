@@ -636,19 +636,66 @@ FMQ.modes = {
     onReveal() { return { skipReveal: true, disableReveal: true }; }
   },
   // =========================================================
-  // SOCIAL MODUS 3: Song A oder B
+  // SOCIAL MODUS 3: Kennenlernen Top 3
+  // =========================================================
+  icebreaker: {
+    label: "Kennenlernen: Top 3",
+    supportsAllGuess: false,
+    async playClip(track, fromMiddle = false) {
+      if (!track) return;
+      const clipMs = 15000;
+      const startMs = fromMiddle ? Math.max(0, Math.floor((track.durationMs || 0) / 2)) : 0;
+      await FMQ.playTrackUri(track.uri, { positionMs: startMs });
+      clearTimeout(FMQ.app.state.playTimer);
+      FMQ.app.state.playTimer = setTimeout(() => {
+        FMQ.pausePlayback().catch(() => {});
+      }, clipMs);
+    },
+    renderArea() {
+      FMQ.$("modeAreaTitle").textContent = "Kennenlernen: Top 3 Songs";
+      const me = FMQ.currentPlayer();
+      const top = (me?.tracks || []).slice(0, 3);
+      const labels = ["Herausragend", "Gut", "Mittel"];
+      FMQ.renderModeLikeQuick3({
+        heading: `Diese Songs findet "${FMQ.escapeHtml(me?.name || "")}" gut`,
+        subtitle: "Warm-up: kurze Hörprobe pro Spieler, dann weiter.",
+        heroName: "",
+        panelClass: "theme-playlist",
+        bodyHtml: `<div>${top.map((t, i) => `<div class="abTransport"><span class="pill">${i + 1}) ${labels[i] || `Song ${i + 1}`}</span><button class="big" data-ice-play-start="${i}">▶️ Start 15 Sek.</button><button class="big" data-ice-play-mid="${i}">⏩ Mitte 15 Sek.</button></div>`).join("")}</div><div class="abTransport"><button id="iceStopBtn" class="big">⏸️ Stop</button></div><div class="muted" id="iceTrackInfo" style="text-align:center; margin-top:8px;">${top.length ? "Wähle pro Song: Start 15 Sek. oder Mitte 15 Sek." : "Zu wenig Songs in der Playlist."}</div><div class="row" style="justify-content:center; margin-top:10px;"><button id="iceNextBtn" class="big primary">Nächster Spieler</button></div>`
+      });
+      FMQ.$("modeArea").querySelectorAll("[data-ice-play-start]").forEach(btn => btn.onclick = () => {
+        const idx = parseInt(btn.getAttribute("data-ice-play-start"), 10);
+        const t = top[idx];
+        if (!t) return;
+        FMQ.modes.icebreaker.playClip(t, false).then(() => {
+          FMQ.$("iceTrackInfo").textContent = `${labels[idx] || `Song ${idx + 1}`}: Start 15 Sek. · ${t.name} · ${t.artists.join(", ")}`;
+        }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      });
+      FMQ.$("modeArea").querySelectorAll("[data-ice-play-mid]").forEach(btn => btn.onclick = () => {
+        const idx = parseInt(btn.getAttribute("data-ice-play-mid"), 10);
+        const t = top[idx];
+        if (!t) return;
+        FMQ.modes.icebreaker.playClip(t, true).then(() => {
+          FMQ.$("iceTrackInfo").textContent = `${labels[idx] || `Song ${idx + 1}`}: Mitte 15 Sek. · ${t.name} · ${t.artists.join(", ")}`;
+        }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      });
+      FMQ.$("iceStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
+      FMQ.$("iceNextBtn").onclick = () => FMQ.onNext();
+    },
+    onReveal() { return { skipReveal: true, disableReveal: true }; }
+  },
+  // =========================================================
+  // SOCIAL MODUS 4: Song A oder B
   // =========================================================
   bestFit: {
     label: "Song A oder B",
     supportsAllGuess: false,
     transportHtml() {
-      return `<div class="abTransport"><button id="playAFromStartBtn" class="big">⏮️ A von vorne</button><button id="playAResumeBtn" class="big">▶️ A weiter</button><button id="playBFromStartBtn" class="big">⏮️ B von vorne</button><button id="playBResumeBtn" class="big">▶️ B weiter</button><button id="bestFitStopBtn" class="big">⏸️ Stop</button></div>`;
+      return `<div class="abTransport"><button id="playAFromStartBtn" class="big">🅰️ ▶️ Song A</button><button id="playBFromStartBtn" class="big">🅱️ ▶️ Song B</button><button id="bestFitStopBtn" class="big">⏸️ Stop</button></div>`;
     },
     bindTransport(trackA, trackB) {
       FMQ.$("playAFromStartBtn").onclick = () => FMQ.socialPlaybackStart(trackA.uri, { fromStart: true, key: "bestFitA" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-      FMQ.$("playAResumeBtn").onclick = () => FMQ.socialPlaybackStart(trackA.uri, { fromStart: false, key: "bestFitA" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("playBFromStartBtn").onclick = () => FMQ.socialPlaybackStart(trackB.uri, { fromStart: true, key: "bestFitB" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-      FMQ.$("playBResumeBtn").onclick = () => FMQ.socialPlaybackStart(trackB.uri, { fromStart: false, key: "bestFitB" }).catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("bestFitStopBtn").onclick = async () => {
         try { await FMQ.socialPlaybackPause({ key: "bestFitA" }); } catch {}
         try { await FMQ.socialPlaybackPause({ key: "bestFitB" }); } catch {}

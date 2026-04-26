@@ -127,6 +127,7 @@ FMQ.resetTurnUI = () => {
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
     FMQ.$("nextBtn").style.display = "none";
+    FMQ.$("readyBtn").disabled = false;
   } else if (mode === "quick3") {
     FMQ.$("screenGame").classList.add("quick3Active");
     FMQ.$("readyBtn").style.display = "none";
@@ -353,7 +354,8 @@ FMQ.renderModeButtons = () => {
     { id: "quick3", label: `A) ${FMQ.MODE_INFO.quick3.label}`, category: FMQ.MODE_INFO.quick3.category },
     { id: "yearRange", label: `B) ${FMQ.MODE_INFO.yearRange.label}`, category: FMQ.MODE_INFO.yearRange.category },
     { id: "ratingGuess", label: `C) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
-    { id: "bestFit", label: `D) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category }
+    { id: "bestFit", label: `D) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category },
+    { id: "icebreaker", label: `E) ${FMQ.MODE_INFO.icebreaker.label}`, category: FMQ.MODE_INFO.icebreaker.category }
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {

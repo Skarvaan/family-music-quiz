@@ -9,9 +9,10 @@ FMQ.MODE_INFO = {
   quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
   yearRange: { label: "Zeitraum/Jahr raten", category: "self", hint: "Jahr per Multiple Choice einordnen" },
   ratingGuess: { label: "Song-Bewertung einschätzen", category: "social", hint: "Wie schätzen andere den Geschmack ein?" },
-  bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" }
+  bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" },
+  icebreaker: { label: "Kennenlernen: Top 3", category: "social", hint: "Erste 3 Songs je Playlist als Warm-up hören" }
 };
-FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit"].includes(modeId);
+FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit", "icebreaker"].includes(modeId);
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
 FMQ.REDIRECT_URI = (() => {
