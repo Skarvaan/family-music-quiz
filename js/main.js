@@ -48,6 +48,12 @@ FMQ.renderPlayerSwitchPanel = () => {
   });
 };
 
+FMQ.syncSetupForMode = () => {
+  const isIcebreaker = FMQ.$("modeSelect").value === "icebreaker";
+  if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = isIcebreaker ? "none" : "";
+  if (FMQ.$("endTargetRow")) FMQ.$("endTargetRow").style.display = isIcebreaker ? "none" : "";
+};
+
 // =========================================================
 // TURN-VORBEREITUNG / ZIEHLOGIK
 // =========================================================
@@ -335,9 +341,14 @@ FMQ.quitToMenu = async () => {
 FMQ.startGame = () => {
   FMQ.app.config.mode = FMQ.$("modeSelect").value;
   FMQ.app.config.party = FMQ.$("partySelect").value;
-  FMQ.app.config.endType = FMQ.$("endTypeSelect").value;
-  FMQ.app.config.targetPoints = Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10));
-  FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "5", 10));
+  if (FMQ.app.config.mode === "icebreaker") {
+    FMQ.app.config.endType = "rounds";
+    FMQ.app.config.targetRounds = 1;
+  } else {
+    FMQ.app.config.endType = FMQ.$("endTypeSelect").value;
+    FMQ.app.config.targetPoints = Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10));
+    FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "5", 10));
+  }
   FMQ.resetSession();
   FMQ.showScreen("screenGame");
   FMQ.resetTurnUI();
@@ -370,6 +381,7 @@ FMQ.renderModeButtons = () => {
       FMQ.app.config.mode = FMQ.$("modeSelect").value;
       FMQ.renderModeHints();
       FMQ.renderModeButtons();
+      FMQ.syncSetupForMode();
       FMQ.renderSetupWizard();
     };
   });
@@ -406,7 +418,9 @@ FMQ.renderSetupWizard = () => {
     FMQ.$("setupWizardSub").textContent = "Wähle den Spielmodus als große Schaltfläche.";
   } else if (step === 4) {
     FMQ.$("setupWizardTitle").textContent = "Schritt 4 · Punkte & Spieler";
-    FMQ.$("setupWizardSub").textContent = "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
+    FMQ.$("setupWizardSub").textContent = FMQ.$("modeSelect").value === "icebreaker"
+      ? "Kennenlernen-Modus: pro Spieler 3 Songs, dann weiter."
+      : "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
   }
   FMQ.$("setupBackBtn").disabled = step <= 1;
   FMQ.$("setupNextBtn").style.display = "";
@@ -421,6 +435,7 @@ FMQ.renderSetupWizard = () => {
   }
   FMQ.renderPlayStyleButtons();
   FMQ.renderModeButtons();
+  FMQ.syncSetupForMode();
   FMQ.applyAccessibilityLabels();
 };
 
@@ -457,7 +472,7 @@ FMQ.init = async () => {
   if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
   if (FMQ.$("loadMyPlaylistsBtn")) FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(() => { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; });
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
-  FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.renderSetupWizard(); };
+  FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.syncSetupForMode(); FMQ.renderSetupWizard(); };
   FMQ.$("targetPlusBtn").onclick = () => {
     const endType = FMQ.$("endTypeSelect").value;
     const fieldId = endType === "points" ? "targetPointsInput" : "targetRoundsInput";
@@ -524,6 +539,7 @@ FMQ.init = async () => {
   FMQ.buildPlayersConfig();
   FMQ.renderPlayerSwitchPanel();
   FMQ.$("endTypeSelect").dispatchEvent(new Event("change"));
+  FMQ.syncSetupForMode();
   FMQ.renderModeHints();
   FMQ.refreshConnStatus();
   FMQ.renderSetupWizard();

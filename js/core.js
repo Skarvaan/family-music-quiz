@@ -55,6 +55,8 @@ FMQ.calcYearStats = (years) => {
 FMQ.storage = {
   get token() { return localStorage.getItem("spotify_access_token"); },
   set token(v) { v ? localStorage.setItem("spotify_access_token", v) : localStorage.removeItem("spotify_access_token"); },
+  get refreshToken() { return localStorage.getItem("spotify_refresh_token"); },
+  set refreshToken(v) { v ? localStorage.setItem("spotify_refresh_token", v) : localStorage.removeItem("spotify_refresh_token"); },
   get scope() { return localStorage.getItem("spotify_scope") || ""; },
   set scope(v) { v ? localStorage.setItem("spotify_scope", v) : localStorage.removeItem("spotify_scope"); },
   get verifier() { return localStorage.getItem("pkce_verifier"); },

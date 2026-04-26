@@ -34,6 +34,7 @@ FMQ.loginSpotify = async () => {
 
 FMQ.logoutSpotify = () => {
   FMQ.storage.token = null;
+  FMQ.storage.refreshToken = null;
   FMQ.storage.scope = null;
   FMQ.storage.verifier = null;
   FMQ.refreshConnStatus();
@@ -76,6 +77,7 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   }
 
   FMQ.storage.token = data.access_token;
+  FMQ.storage.refreshToken = data.refresh_token || FMQ.storage.refreshToken || null;
   FMQ.storage.scope = data.scope || "";
   url.searchParams.delete("code");
   url.searchParams.delete("state");
@@ -85,7 +87,25 @@ FMQ.handleOAuthCallbackIfPresent = async () => {
   try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; }
 };
 
-FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000 } = {}) => {
+FMQ.refreshAccessToken = async () => {
+  if (!FMQ.storage.refreshToken) throw new Error("Kein Refresh-Token vorhanden.");
+  const body = new URLSearchParams({
+    client_id: FMQ.SPOTIFY_CLIENT_ID,
+    grant_type: "refresh_token",
+    refresh_token: FMQ.storage.refreshToken
+  });
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error(data?.error_description || "Token-Refresh fehlgeschlagen.");
+  FMQ.storage.token = data.access_token;
+  if (data.refresh_token) FMQ.storage.refreshToken = data.refresh_token;
+};
+
+FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000, _retry = false } = {}) => {
   if (!FMQ.storage.token) throw new Error("Kein Token (bitte verbinden).");
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -102,6 +122,10 @@ FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000 
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch {}
+    if (res.status === 401 && !_retry && FMQ.storage.refreshToken) {
+      await FMQ.refreshAccessToken();
+      return FMQ.apiFetch(url, { method, jsonBody, timeoutMs, _retry: true });
+    }
     if (!res.ok) throw new Error(`Spotify API (${res.status}): ${data?.error?.message || data?.error_description || text || `HTTP ${res.status}`}`);
     return data;
   } catch (e) {
