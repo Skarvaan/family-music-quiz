@@ -258,8 +258,8 @@ FMQ.onReveal = async () => {
     FMQ.$("quick3PtsStatus").textContent = "";
     FMQ.$("quick3ConfirmBtn").disabled = false;
     FMQ.$("quick3RevealOverlay").classList.add("show");
-    if (FMQ.$("quick3PlayStartBtnInline")) FMQ.$("quick3PlayStartBtnInline").disabled = true;
-    if (FMQ.$("quick3PlayRandomBtnInline")) FMQ.$("quick3PlayRandomBtnInline").disabled = true;
+    if (FMQ.$("quick3PlayBtnInline")) FMQ.$("quick3PlayBtnInline").disabled = true;
+    if (FMQ.$("quick3StartModeSelectInline")) FMQ.$("quick3StartModeSelectInline").disabled = true;
     if (FMQ.$("quick3LenSelectInline")) FMQ.$("quick3LenSelectInline").disabled = true;
   }
 
@@ -270,8 +270,19 @@ FMQ.onReveal = async () => {
   FMQ.applyAccessibilityLabels();
 };
 
+FMQ.finishIntroSession = () => {
+  FMQ.showScreen("screenWinner");
+  if (FMQ.$("winnerTitle")) FMQ.$("winnerTitle").textContent = "Kennenlernen";
+  FMQ.$("winnerHeadline").textContent = "Zurück zum Start";
+  FMQ.$("winnerSub").textContent = "Keine Punktewertung.";
+  if (FMQ.$("finalScoreWrap")) FMQ.$("finalScoreWrap").style.display = "none";
+  FMQ.$("finalScoreTable").innerHTML = "";
+};
+
 FMQ.finishGame = (winnerPlayer, reason) => {
   FMQ.showScreen("screenWinner");
+  if (FMQ.$("winnerTitle")) FMQ.$("winnerTitle").textContent = "🏆 Gewinner";
+  if (FMQ.$("finalScoreWrap")) FMQ.$("finalScoreWrap").style.display = "";
   FMQ.$("winnerHeadline").textContent = winnerPlayer ? `${winnerPlayer.name} gewinnt!` : "Spiel beendet";
   FMQ.$("winnerSub").textContent = reason || "";
   FMQ.$("finalScoreTable").innerHTML = [...FMQ.app.players]
@@ -282,6 +293,7 @@ FMQ.finishGame = (winnerPlayer, reason) => {
 
 FMQ.onNext = () => {
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
+    if (FMQ.app.config.mode === "introFirst3") { FMQ.finishIntroSession(); return; }
     FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
     return;
   }
@@ -300,6 +312,7 @@ FMQ.onNext = () => {
   }
 
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
+    if (FMQ.app.config.mode === "introFirst3") { FMQ.finishIntroSession(); return; }
     FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
     return;
   }
@@ -316,6 +329,7 @@ FMQ.quitToMenu = async () => {
   FMQ.$("screenGame").classList.remove("quick3Active");
   FMQ.app.state.setupStep = 1;
   FMQ.showScreen("screenSetup");
+  FMQ.refreshPlaylistDropdowns();
   FMQ.renderSetupWizard();
   FMQ.setGameDebug("");
 };
@@ -331,6 +345,7 @@ FMQ.startGame = () => {
     FMQ.app.config.targetPoints = Math.max(1, parseInt(FMQ.$("targetPointsInput").value || "15", 10));
     FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "5", 10));
   }
+  if (FMQ.$("rankingSizeSetupSelect")) FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
   FMQ.resetSession();
   FMQ.showScreen("screenGame");
   FMQ.resetTurnUI();
@@ -405,6 +420,11 @@ FMQ.renderSetupWizard = () => {
   const loginBtn = FMQ.$("loginBtn");
   if (loginBtn) loginBtn.textContent = FMQ.storage.token ? "Spotify verbunden" : "Spotify verbinden";
 
+  if (step === 4 && FMQ.storage.token && !FMQ.app.playlists.length && !FMQ.app.loadingPlaylists) {
+    FMQ.app.loadingPlaylists = true;
+    FMQ.loadMyPlaylists().catch(() => {}).finally(() => { FMQ.app.loadingPlaylists = false; });
+  }
+
   if (step === 1 && !FMQ.storage.token) {
     FMQ.$("setupStepHint").textContent = "Spotify verbinden, damit im Setup Playlists geladen werden können.";
   } else if (step === 4 && !FMQ.setupCanProceed()) {
@@ -470,7 +490,7 @@ FMQ.init = async () => {
     FMQ.renderSetupWizard();
   };
   FMQ.$("playerPlusBtn").onclick = () => {
-    FMQ.$("playerCountInput").value = String(Math.min(8, parseInt(FMQ.$("playerCountInput").value || "1", 10) + 1));
+    FMQ.$("playerCountInput").value = String(Math.min(15, parseInt(FMQ.$("playerCountInput").value || "1", 10) + 1));
     rebuildFromPlayerCount();
   };
   FMQ.$("playerMinusBtn").onclick = () => {

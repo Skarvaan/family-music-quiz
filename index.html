@@ -110,7 +110,7 @@
               <label><b>Spieleranzahl</b></label>
               <div class="stepper">
                 <button id="playerMinusBtn">−</button>
-                <input id="playerCountInput" type="number" min="1" max="8" value="3">
+                <input id="playerCountInput" type="number" min="1" max="15" value="3">
                 <button id="playerPlusBtn">+</button>
               </div>
               <button id="buildPlayersBtn" style="display:none;">Spieler anlegen</button>
@@ -200,10 +200,10 @@
   <section id="screenWinner" class="screen" aria-label="Ergebnis">
     <div class="winner-stage panel-card">
       <div class="eyebrow">Finale</div>
-      <h2>🏆 Gewinner</h2>
+      <h2 id="winnerTitle">🏆 Gewinner</h2>
       <div id="winnerHeadline" class="winner-headline"></div>
       <div class="muted" id="winnerSub"></div>
-      <div class="final-score-wrap">
+      <div class="final-score-wrap" id="finalScoreWrap">
         <h3>Endstand</h3>
         <div class="score-grid" id="finalScoreTable"></div>
       </div>

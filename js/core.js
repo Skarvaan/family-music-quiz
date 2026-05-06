@@ -89,11 +89,12 @@ FMQ.app = {
     endType: "rounds",
     targetPoints: 15,
     targetRounds: 5,
-    ratingScoring: "classic"
+    ratingScoring: "classic",
+    rankingSize: 5
   },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
-    rankingList: { size: 5, lists: {}, answers: {} },
+    rankingList: { size: FMQ.app.config.rankingSize || 5, lists: {}, answers: {} },
     introPlaylistGuess: { answers: {}, responderIndex: 0 },
     quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
     social: null,
@@ -125,16 +126,26 @@ FMQ.advanceTurn = () => {
 FMQ.renderModeConfig = () => {
   const mode = FMQ.$("modeSelect").value;
   const area = FMQ.$("modeConfigArea");
+  area.style.display = "";
   if (mode === "ratingGuess") {
-    area.innerHTML = `<div class="row"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select></div>`;
+    area.innerHTML = `<div class="config-block"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
+  } else if (mode === "rankingList") {
+    area.innerHTML = `<div class="config-block"><label><b>Ranking-Größe</b></label><select id="rankingSizeSetupSelect"><option value="5">Top 5</option><option value="10">Top 10</option></select></div><div class="muted">Wird vor Spielstart festgelegt und bleibt bis Spielende unverändert.</div>`;
   } else {
-    area.innerHTML = `<div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select><span class="muted">In diesem Modus immer Reihum (übersichtlicher für Anfänger).</span></div>`;
+    area.innerHTML = `<div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   }
-  FMQ.$("partySelect").value = FMQ.app.config.party;
-  FMQ.$("partySelect").onchange = () => FMQ.app.config.party = FMQ.$("partySelect").value;
+  const partySelect = FMQ.$("partySelect");
+  if (partySelect) {
+    partySelect.value = FMQ.app.config.party;
+    partySelect.onchange = () => FMQ.app.config.party = partySelect.value;
+  }
   if (FMQ.$("ratingScoringSelect")) {
     FMQ.$("ratingScoringSelect").value = FMQ.app.config.ratingScoring || "classic";
     FMQ.$("ratingScoringSelect").onchange = () => FMQ.app.config.ratingScoring = FMQ.$("ratingScoringSelect").value;
+  }
+  if (FMQ.$("rankingSizeSetupSelect")) {
+    FMQ.$("rankingSizeSetupSelect").value = String(FMQ.app.config.rankingSize || 5);
+    FMQ.$("rankingSizeSetupSelect").onchange = () => FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
   }
 };
 
@@ -185,7 +196,7 @@ FMQ.getEndTargetText = () => FMQ.app.config.endType === "points"
 FMQ.getWinnerByScore = () => [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
 
 FMQ.buildPlayersConfig = () => {
-  const n = Math.max(1, Math.min(8, parseInt(FMQ.$("playerCountInput").value || "1", 10)));
+  const n = Math.max(1, Math.min(15, parseInt(FMQ.$("playerCountInput").value || "1", 10)));
   FMQ.$("playerCountInput").value = String(n);
 
   const old = FMQ.app.players;
@@ -199,7 +210,10 @@ FMQ.buildPlayersConfig = () => {
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "player-card";
-    row.innerHTML = `<div class="player-card-head"><span class="pill">Spieler ${i + 1}</span><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>`;
+    const statusHtml = (p.tracks?.length || 0) >= 5
+      ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
+      : "noch nicht geladen";
+    row.innerHTML = `<div class="player-card-head"><span class="pill">Spieler ${i + 1}</span><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
     wrap.appendChild(row);
   }
 

@@ -318,3 +318,11 @@ select option{ color:#111827; }
 }
 .menu-card.modeBtn{ min-height:270px; }
 @media (max-width:640px){ .menu-card.modeBtn{ min-height:190px; } }
+.revealCenter{ margin-top:24px; padding-top:12px; }
+.quick3Controls{ row-gap:14px; }
+.abTransport{ align-items:center; row-gap:14px; }
+.abTransport select{ width:auto; min-width:190px; }
+.rankingSlot.pending{ border-color:#fde68a; background:rgba(253,230,138,.16); box-shadow:0 0 0 3px rgba(253,230,138,.16); }
+.rankingSlot.dragOver{ border-color:#22d3ee; box-shadow:0 0 0 4px rgba(34,211,238,.18); }
+.modeConfig{ margin-top:16px; padding:14px; box-shadow:none; }
+@media (max-width:640px){ .abTransport select{ width:100%; } .revealCenter{ margin-top:30px; } }
