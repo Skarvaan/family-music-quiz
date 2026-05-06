@@ -12,7 +12,8 @@ FMQ.multiplayer = {
   prompt: null,
   answeredPlayerIds: new Set(),
   hostUrls: [],
-  supportedMode: "bestFit",
+  controllerId: null,
+  supportedMode: null,
   pendingScript: null
 };
 
@@ -149,8 +150,7 @@ FMQ.enableMultiDeviceMode = async () => {
   await FMQ.loadSocketIoClient();
   FMQ.setDeviceMode("multi");
   FMQ.app.config.category = "social";
-  FMQ.app.config.mode = FMQ.multiplayer.supportedMode;
-  if (FMQ.$("modeSelect")) FMQ.$("modeSelect").value = FMQ.multiplayer.supportedMode;
+  if (FMQ.$("modeSelect")) FMQ.app.config.mode = FMQ.$("modeSelect").value || "quick3";
   FMQ.app.players = [];
   if (FMQ.$("playerCountInput")) {
     FMQ.$("playerCountInput").min = "0";
@@ -170,6 +170,7 @@ FMQ.enableMultiDeviceMode = async () => {
     FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
+    FMQ.multiplayer.controllerId = snapshot.controllerId || null;
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     FMQ.renderDeviceModePanel?.();
     FMQ.showMultiDeviceHint(`Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
@@ -185,6 +186,7 @@ FMQ.bindMultiplayerSocket = (socket) => {
       FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];
       FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
       FMQ.multiplayer.players = snapshot.players || [];
+      FMQ.multiplayer.controllerId = snapshot.controllerId || null;
       FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     });
     FMQ.renderMultiplayerPanel?.();
@@ -198,17 +200,66 @@ FMQ.bindMultiplayerSocket = (socket) => {
     FMQ.multiplayer.hostUrls = snapshot.hostUrls || FMQ.multiplayer.hostUrls || [];
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
+    FMQ.multiplayer.controllerId = snapshot.controllerId || null;
     FMQ.multiplayer.prompt = snapshot.prompt || FMQ.multiplayer.prompt;
     FMQ.multiplayer.answeredPlayerIds = new Set(snapshot.answeredPlayerIds || []);
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
   });
   socket.on("host:answerSubmitted", payload => {
     if (!payload?.playerId) return;
-    if (payload.type === "bestFitVote") FMQ.submitVote(payload.playerId, payload.answer);
-    if (payload.type === "bestFitMain") FMQ.submitMainAnswer(payload.playerId, payload.answer);
-    FMQ.multiplayer.answeredPlayerIds.add(payload.playerId);
-    if (FMQ.app.config.mode === "bestFit") FMQ.modes.bestFit.renderArea();
+    FMQ.handleMultiplayerAnswer?.(payload);
   });
+  socket.on("host:controlAction", payload => FMQ.handleRemoteControlAction?.(payload.action));
+};
+
+FMQ.setMultiplayerController = (playerId) => {
+  FMQ.multiplayer.controllerId = playerId || null;
+  if (FMQ.multiplayer.socket) FMQ.multiplayer.socket.emit("host:setController", { playerId: FMQ.multiplayer.controllerId });
+  FMQ.renderMultiplayerPanel?.();
+  FMQ.renderDeviceModePanel?.();
+};
+
+FMQ.handleRemoteControlAction = (action) => {
+  if (!FMQ.isMultiDevice()) return;
+  const clickFirst = (ids) => {
+    for (const id of ids) {
+      const el = FMQ.$(id);
+      if (el && el.offsetParent !== null && !el.disabled) {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  };
+  if (action === "reveal") {
+    if (clickFirst(["bfRevealBtn", "introGuessRevealBtn", "revealBtnInline", "revealBtn"])) return;
+  }
+  if (action === "next") {
+    if (clickFirst(["bfToMainBtn", "rankingNextBtn", "socialDoneBtn", "introGuessNextBtn", "iceNextBtn", "nextBtn"])) return;
+    const mode = FMQ.app.config.mode;
+    if (mode === "bestFit" && FMQ.app.state.social?.mainAnswer) FMQ.modes.bestFit.finishReveal();
+  }
+};
+
+FMQ.handleMultiplayerAnswer = (payload) => {
+  const mode = FMQ.app.config.mode;
+  FMQ.multiplayer.answeredPlayerIds.add(payload.playerId);
+  if (payload.type === "bestFitVote" || payload.type === "bestFitAll") {
+    const s = FMQ.app.state.social;
+    if (payload.playerId === s?.mainPlayerId) FMQ.submitMainAnswer(payload.playerId, payload.answer);
+    else FMQ.submitVote(payload.playerId, payload.answer);
+  } else if (payload.type === "ratingGuessAll") {
+    const s = FMQ.app.state.social;
+    if (payload.playerId === s?.mainPlayerId) FMQ.submitMainAnswer(payload.playerId, parseInt(payload.answer, 10));
+    else FMQ.submitVote(payload.playerId, parseInt(payload.answer, 10));
+  } else if (payload.type === "quick3SelfCheck") {
+    FMQ.modes.quick3.submitAnswer(payload.playerId, payload.answer || {});
+  } else if (payload.type === "introPlaylistGuess") {
+    FMQ.modes.introPlaylistGuess.submitAnswer(payload.playerId, payload.answer);
+  } else if (payload.type === "rankingList") {
+    FMQ.modes.rankingList.submitAnswer(payload.playerId, { track: FMQ.app.state.currentTrack, rank: parseInt(payload.answer, 10) });
+  }
+  if (FMQ.modes[mode]?.renderArea) FMQ.modes[mode].renderArea();
 };
 
 FMQ.showMultiDeviceHint = (message) => {
@@ -227,8 +278,8 @@ FMQ.renderDeviceModePanel = () => {
   const qrUrl = active && phoneUrl ? `/qr.svg?url=${encodeURIComponent(phoneUrl)}` : "";
   panel.innerHTML = `
     <div class="deviceModeCards">
-      <button id="singleDeviceModeBtn" class="menu-card compact ${!active ? "active" : ""}"><span class="card-title">Ein-Gerät-Modus</span><span class="card-subtitle">Wie bisher: alle Eingaben am Host.</span></button>
-      <button id="multiDeviceModeBtn" class="menu-card compact ${active ? "active" : ""}"><span class="card-title">Mehrgeräte-Modus</span><span class="card-subtitle">Lokal im WLAN mit Handys.</span></button>
+      <button id="singleDeviceModeBtn" class="menu-card compact ${!active ? "active" : ""}"><span class="card-title">Modus: Ein Gerät</span><span class="card-subtitle">Jeder ist nacheinander dran.</span></button>
+      <button id="multiDeviceModeBtn" class="menu-card compact ${active ? "active" : ""}"><span class="card-title">Modus: Eigene Geräte</span><span class="card-subtitle">Jeder ist am eigenen Gerät gleichzeitig dran.</span></button>
     </div>
     <div id="multiDeviceStatus" class="muted multiDeviceStatus">${active ? `Mehrgeräte-Modus aktiv · Raum ${FMQ.escapeHtml(room)}` : local ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich." : "Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen."}</div>
     ${active ? `
@@ -315,6 +366,7 @@ FMQ.renderMultiplayerPanel = () => {
       </div>
       <div class="muted">Handys öffnen: <b>${FMQ.escapeHtml(joinUrl)}</b></div>
       <div class="muted">Wichtig: Jeder nutzt denselben Namen beim Rejoin. Gleicher Name = gleicher Spieler; Tippfehler erzeugen neue Spieler.</div>
+      <label class="multiControllerSelect"><b>Handy-Steuerung</b><select data-role="controller-select"><option value="">Host steuert</option>${players.map(p => `<option value="${FMQ.escapeHtml(p.remoteId || p.id)}" ${(FMQ.multiplayer.controllerId === (p.remoteId || p.id)) ? "selected" : ""}>${FMQ.escapeHtml(p.name)}</option>`).join("")}</select></label>
       <div class="multiRoster">
         ${players.map(p => {
           const id = p.remoteId || p.id;
@@ -328,5 +380,6 @@ FMQ.renderMultiplayerPanel = () => {
     panel.style.display = "block";
     panel.innerHTML = html;
     panel.querySelectorAll('[data-role="multi-active"]').forEach(inp => inp.onchange = () => FMQ.setPlayerActive(inp.getAttribute("data-pid"), inp.checked));
+    panel.querySelectorAll('[data-role="controller-select"]').forEach(sel => sel.onchange = () => FMQ.setMultiplayerController(sel.value || null));
   });
 };

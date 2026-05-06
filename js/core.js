@@ -9,7 +9,7 @@ FMQ.MODE_INFO = {
   quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
   rankingList: { label: "Ranking Liste", category: "self", hint: "Baue dein Top-5- oder Top-10-Ranking Song für Song" },
   ratingGuess: { label: "Song-Bewertung einschätzen", category: "social", hint: "Wie schätzen andere den Geschmack ein?" },
-  bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" },
+  bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur ausgewählten Person?" },
   introPlaylistGuess: { label: "Aus welcher Playlist ist das?", category: "intro", hint: "Alle raten nacheinander, aus welcher Playlist der Song stammt" },
   introFirst3: { label: "Meine ersten 3 Songs", category: "intro", hint: "Die vorbereiteten ersten 3 Songs jeder Playlist locker anhören" }
 };

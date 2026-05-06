@@ -21,7 +21,8 @@ const room = {
   playersById: new Map(),
   playerIdByName: new Map(),
   prompt: null,
-  answers: new Map()
+  answers: new Map(),
+  controllerId: null
 };
 
 function makeRoomCode() {
@@ -52,7 +53,8 @@ function roomSnapshot() {
     players: [...room.playersById.values()].map(publicPlayer),
     prompt: room.prompt,
     answeredPlayerIds: [...room.answers.keys()],
-    hostUrls: getHostUrls()
+    hostUrls: getHostUrls(),
+    controllerId: room.controllerId
   };
 }
 
@@ -128,7 +130,7 @@ io.on("connection", socket => {
     socket.data.playerId = player.id;
     socket.data.roomCode = room.code;
     socket.join(room.code);
-    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt });
+    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt, controllerId: room.controllerId });
     emitRoomState();
   });
 
@@ -167,6 +169,26 @@ io.on("connection", socket => {
     room.answers.set(playerId, answerPayload);
     io.to(room.code).emit("host:answerSubmitted", answerPayload);
     emitRoomState();
+    ack?.({ ok: true });
+  });
+
+  socket.on("host:setController", (payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann die Steuerung vergeben." });
+      return;
+    }
+    room.controllerId = payload.playerId || null;
+    emitRoomState();
+    ack?.({ ok: true, controllerId: room.controllerId });
+  });
+
+  socket.on("player:controlAction", (payload = {}, ack) => {
+    const playerId = payload.playerId || socket.data.playerId;
+    if (!playerId || playerId !== room.controllerId) {
+      ack?.({ ok: false, error: "Du hast gerade keine Steuerung." });
+      return;
+    }
+    io.to(room.hostSocketId).emit("host:controlAction", { playerId, action: payload.action });
     ack?.({ ok: true });
   });
 

@@ -132,6 +132,7 @@ FMQ.prepareTrackForTurn = async () => {
 };
 
 FMQ.resetTurnUI = () => {
+  FMQ.resetMultiplayerRound?.();
   FMQ.$("revealBox").style.display = "none";
   FMQ.$("revealText").innerHTML = "";
   FMQ.$("revealExtra").innerHTML = "";
@@ -148,6 +149,9 @@ FMQ.resetTurnUI = () => {
   FMQ.app.state.bestFitTracks = null;
   FMQ.app.state.selfCheckPending = false;
   FMQ.app.state.quick3.randomStartMs = null;
+  FMQ.app.state.quick3.answers = {};
+  FMQ.app.state.quick3.multiReveal = false;
+  if (FMQ.app.state.social?.autoAdvanceTimer) clearInterval(FMQ.app.state.social.autoAdvanceTimer);
 
   FMQ.$("turnPlayerBanner").style.display = "";
   FMQ.$("gameMetaBanner").style.display = "";
@@ -427,9 +431,7 @@ FMQ.renderModeButtons = () => {
     { id: "introPlaylistGuess", label: "Aus welcher Playlist?", category: FMQ.MODE_INFO.introPlaylistGuess.category },
     { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category }
   ];
-  const allowed = FMQ.isMultiDevice?.()
-    ? modeMeta.filter(m => m.id === FMQ.multiplayer.supportedMode)
-    : modeMeta.filter(m => m.category === FMQ.app.config.category);
+  const allowed = FMQ.isMultiDevice?.() ? modeMeta : modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
     FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
@@ -440,6 +442,7 @@ FMQ.renderModeButtons = () => {
     btn.onclick = () => {
       FMQ.$("modeSelect").value = btn.getAttribute("data-mode-id");
       FMQ.app.config.mode = FMQ.$("modeSelect").value;
+      if (FMQ.isMultiDevice?.()) FMQ.app.config.category = FMQ.MODE_INFO[FMQ.app.config.mode]?.category || FMQ.app.config.category;
       FMQ.renderModeHints();
       FMQ.renderModeButtons();
       FMQ.syncSetupForMode();

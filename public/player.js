@@ -21,7 +21,7 @@
     document.body.classList.add("joined");
     $("joinForm").hidden = true;
     $("playerStatus").hidden = true;
-    $("activePanel").hidden = true;
+    $("activePanel").hidden = false;
   };
 
   const isRecipient = prompt => {
@@ -47,7 +47,7 @@
       return;
     }
     if (!isRecipient(prompt)) {
-      panel.innerHTML = `<div class="player-wait-card player-focus-card">${escapeHtml(prompt.waitingText || "Bitte warten …")}</div>`;
+      panel.innerHTML = `<div class="player-wait-card player-focus-card">${escapeHtml(prompt.waitingText || "Warte auf die Auswahl aller anderen Personen!")}</div>`;
       return;
     }
     if (state.answeredPromptId === prompt.id) {
@@ -56,17 +56,23 @@
     }
 
     const options = prompt.options?.length ? prompt.options : [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }];
+    const inputHtml = prompt.kind === "checks"
+      ? `<div class="player-check-grid">${options.map(opt => `<label class="selfCheckItem"><input type="checkbox" data-check="${escapeHtml(opt.value)}"> ${escapeHtml(opt.label || opt.value)}</label>`).join("")}</div><button id="sendChecksBtn" class="choiceBtn abChoiceBig">Antwort senden</button>`
+      : `<div class="player-answer-grid">${options.map(opt => `<button class="choiceBtn abChoiceBig" data-answer="${escapeHtml(opt.value)}">${escapeHtml(opt.label || opt.value)}</button>`).join("")}</div>`;
     panel.innerHTML = `
       <div class="player-question-card player-focus-card">
         <div class="eyebrow">Jetzt antworten</div>
         <h2>${escapeHtml(prompt.title || "Frage")}</h2>
         <p>${escapeHtml(prompt.text || "Bitte wähle eine Antwort.")}</p>
-        <div class="player-answer-grid">
-          ${options.map(opt => `<button class="choiceBtn abChoiceBig" data-answer="${escapeHtml(opt.value)}">${escapeHtml(opt.label || opt.value)}</button>`).join("")}
-        </div>
+        ${inputHtml}
       </div>
     `;
     panel.querySelectorAll("[data-answer]").forEach(btn => btn.onclick = () => submitAnswer(btn.getAttribute("data-answer")));
+    if ($("sendChecksBtn")) $("sendChecksBtn").onclick = () => {
+      const answer = {};
+      panel.querySelectorAll("[data-check]").forEach(inp => { answer[inp.getAttribute("data-check")] = inp.checked; });
+      submitAnswer(answer);
+    };
   };
 
   const submitAnswer = answer => {
@@ -84,6 +90,7 @@
       state.answeredPromptId = state.prompt.id;
       setStatus("Antwort gesendet.");
       renderPrompt();
+      renderController();
     });
   };
 
@@ -103,6 +110,7 @@
       state.player = res.player;
       state.roomCode = res.roomCode;
       state.prompt = res.prompt || null;
+      state.controllerId = res.controllerId || null;
       state.answeredPromptId = null;
       $("roomCodeInput").value = state.roomCode;
       showJoinedView();
@@ -124,6 +132,15 @@
     });
   });
 
+  const renderController = () => {
+    const panel = $("controlPanel");
+    if (!panel || !state.player) return;
+    const canControl = state.controllerId && state.controllerId === state.player.id;
+    panel.hidden = !canControl;
+    panel.innerHTML = canControl ? `<button class="action-button primary" data-control="next">Weiter</button><button class="action-button reveal" data-control="reveal">Reveal</button>` : "";
+    panel.querySelectorAll("[data-control]").forEach(btn => btn.onclick = () => socket.emit("player:controlAction", { playerId: state.player.id, action: btn.getAttribute("data-control") }));
+  };
+
   socket.on("connect", () => setStatus(state.player ? `Du bist drin: ${state.player.name}` : "Raumcode und Namen eingeben."));
   socket.on("disconnect", () => setStatus("Verbindung getrennt. Versuche automatisch neu zu verbinden …"));
   socket.on("room:state", snapshot => {
@@ -131,28 +148,34 @@
       if (snapshot?.roomCode && !$("roomCodeInput").value) $("roomCodeInput").value = snapshot.roomCode;
       return;
     }
+    state.controllerId = snapshot.controllerId || null;
     const updated = snapshot.players?.find(p => p.id === state.player.id);
     if (updated) {
       state.player = updated;
       $("activeToggle").checked = state.player.active !== false;
     }
+    renderPrompt();
+    renderController();
   });
   socket.on("player:prompt", prompt => {
     state.prompt = prompt;
     state.answeredPromptId = null;
     setStatus("Neue Frage erhalten.");
     renderPrompt();
+    renderController();
   });
   socket.on("player:reveal", () => {
     state.prompt = null;
     state.answeredPromptId = null;
     setStatus("Reveal läuft am Host.");
     renderPrompt();
+    renderController();
   });
   socket.on("player:resetRound", () => {
     state.prompt = null;
     state.answeredPromptId = null;
     setStatus("Neue Runde wird vorbereitet.");
     renderPrompt();
+    renderController();
   });
 })();

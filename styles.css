@@ -449,3 +449,9 @@ body.joined .player-card-mobile > h1{ display:none; }
 .player-question-card.player-focus-card{ place-items:stretch; align-content:center; font-size:inherit; }
 .autoRevealCountdown.compact{ padding:12px; gap:6px; }
 .autoRevealCountdown.compact .countNum{ font-size:clamp(42px,8vw,82px); }
+.abTransportWrap{ display:grid; gap:10px; justify-items:center; }
+.abTransportWrap > select{ max-width:360px; }
+.player-control-panel{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.multiControllerSelect{ display:grid; gap:8px; padding:10px 0; }
+.player-check-grid{ display:grid; gap:10px; margin:12px 0; }
+body.joined .player-active-panel{ align-self:end; opacity:.82; }
