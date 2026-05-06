@@ -13,6 +13,7 @@ FMQ.multiplayer = {
   answeredPlayerIds: new Set(),
   hostUrls: [],
   controllerId: null,
+  controllerActions: [],
   supportedMode: null,
   pendingScript: null
 };
@@ -37,6 +38,7 @@ FMQ.loadSocketIoClient = () => {
 FMQ.setDeviceMode = (mode) => {
   FMQ.app.state.deviceMode = mode === "multi" ? "multi" : "single";
   FMQ.multiplayer.enabled = FMQ.app.state.deviceMode === "multi";
+  if (!FMQ.multiplayer.enabled) FMQ.closeMultiplayerRoom?.();
   FMQ.renderDeviceModePanel?.();
   FMQ.renderSetupWizard?.();
 };
@@ -149,7 +151,6 @@ FMQ.enableMultiDeviceMode = async () => {
   }
   await FMQ.loadSocketIoClient();
   FMQ.setDeviceMode("multi");
-  FMQ.app.config.category = "social";
   if (FMQ.$("modeSelect")) FMQ.app.config.mode = FMQ.$("modeSelect").value || "quick3";
   FMQ.app.players = [];
   if (FMQ.$("playerCountInput")) {
@@ -171,6 +172,7 @@ FMQ.enableMultiDeviceMode = async () => {
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
     FMQ.multiplayer.controllerId = snapshot.controllerId || null;
+    FMQ.multiplayer.controllerActions = Array.isArray(snapshot.controllerActions) ? snapshot.controllerActions : [];
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     FMQ.renderDeviceModePanel?.();
     FMQ.showMultiDeviceHint(`Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
@@ -187,6 +189,7 @@ FMQ.bindMultiplayerSocket = (socket) => {
       FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
       FMQ.multiplayer.players = snapshot.players || [];
       FMQ.multiplayer.controllerId = snapshot.controllerId || null;
+      FMQ.multiplayer.controllerActions = Array.isArray(snapshot.controllerActions) ? snapshot.controllerActions : [];
       FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     });
     FMQ.renderMultiplayerPanel?.();
@@ -201,6 +204,7 @@ FMQ.bindMultiplayerSocket = (socket) => {
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
     FMQ.multiplayer.controllerId = snapshot.controllerId || null;
+    FMQ.multiplayer.controllerActions = Array.isArray(snapshot.controllerActions) ? snapshot.controllerActions : [];
     FMQ.multiplayer.prompt = snapshot.prompt || FMQ.multiplayer.prompt;
     FMQ.multiplayer.answeredPlayerIds = new Set(snapshot.answeredPlayerIds || []);
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
@@ -212,39 +216,94 @@ FMQ.bindMultiplayerSocket = (socket) => {
   socket.on("host:controlAction", payload => FMQ.handleRemoteControlAction?.(payload.action));
 };
 
+
+FMQ.closeMultiplayerRoom = () => {
+  if (FMQ.multiplayer.socket && FMQ.multiplayer.connected) {
+    FMQ.multiplayer.socket.emit("host:closeRoom", {});
+  }
+  FMQ.multiplayer.controllerId = null;
+  FMQ.multiplayer.controllerActions = [];
+  FMQ.multiplayer.prompt = null;
+  FMQ.multiplayer.answeredPlayerIds = new Set();
+  FMQ.setMultiplayerControllerActions?.([]);
+};
+
+FMQ.setMultiplayerControllerActions = (actions = []) => {
+  const normalized = actions
+    .filter(action => action && action.id && action.label)
+    .slice(0, 4)
+    .map(action => ({ id: String(action.id), label: String(action.label) }));
+  FMQ.multiplayer.controllerActions = normalized;
+  if (FMQ.isMultiDevice() && FMQ.multiplayer.socket) {
+    FMQ.multiplayer.socket.emit("host:setControllerActions", { actions: normalized });
+  }
+};
+
+FMQ.collectVisibleHostControls = (root = document) => {
+  if (!FMQ.isMultiDevice?.()) return [];
+  const ignoreIds = new Set([
+    "quick3PlayBtnInline", "rankingPlayBtn", "rankingStopBtn", "playAFromStartBtn", "playBFromStartBtn", "bestFitStopBtn",
+    "ratingPlayBtn", "ratingStopBtn", "bfPlayBtn", "bfStopBtn", "introGuessPlayBtn", "introGuessStopBtn"
+  ]);
+  const preferredIds = [
+    "bestFitContinueBtn", "ratingListenNextBtn", "revealBtnInline", "revealBtn", "bfToMainBtn", "bfRevealBtn",
+    "rankingNextBtn", "introGuessRevealBtn", "introGuessNextBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
+  ];
+  const actions = [];
+  for (const id of preferredIds) {
+    const el = FMQ.$(id);
+    if (!el || ignoreIds.has(id) || el.disabled || el.offsetParent === null) continue;
+    const style = window.getComputedStyle(el);
+    if (style.visibility === "hidden" || style.display === "none") continue;
+    const label = (el.textContent || "Weiter").replace(/\s+/g, " ").trim();
+    if (label) actions.push({ id, label });
+  }
+  return actions;
+};
+
+FMQ.refreshPhoneControls = () => {
+  if (!FMQ.isMultiDevice?.()) return;
+  window.clearTimeout(FMQ.multiplayer.controlRefreshTimer);
+  FMQ.multiplayer.controlRefreshTimer = window.setTimeout(() => {
+    FMQ.setMultiplayerControllerActions?.(FMQ.collectVisibleHostControls());
+  }, 0);
+};
+
 FMQ.setMultiplayerController = (playerId) => {
   FMQ.multiplayer.controllerId = playerId || null;
   if (FMQ.multiplayer.socket) FMQ.multiplayer.socket.emit("host:setController", { playerId: FMQ.multiplayer.controllerId });
+  FMQ.refreshPhoneControls?.();
   FMQ.renderMultiplayerPanel?.();
   FMQ.renderDeviceModePanel?.();
 };
 
 FMQ.handleRemoteControlAction = (action) => {
   if (!FMQ.isMultiDevice()) return;
+  const el = action ? FMQ.$(action) : null;
+  if (el && el.offsetParent !== null && !el.disabled) {
+    el.click();
+    setTimeout(() => FMQ.refreshPhoneControls?.(), 0);
+    return;
+  }
   const clickFirst = (ids) => {
     for (const id of ids) {
-      const el = FMQ.$(id);
-      if (el && el.offsetParent !== null && !el.disabled) {
-        el.click();
+      const btn = FMQ.$(id);
+      if (btn && btn.offsetParent !== null && !btn.disabled) {
+        btn.click();
+        setTimeout(() => FMQ.refreshPhoneControls?.(), 0);
         return true;
       }
     }
     return false;
   };
-  if (action === "reveal") {
-    if (clickFirst(["bfRevealBtn", "introGuessRevealBtn", "revealBtnInline", "revealBtn"])) return;
-  }
-  if (action === "next") {
-    if (clickFirst(["bfToMainBtn", "rankingNextBtn", "socialDoneBtn", "introGuessNextBtn", "iceNextBtn", "nextBtn"])) return;
-    const mode = FMQ.app.config.mode;
-    if (mode === "bestFit" && FMQ.app.state.social?.mainAnswer) FMQ.modes.bestFit.finishReveal();
-  }
+  if (action === "reveal") clickFirst(["bfRevealBtn", "introGuessRevealBtn", "revealBtnInline", "revealBtn"]);
+  if (action === "next") clickFirst(["bestFitContinueBtn", "ratingListenNextBtn", "bfToMainBtn", "rankingNextBtn", "socialDoneBtn", "introGuessNextBtn", "iceNextBtn", "nextBtn"]);
 };
 
 FMQ.handleMultiplayerAnswer = (payload) => {
   const mode = FMQ.app.config.mode;
   FMQ.multiplayer.answeredPlayerIds.add(payload.playerId);
-  if (payload.type === "bestFitVote" || payload.type === "bestFitAll") {
+  if (payload.type === "bestFitVote" || payload.type === "bestFitAll" || payload.type === "bestFitMain") {
     const s = FMQ.app.state.social;
     if (payload.playerId === s?.mainPlayerId) FMQ.submitMainAnswer(payload.playerId, payload.answer);
     else FMQ.submitVote(payload.playerId, payload.answer);

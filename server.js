@@ -22,7 +22,9 @@ const room = {
   playerIdByName: new Map(),
   prompt: null,
   answers: new Map(),
-  controllerId: null
+  controllerId: null,
+  controllerActions: [],
+  open: false
 };
 
 function makeRoomCode() {
@@ -54,7 +56,9 @@ function roomSnapshot() {
     prompt: room.prompt,
     answeredPlayerIds: [...room.answers.keys()],
     hostUrls: getHostUrls(),
-    controllerId: room.controllerId
+    controllerId: room.controllerId,
+    controllerActions: room.controllerActions,
+    open: room.open
   };
 }
 
@@ -90,6 +94,10 @@ app.get("/qr.svg", async (req, res) => {
 io.on("connection", socket => {
   socket.on("host:createRoom", (_payload = {}, ack) => {
     room.hostSocketId = socket.id;
+    room.open = true;
+    room.prompt = null;
+    room.answers = new Map();
+    room.controllerActions = [];
     socket.join(room.code);
     ack?.(roomSnapshot());
     emitRoomState();
@@ -99,6 +107,10 @@ io.on("connection", socket => {
     const requestedCode = resolveRoomCode(payload.roomCode);
     if (requestedCode !== room.code) {
       ack?.({ ok: false, error: "Raum nicht gefunden." });
+      return;
+    }
+    if (!room.open || !room.hostSocketId) {
+      ack?.({ ok: false, error: "Der Raum ist gerade geschlossen. Bitte Host auf Mehrgeräte-Modus stellen." });
       return;
     }
 
@@ -130,8 +142,27 @@ io.on("connection", socket => {
     socket.data.playerId = player.id;
     socket.data.roomCode = room.code;
     socket.join(room.code);
-    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt, controllerId: room.controllerId });
+    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt, controllerId: room.controllerId, controllerActions: room.controllerActions });
     emitRoomState();
+  });
+
+  socket.on("host:closeRoom", (_payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann den Raum schließen." });
+      return;
+    }
+    room.open = false;
+    room.prompt = null;
+    room.answers = new Map();
+    room.controllerId = null;
+    room.controllerActions = [];
+    io.to(room.code).emit("player:roomClosed", { error: "Der Host hat den Mehrgeräte-Modus beendet." });
+    for (const player of room.playersById.values()) {
+      player.socketId = null;
+      player.lastSeenAt = Date.now();
+    }
+    emitRoomState();
+    ack?.({ ok: true });
   });
 
   socket.on("player:setActive", (payload = {}, ack) => {
@@ -178,6 +209,7 @@ io.on("connection", socket => {
       return;
     }
     room.controllerId = payload.playerId || null;
+    if (!room.controllerId) room.controllerActions = [];
     emitRoomState();
     ack?.({ ok: true, controllerId: room.controllerId });
   });
@@ -188,8 +220,25 @@ io.on("connection", socket => {
       ack?.({ ok: false, error: "Du hast gerade keine Steuerung." });
       return;
     }
+    const allowedActions = new Set((room.controllerActions || []).map(action => action.id));
+    if (!allowedActions.has(payload.action)) {
+      ack?.({ ok: false, error: "Diese Steuerung ist gerade nicht verfügbar." });
+      return;
+    }
     io.to(room.hostSocketId).emit("host:controlAction", { playerId, action: payload.action });
     ack?.({ ok: true });
+  });
+
+  socket.on("host:setControllerActions", (payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann Handy-Buttons setzen." });
+      return;
+    }
+    room.controllerActions = Array.isArray(payload.actions)
+      ? payload.actions.filter(action => action && action.id && action.label).slice(0, 4).map(action => ({ id: String(action.id), label: String(action.label) }))
+      : [];
+    emitRoomState();
+    ack?.({ ok: true, controllerActions: room.controllerActions });
   });
 
   socket.on("host:startPrompt", (payload = {}, ack) => {
@@ -205,6 +254,9 @@ io.on("connection", socket => {
       options: Array.isArray(payload.options) ? payload.options : [],
       recipientIds: Array.isArray(payload.recipientIds) ? payload.recipientIds : null,
       excludedPlayerIds: Array.isArray(payload.excludedPlayerIds) ? payload.excludedPlayerIds : [],
+      waitingText: payload.waitingText || "",
+      sentText: payload.sentText || "",
+      kind: payload.kind || "",
       createdAt: Date.now()
     };
     room.answers = new Map();
@@ -235,7 +287,14 @@ io.on("connection", socket => {
   });
 
   socket.on("disconnect", () => {
-    if (room.hostSocketId === socket.id) room.hostSocketId = null;
+    if (room.hostSocketId === socket.id) {
+      room.hostSocketId = null;
+      room.open = false;
+      room.prompt = null;
+      room.controllerId = null;
+      room.controllerActions = [];
+      io.to(room.code).emit("player:roomClosed", { error: "Host-Verbindung getrennt. Raum geschlossen." });
+    }
     if (socket.data.playerId) {
       const player = room.playersById.get(socket.data.playerId);
       if (player) {

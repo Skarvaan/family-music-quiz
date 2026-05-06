@@ -6,7 +6,9 @@
     player: null,
     roomCode: new URLSearchParams(window.location.search).get("room") || "",
     prompt: null,
-    answeredPromptId: null
+    answeredPromptId: null,
+    controllerId: null,
+    controllerActions: []
   };
 
   $("roomCodeInput").value = state.roomCode;
@@ -17,10 +19,30 @@
 
   const setStatus = text => { $("playerStatus").textContent = text; };
 
+  const showJoinView = (message = "Raumcode und Namen eingeben.") => {
+    document.body.classList.remove("joined");
+    state.player = null;
+    state.prompt = null;
+    state.answeredPromptId = null;
+    state.controllerId = null;
+    state.controllerActions = [];
+    $("joinForm").hidden = false;
+    $("playerStatus").hidden = false;
+    $("activePanel").hidden = true;
+    $("controlPanel").hidden = true;
+    $("controlPanel").innerHTML = "";
+    $("joinedName").hidden = true;
+    $("joinedName").textContent = "";
+    $("promptPanel").innerHTML = "";
+    setStatus(message);
+  };
+
   const showJoinedView = () => {
     document.body.classList.add("joined");
     $("joinForm").hidden = true;
     $("playerStatus").hidden = true;
+    $("joinedName").hidden = false;
+    $("joinedName").textContent = state.player?.name || "";
     $("activePanel").hidden = false;
   };
 
@@ -111,12 +133,14 @@
       state.roomCode = res.roomCode;
       state.prompt = res.prompt || null;
       state.controllerId = res.controllerId || null;
+      state.controllerActions = Array.isArray(res.controllerActions) ? res.controllerActions : [];
       state.answeredPromptId = null;
       $("roomCodeInput").value = state.roomCode;
       showJoinedView();
       $("activeToggle").checked = state.player.active !== false;
       setStatus(`Du bist drin: ${state.player.name}`);
       renderPrompt();
+      renderController();
     });
   });
 
@@ -136,9 +160,12 @@
     const panel = $("controlPanel");
     if (!panel || !state.player) return;
     const canControl = state.controllerId && state.controllerId === state.player.id;
-    panel.hidden = !canControl;
-    panel.innerHTML = canControl ? `<button class="action-button primary" data-control="next">Weiter</button><button class="action-button reveal" data-control="reveal">Reveal</button>` : "";
-    panel.querySelectorAll("[data-control]").forEach(btn => btn.onclick = () => socket.emit("player:controlAction", { playerId: state.player.id, action: btn.getAttribute("data-control") }));
+    const actions = canControl ? (state.controllerActions || []) : [];
+    panel.hidden = !canControl || actions.length === 0;
+    panel.innerHTML = actions.map(action => `<button class="action-button primary" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`).join("");
+    panel.querySelectorAll("[data-control]").forEach(btn => btn.onclick = () => socket.emit("player:controlAction", { playerId: state.player.id, action: btn.getAttribute("data-control") }, res => {
+      if (!res?.ok) setStatus(res?.error || "Steuerung gerade nicht verfügbar.");
+    }));
   };
 
   socket.on("connect", () => setStatus(state.player ? `Du bist drin: ${state.player.name}` : "Raumcode und Namen eingeben."));
@@ -149,6 +176,11 @@
       return;
     }
     state.controllerId = snapshot.controllerId || null;
+    state.controllerActions = Array.isArray(snapshot.controllerActions) ? snapshot.controllerActions : [];
+    if (snapshot.open === false) {
+      showJoinView("Der Raum ist geschlossen. Bitte warten, bis der Host Mehrgeräte-Modus aktiviert.");
+      return;
+    }
     const updated = snapshot.players?.find(p => p.id === state.player.id);
     if (updated) {
       state.player = updated;
@@ -170,6 +202,9 @@
     setStatus("Reveal läuft am Host.");
     renderPrompt();
     renderController();
+  });
+  socket.on("player:roomClosed", payload => {
+    showJoinView(payload?.error || "Raum geschlossen.");
   });
   socket.on("player:resetRound", () => {
     state.prompt = null;

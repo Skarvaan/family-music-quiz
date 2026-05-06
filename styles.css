@@ -455,3 +455,9 @@ body.joined .player-card-mobile > h1{ display:none; }
 .multiControllerSelect{ display:grid; gap:8px; padding:10px 0; }
 .player-check-grid{ display:grid; gap:10px; margin:12px 0; }
 body.joined .player-active-panel{ align-self:end; opacity:.82; }
+.joined-name{ text-align:center; font-size:13px; font-weight:900; color:var(--muted); letter-spacing:.04em; }
+body.joined .player-card-mobile{ min-height:auto; justify-content:start; gap:10px; padding:14px; }
+body.joined .player-focus-card{ min-height:clamp(180px,44vh,420px); }
+body.joined .player-active-panel{ margin-top:4px; }
+.player-control-panel:has(button:only-child){ grid-template-columns:1fr; }
+body.joined.player-body{ place-items:start center; }

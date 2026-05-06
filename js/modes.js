@@ -18,6 +18,7 @@ FMQ.renderModeLikeQuick3 = ({ heading, subtitle, bodyHtml, panelClass = "", hero
     </div>
   `;
   if (typeof FMQ.applyAccessibilityLabels === "function") FMQ.applyAccessibilityLabels();
+  FMQ.refreshPhoneControls?.();
 };
 
 
@@ -999,7 +1000,10 @@ FMQ.modes = {
       }).join("")}</div>`;
     },
     allAnswered(expectedIds, answersByPlayer) {
-      return expectedIds.every(id => Object.prototype.hasOwnProperty.call(answersByPlayer || {}, id));
+      return expectedIds.every(id => {
+        const player = FMQ.app.players.find(p => p.id === id || p.remoteId === id);
+        return player ? FMQ.modes.bestFit.answerForPlayer(player, answersByPlayer) !== undefined : Object.prototype.hasOwnProperty.call(answersByPlayer || {}, id);
+      });
     },
     clearAutoAdvance() {
       const s = FMQ.app.state.social;
@@ -1045,7 +1049,7 @@ FMQ.modes = {
         id: s.multiVotePromptId,
         type: "bestFitVote",
         title: "Song A oder B?",
-        text: `Was glaubst du: Welchen Song findet ${FMQ.getPlayerName(s.mainPlayerId)} besser?`,
+        text: `Alle antworten gleichzeitig. ${FMQ.getPlayerName(s.mainPlayerId)} wählt die echte Antwort, alle anderen tippen.`,
         options: [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }],
         waitingText: "Warte auf die Auswahl aller anderen Personen!",
         sentText: "Antwort gespeichert. Warte auf die Auswahl aller anderen Personen!",

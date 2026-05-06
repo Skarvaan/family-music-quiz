@@ -205,6 +205,7 @@ FMQ.resetTurnUI = () => {
   FMQ.renderPlayerSwitchPanel();
   FMQ.renderMultiplayerPanel?.();
   FMQ.applyAccessibilityLabels();
+  FMQ.refreshPhoneControls?.();
 };
 
 FMQ.onReady = async () => {
@@ -396,9 +397,6 @@ FMQ.quitToMenu = async () => {
 };
 
 FMQ.startGame = () => {
-  if (FMQ.isMultiDevice?.() && FMQ.$("modeSelect").value !== FMQ.multiplayer.supportedMode) {
-    FMQ.$("modeSelect").value = FMQ.multiplayer.supportedMode;
-  }
   FMQ.app.config.mode = FMQ.$("modeSelect").value;
   FMQ.app.config.party = FMQ.$("partySelect").value;
   if (FMQ.app.config.category === "intro") {
@@ -431,7 +429,7 @@ FMQ.renderModeButtons = () => {
     { id: "introPlaylistGuess", label: "Aus welcher Playlist?", category: FMQ.MODE_INFO.introPlaylistGuess.category },
     { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category }
   ];
-  const allowed = FMQ.isMultiDevice?.() ? modeMeta : modeMeta.filter(m => m.category === FMQ.app.config.category);
+  const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
     FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
@@ -442,7 +440,6 @@ FMQ.renderModeButtons = () => {
     btn.onclick = () => {
       FMQ.$("modeSelect").value = btn.getAttribute("data-mode-id");
       FMQ.app.config.mode = FMQ.$("modeSelect").value;
-      if (FMQ.isMultiDevice?.()) FMQ.app.config.category = FMQ.MODE_INFO[FMQ.app.config.mode]?.category || FMQ.app.config.category;
       FMQ.renderModeHints();
       FMQ.renderModeButtons();
       FMQ.syncSetupForMode();
@@ -506,6 +503,7 @@ FMQ.renderSetupWizard = () => {
   FMQ.renderDeviceModePanel?.();
   FMQ.renderMultiplayerPanel?.();
   FMQ.applyAccessibilityLabels();
+  FMQ.refreshPhoneControls?.();
 };
 
 
@@ -526,12 +524,7 @@ FMQ.goToSetupStep = (step) => {
 
 FMQ.init = async () => {
   if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => {
-    if (FMQ.isMultiDevice?.()) {
-      FMQ.app.config.category = "social";
-      FMQ.goToSetupStep(3);
-      return;
-    }
-    FMQ.setDeviceMode?.("single");
+    if (!FMQ.isMultiDevice?.()) FMQ.setDeviceMode?.("single");
     FMQ.goToSetupStep(2);
   };
   if (FMQ.$("setupBackBtn")) FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
@@ -617,12 +610,7 @@ FMQ.init = async () => {
   });
   FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
   FMQ.$("setupNextBtn").onclick = () => {
-    if (FMQ.isMultiDevice?.()) {
-      FMQ.app.config.category = "social";
-      FMQ.goToSetupStep(3);
-      return;
-    }
-    FMQ.setDeviceMode?.("single");
+    if (!FMQ.isMultiDevice?.()) FMQ.setDeviceMode?.("single");
     FMQ.goToSetupStep(2);
   };
   FMQ.$("setupContinueBtn").onclick = () => {
