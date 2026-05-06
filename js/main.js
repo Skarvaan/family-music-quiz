@@ -482,6 +482,8 @@ FMQ.renderSetupWizard = () => {
 
   const loginBtn = FMQ.$("loginBtn");
   if (loginBtn) loginBtn.textContent = FMQ.storage.token ? "Spotify verbunden" : "Spotify verbinden";
+  const startBtn = FMQ.$("setupNextBtn");
+  if (startBtn) startBtn.textContent = FMQ.isMultiDevice?.() ? "Weiter zur Modusauswahl" : "Ein-Gerät-Modus starten";
 
   if (step === 4 && FMQ.storage.token && !FMQ.app.playlists.length && !FMQ.app.loadingPlaylists) {
     FMQ.app.loadingPlaylists = true;
@@ -520,7 +522,15 @@ FMQ.goToSetupStep = (step) => {
 };
 
 FMQ.init = async () => {
-  if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => { FMQ.setDeviceMode?.("single"); FMQ.goToSetupStep(2); };
+  if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => {
+    if (FMQ.isMultiDevice?.()) {
+      FMQ.app.config.category = "social";
+      FMQ.goToSetupStep(3);
+      return;
+    }
+    FMQ.setDeviceMode?.("single");
+    FMQ.goToSetupStep(2);
+  };
   if (FMQ.$("setupBackBtn")) FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
   if (FMQ.$("setupContinueBtn")) FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
@@ -603,7 +613,15 @@ FMQ.init = async () => {
     };
   });
   FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
-  FMQ.$("setupNextBtn").onclick = () => { FMQ.setDeviceMode?.("single"); FMQ.goToSetupStep(2); };
+  FMQ.$("setupNextBtn").onclick = () => {
+    if (FMQ.isMultiDevice?.()) {
+      FMQ.app.config.category = "social";
+      FMQ.goToSetupStep(3);
+      return;
+    }
+    FMQ.setDeviceMode?.("single");
+    FMQ.goToSetupStep(2);
+  };
   FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
     if (FMQ.app.state.setupStep === 4) {

@@ -3,6 +3,7 @@ const os = require("os");
 const path = require("path");
 const express = require("express");
 const http = require("http");
+const QRCode = require("qrcode");
 const { Server } = require("socket.io");
 
 const PORT = process.env.PORT || 3000;
@@ -50,7 +51,8 @@ function roomSnapshot() {
     roomCode: room.code,
     players: [...room.playersById.values()].map(publicPlayer),
     prompt: room.prompt,
-    answeredPlayerIds: [...room.answers.keys()]
+    answeredPlayerIds: [...room.answers.keys()],
+    hostUrls: getHostUrls()
   };
 }
 
@@ -64,10 +66,24 @@ function resolveRoomCode(inputCode) {
   return code || room.code;
 }
 
+function getHostUrls() {
+  return [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, ...getLanAddresses()];
+}
+
 app.use("/family-music-quiz", express.static(ROOT));
 app.use("/public", express.static(path.join(ROOT, "public")));
 app.get("/", (_req, res) => res.sendFile(path.join(ROOT, "index.html")));
 app.get("/player", (_req, res) => res.sendFile(path.join(ROOT, "public", "player.html")));
+app.get("/room-info", (_req, res) => res.json(roomSnapshot()));
+app.get("/qr.svg", async (req, res) => {
+  const text = String(req.query.url || "").trim();
+  if (!text) {
+    res.status(400).send("Missing url");
+    return;
+  }
+  const svg = await QRCode.toString(text, { type: "svg", margin: 1, width: 260 });
+  res.type("image/svg+xml").send(svg);
+});
 
 io.on("connection", socket => {
   socket.on("host:createRoom", (_payload = {}, ack) => {

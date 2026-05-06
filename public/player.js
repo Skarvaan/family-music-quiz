@@ -17,6 +17,11 @@
 
   const setStatus = text => { $("playerStatus").textContent = text; };
 
+  const showJoinedView = () => {
+    $("joinForm").hidden = true;
+    $("activePanel").hidden = false;
+  };
+
   const isRecipient = prompt => {
     if (!state.player || !prompt) return false;
     if (prompt.recipientIds?.length) return prompt.recipientIds.includes(state.player.id);
@@ -36,7 +41,7 @@
       return;
     }
     if (!prompt) {
-      panel.innerHTML = `<div class="player-wait-card">Verbunden. Warte auf die nächste Frage vom Host …</div>`;
+      panel.innerHTML = `<div class="player-wait-card"><b>${escapeHtml(state.player.name)}</b><br>Warte auf Auswahl …</div>`;
       return;
     }
     if (!isRecipient(prompt)) {
@@ -84,6 +89,7 @@
     event.preventDefault();
     const name = $("playerNameInput").value.trim().replace(/\s+/g, " ");
     const roomCode = ($("roomCodeInput").value || state.roomCode).trim().toLowerCase();
+    $("roomCodeInput").value = roomCode;
     if (!name) return;
     try { localStorage.setItem("fmq_player_name", name); } catch {}
     setStatus("Verbinde …");
@@ -97,9 +103,9 @@
       state.prompt = res.prompt || null;
       state.answeredPromptId = null;
       $("roomCodeInput").value = state.roomCode;
-      $("activePanel").hidden = false;
+      showJoinedView();
       $("activeToggle").checked = state.player.active !== false;
-      setStatus(`Verbunden als ${state.player.name} · Raum ${state.roomCode}`);
+      setStatus(`Du bist drin: ${state.player.name}`);
       renderPrompt();
     });
   });
@@ -116,7 +122,7 @@
     });
   });
 
-  socket.on("connect", () => setStatus(state.player ? "Wieder verbunden." : "Bereit zum Beitreten."));
+  socket.on("connect", () => setStatus(state.player ? `Du bist drin: ${state.player.name}` : "Raumcode und Namen eingeben."));
   socket.on("disconnect", () => setStatus("Verbindung getrennt. Versuche automatisch neu zu verbinden …"));
   socket.on("room:state", snapshot => {
     if (!state.player) {

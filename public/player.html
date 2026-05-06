@@ -10,12 +10,11 @@
   <main class="player-shell">
     <section class="player-card-mobile">
       <div class="eyebrow">Family Music Quiz</div>
-      <h1>Handy-Controller</h1>
-      <p class="muted">Nutzt bitte immer denselben Namen. Wenn die Verbindung abbricht, kommst du mit exakt diesem Namen wieder zu deinem Spieler zurück.</p>
+      <h1>Family Music Quiz</h1>
 
       <form id="joinForm" class="player-form">
         <label>Raumcode
-          <input id="roomCodeInput" maxlength="6" autocomplete="off" placeholder="wird meist automatisch erkannt" />
+          <input id="roomCodeInput" maxlength="6" autocomplete="off" autocapitalize="none" placeholder="z.B. abc123" />
         </label>
         <label>Dein Name
           <input id="playerNameInput" autocomplete="name" placeholder="z.B. Anna" required />
@@ -23,7 +22,7 @@
         <button class="action-button primary" type="submit">Beitreten</button>
       </form>
 
-      <section id="playerStatus" class="player-status-panel muted">Nicht verbunden.</section>
+      <section id="playerStatus" class="player-status-panel muted">Raumcode und Namen eingeben.</section>
       <section id="activePanel" class="player-active-panel" hidden>
         <label class="playerSwitchRow"><span>Ich spiele aktiv mit</span><input id="activeToggle" type="checkbox" checked></label>
       </section>

@@ -11,6 +11,7 @@ FMQ.multiplayer = {
   players: [],
   prompt: null,
   answeredPlayerIds: new Set(),
+  hostUrls: [],
   supportedMode: "bestFit",
   pendingScript: null
 };
@@ -125,9 +126,18 @@ FMQ.syncRemotePlayers = (remotePlayers = []) => {
   FMQ.checkReadyToStart?.();
 };
 
-FMQ.buildJoinUrl = () => {
+FMQ.playerUrlWithRoom = (baseUrl) => {
   const room = FMQ.multiplayer.roomCode || "";
-  return `${window.location.origin}/player${room ? `?room=${encodeURIComponent(room)}` : ""}`;
+  return `${baseUrl.replace(/\/$/, "")}/player${room ? `?room=${encodeURIComponent(room)}` : ""}`;
+};
+
+FMQ.buildJoinUrl = () => FMQ.playerUrlWithRoom(window.location.origin);
+
+FMQ.getPhoneJoinUrl = () => {
+  const current = window.location.origin;
+  const urls = FMQ.multiplayer.hostUrls || [];
+  const lan = urls.find(url => !url.includes("localhost") && !url.includes("127.0.0.1"));
+  return FMQ.playerUrlWithRoom(lan || current);
 };
 
 FMQ.enableMultiDeviceMode = async () => {
@@ -157,9 +167,11 @@ FMQ.enableMultiDeviceMode = async () => {
   FMQ.multiplayer.socket.emit("host:createRoom", {}, snapshot => {
     FMQ.multiplayer.connected = true;
     FMQ.multiplayer.roomCode = snapshot.roomCode;
-    FMQ.multiplayer.joinUrl = FMQ.buildJoinUrl();
+    FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];
+    FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
+    FMQ.renderDeviceModePanel?.();
     FMQ.showMultiDeviceHint(`Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
   });
   return true;
@@ -170,7 +182,8 @@ FMQ.bindMultiplayerSocket = (socket) => {
     FMQ.multiplayer.connected = true;
     if (FMQ.isMultiDevice()) socket.emit("host:createRoom", {}, snapshot => {
       FMQ.multiplayer.roomCode = snapshot.roomCode;
-      FMQ.multiplayer.joinUrl = FMQ.buildJoinUrl();
+      FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];
+      FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
       FMQ.multiplayer.players = snapshot.players || [];
       FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     });
@@ -182,7 +195,8 @@ FMQ.bindMultiplayerSocket = (socket) => {
   });
   socket.on("host:players", snapshot => {
     FMQ.multiplayer.roomCode = snapshot.roomCode || FMQ.multiplayer.roomCode;
-    FMQ.multiplayer.joinUrl = FMQ.buildJoinUrl();
+    FMQ.multiplayer.hostUrls = snapshot.hostUrls || FMQ.multiplayer.hostUrls || [];
+    FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
     FMQ.multiplayer.players = snapshot.players || [];
     FMQ.multiplayer.prompt = snapshot.prompt || FMQ.multiplayer.prompt;
     FMQ.multiplayer.answeredPlayerIds = new Set(snapshot.answeredPlayerIds || []);
@@ -206,12 +220,37 @@ FMQ.renderDeviceModePanel = () => {
   const panel = FMQ.$("deviceModePanel");
   if (!panel) return;
   const local = FMQ.isLocalMultiServer();
+  const active = FMQ.isMultiDevice();
+  const room = FMQ.multiplayer.roomCode || "…";
+  const phoneUrl = active ? FMQ.getPhoneJoinUrl() : "";
+  const localUrl = active ? FMQ.buildJoinUrl() : "";
+  const qrUrl = active && phoneUrl ? `/qr.svg?url=${encodeURIComponent(phoneUrl)}` : "";
   panel.innerHTML = `
     <div class="deviceModeCards">
-      <button id="singleDeviceModeBtn" class="menu-card compact ${!FMQ.isMultiDevice() ? "active" : ""}"><span class="card-title">Ein-Gerät-Modus</span><span class="card-subtitle">Wie bisher: alle Eingaben am Host.</span></button>
-      <button id="multiDeviceModeBtn" class="menu-card compact ${FMQ.isMultiDevice() ? "active" : ""}"><span class="card-title">Mehrgeräte-Modus</span><span class="card-subtitle">Lokal im WLAN mit Handys unter /player.</span></button>
+      <button id="singleDeviceModeBtn" class="menu-card compact ${!active ? "active" : ""}"><span class="card-title">Ein-Gerät-Modus</span><span class="card-subtitle">Wie bisher: alle Eingaben am Host.</span></button>
+      <button id="multiDeviceModeBtn" class="menu-card compact ${active ? "active" : ""}"><span class="card-title">Mehrgeräte-Modus</span><span class="card-subtitle">Lokal im WLAN mit Handys.</span></button>
     </div>
-    <div id="multiDeviceStatus" class="muted multiDeviceStatus">${FMQ.isMultiDevice() ? `Raum wird vorbereitet …` : local ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich." : "Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen."}</div>
+    <div id="multiDeviceStatus" class="muted multiDeviceStatus">${active ? `Mehrgeräte-Modus aktiv · Raum ${FMQ.escapeHtml(room)}` : local ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich." : "Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen."}</div>
+    ${active ? `
+      <section class="multiLobbyCard">
+        <div class="section-title-row">
+          <div><div class="eyebrow">Warteraum</div><h2>Raum ${FMQ.escapeHtml(room)}</h2></div>
+          <span class="pill ${FMQ.multiplayer.connected ? "ok" : "bad"}">${FMQ.multiplayer.connected ? "online" : "offline"}</span>
+        </div>
+        <div class="multiLobbyGrid">
+          <div class="qrBox">${qrUrl ? `<img alt="QR-Code zum Beitreten" src="${qrUrl}">` : ""}</div>
+          <div class="joinInstructions">
+            <b>Handys öffnen:</b>
+            <div class="joinLink">${FMQ.escapeHtml(phoneUrl)}</div>
+            ${localUrl !== phoneUrl ? `<div class="muted">Host lokal: ${FMQ.escapeHtml(localUrl)}</div>` : ""}
+            <div class="muted">Raumcode: <b>${FMQ.escapeHtml(room)}</b> · Groß-/Kleinschreibung egal.</div>
+            <div class="muted">Alle treten mit ihrem Namen bei. Gleicher Name verbindet nach Abbruch wieder denselben Spieler.</div>
+          </div>
+        </div>
+        <div class="multiLobbyRoster">
+          ${(FMQ.app.players || []).map(p => `<span class="pill ${p.remoteConnected ? "ok" : ""}">${FMQ.escapeHtml(p.name)} · ${p.remoteConnected ? "drin" : "offline"}</span>`).join("") || `<span class="muted">Noch niemand beigetreten.</span>`}
+        </div>
+      </section>` : ""}
   `;
   FMQ.$("singleDeviceModeBtn").onclick = () => {
     FMQ.setDeviceMode("single");
@@ -264,7 +303,7 @@ FMQ.renderMultiplayerPanel = () => {
     renderEmpty();
     return;
   }
-  const joinUrl = FMQ.multiplayer.joinUrl || FMQ.buildJoinUrl();
+  const joinUrl = FMQ.multiplayer.joinUrl || FMQ.getPhoneJoinUrl();
   const players = FMQ.app.players;
   const s = FMQ.app.state.social;
   const answers = s?.answersByPlayer || {};
