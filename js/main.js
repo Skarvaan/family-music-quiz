@@ -314,7 +314,7 @@ FMQ.quitToMenu = async () => {
   FMQ.$("quick3RevealOverlay").classList.remove("show");
   FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("screenGame").classList.remove("quick3Active");
-  FMQ.app.state.setupStep = 3;
+  FMQ.app.state.setupStep = 1;
   FMQ.showScreen("screenSetup");
   FMQ.renderSetupWizard();
   FMQ.setGameDebug("");
@@ -344,12 +344,12 @@ FMQ.renderPlayStyleButtons = () => {
 
 FMQ.renderModeButtons = () => {
   const modeMeta = [
-    { id: "quick3", label: `A) ${FMQ.MODE_INFO.quick3.label}`, category: FMQ.MODE_INFO.quick3.category },
-    { id: "rankingList", label: `B) ${FMQ.MODE_INFO.rankingList.label}`, category: FMQ.MODE_INFO.rankingList.category },
-    { id: "ratingGuess", label: `C) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
-    { id: "bestFit", label: `D) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category },
-    { id: "introPlaylistGuess", label: `A) ${FMQ.MODE_INFO.introPlaylistGuess.label}`, category: FMQ.MODE_INFO.introPlaylistGuess.category },
-    { id: "introFirst3", label: `B) ${FMQ.MODE_INFO.introFirst3.label}`, category: FMQ.MODE_INFO.introFirst3.category }
+    { id: "quick3", label: "Song erraten", category: FMQ.MODE_INFO.quick3.category },
+    { id: "rankingList", label: FMQ.MODE_INFO.rankingList.label, category: FMQ.MODE_INFO.rankingList.category },
+    { id: "ratingGuess", label: "Bewertung 1–10", category: FMQ.MODE_INFO.ratingGuess.category },
+    { id: "bestFit", label: FMQ.MODE_INFO.bestFit.label, category: FMQ.MODE_INFO.bestFit.category },
+    { id: "introPlaylistGuess", label: "Aus welcher Playlist?", category: FMQ.MODE_INFO.introPlaylistGuess.category },
+    { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category }
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
@@ -357,7 +357,7 @@ FMQ.renderModeButtons = () => {
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
     FMQ.renderModeHints();
   }
-  FMQ.$("modeButtons").innerHTML = allowed.map(m => `<button class="modeBtn ${m.id===FMQ.app.config.mode?"active":""}" data-mode-id="${m.id}">${m.label}</button>`).join("");
+  FMQ.$("modeButtons").innerHTML = allowed.map(m => `<button class="menu-card modeBtn ${m.id===FMQ.app.config.mode?"active":""}" data-mode-id="${m.id}"><span class="card-title">${m.label}</span><span class="card-subtitle">${FMQ.escapeHtml(FMQ.MODE_INFO[m.id]?.hint || "")}</span></button>`).join("");
   FMQ.$("modeButtons").querySelectorAll("[data-mode-id]").forEach(btn => {
     btn.onclick = () => {
       FMQ.$("modeSelect").value = btn.getAttribute("data-mode-id");
@@ -365,6 +365,7 @@ FMQ.renderModeButtons = () => {
       FMQ.renderModeHints();
       FMQ.renderModeButtons();
       FMQ.syncSetupForMode();
+      FMQ.app.state.setupStep = 4;
       FMQ.renderSetupWizard();
     };
   });
@@ -372,7 +373,7 @@ FMQ.renderModeButtons = () => {
 
 FMQ.setupCanProceed = () => {
   const step = FMQ.app.state.setupStep || 1;
-  if (step === 1) return !!FMQ.storage.token;
+  if (step === 1) return true;
   if (step === 2) return !!FMQ.app.config.category;
   if (step === 3) return !!FMQ.$("modeSelect").value;
   if (step === 4) {
@@ -389,28 +390,25 @@ FMQ.renderSetupWizard = () => {
   document.querySelectorAll(".setupStep").forEach(el => {
     el.classList.toggle("active", parseInt(el.getAttribute("data-setup-step"), 10) === step);
   });
-  if (step === 1) {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 1 · Spotify verbinden";
-    FMQ.$("setupWizardSub").textContent = "Verbinde zuerst den Spotify-Host-Account.";
-    FMQ.$("setupNextBtn").textContent = "Weiter →";
-  } else if (step === 2) {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 2 · Hauptkategorie";
-    FMQ.$("setupWizardSub").textContent = "Ich & meine Playlist, Wer kennt meinen Geschmack? oder 🤝 Kennenlernen.";
-  } else if (step === 3) {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 3 · Modus";
-    FMQ.$("setupWizardSub").textContent = "Wähle den Spielmodus als große Schaltfläche.";
-  } else if (step === 4) {
-    FMQ.$("setupWizardTitle").textContent = "Schritt 4 · Punkte & Spieler";
-    FMQ.$("setupWizardSub").textContent = FMQ.app.config.category === "intro" ? "Kennenlernen: kein Punkte-/Runden-Setup, pro Spieler per Weiter fortfahren." : "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
+
+  const nav = FMQ.$("setupNav");
+  const continueBtn = FMQ.$("setupContinueBtn");
+  const backBtn = FMQ.$("setupBackBtn");
+  if (nav) nav.style.display = step <= 1 ? "none" : "grid";
+  if (backBtn) backBtn.disabled = step <= 1;
+  if (continueBtn) {
+    continueBtn.textContent = step === 4 ? "Spiel starten" : "Weiter →";
+    continueBtn.disabled = !FMQ.setupCanProceed();
+    continueBtn.style.visibility = step === 2 || step === 3 ? "hidden" : "visible";
   }
-  FMQ.$("setupBackBtn").disabled = step <= 1;
-  FMQ.$("setupNextBtn").style.display = "";
-  FMQ.$("setupNextBtn").textContent = step === 4 ? "Starten!" : "Weiter →";
-  FMQ.$("setupNextBtn").disabled = !FMQ.setupCanProceed();
+
+  const loginBtn = FMQ.$("loginBtn");
+  if (loginBtn) loginBtn.textContent = FMQ.storage.token ? "Spotify verbunden" : "Spotify verbinden";
+
   if (step === 1 && !FMQ.storage.token) {
-    FMQ.$("setupStepHint").textContent = "Verbinde zuerst Spotify, dann wird „Weiter“ aktiv.";
+    FMQ.$("setupStepHint").textContent = "Spotify verbinden, damit im Setup Playlists geladen werden können.";
   } else if (step === 4 && !FMQ.setupCanProceed()) {
-    FMQ.$("setupStepHint").textContent = "Bitte für jeden Spieler eine Playlist laden (mind. 5 Tracks), dann kannst du starten.";
+    FMQ.$("setupStepHint").textContent = "Bitte für jeden Spieler eine Playlist mit mindestens 5 Tracks laden.";
   } else {
     FMQ.$("setupStepHint").textContent = "";
   }
@@ -486,6 +484,7 @@ FMQ.init = async () => {
       FMQ.app.config.category = category;
       FMQ.app.config.party = "rotate";
       FMQ.$("partySelect").value = "rotate";
+      FMQ.app.state.setupStep = 3;
       FMQ.renderModeButtons();
       FMQ.syncSetupForMode();
       FMQ.renderSetupWizard();
@@ -496,6 +495,10 @@ FMQ.init = async () => {
     FMQ.renderSetupWizard();
   };
   FMQ.$("setupNextBtn").onclick = () => {
+    FMQ.app.state.setupStep = 2;
+    FMQ.renderSetupWizard();
+  };
+  FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
     if (FMQ.app.state.setupStep === 4) {
       FMQ.startGame();

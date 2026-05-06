@@ -4,211 +4,235 @@
   <!-- Hinweis: Diese Datei enthält nur Struktur/Markup. Logik liegt in /js/*. -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Family Music Quiz (Prototype)</title>
+  <title>Family Music Quiz</title>
   <link rel="stylesheet" href="/family-music-quiz/styles.css" />
 </head>
 <body>
+<div class="app-shell">
+  <section id="screenSetup" class="screen active" aria-label="Setup">
+    <div class="setup-stage">
+      <div class="setupStep start-screen" data-setup-step="1">
+        <div class="hero-panel">
+          <div class="eyebrow">Spotify Premium Host · Ein-Gerät-Modus</div>
+          <h1 class="hero-title">Family Music Quiz</h1>
+          <p class="hero-subtitle">Das Playlist-Partyspiel für Sofa, Küche und große Runden.</p>
+          <div class="start-actions">
+            <button id="setupNextBtn" class="action-button primary">Spiel starten</button>
+            <button id="loginBtn" class="action-button spotify" aria-label="Spotify verbinden">Spotify verbinden</button>
+          </div>
+          <div class="connection-strip">
+            <span id="connStatus" class="pill" aria-live="polite"></span>
+            <span id="playlistStatus" aria-live="polite"></span>
+          </div>
+          <details class="debug-panel">
+            <summary>Debug / Einstellungen</summary>
+            <div class="debug-content">
+              <div class="muted">Redirect URI für Spotify Developer:</div>
+              <div class="pill" id="redirectUriPill"></div>
+              <pre id="debug"></pre>
+            </div>
+          </details>
+        </div>
+      </div>
 
-<h1>Family Music Quiz</h1>
-<div class="muted">
-  Spotify Premium Host · Fokus: <b>Meine Songs kennen & einordnen</b> · Global <b>No-Duplicates</b> pro Session
+      <div class="setupStep category-screen" data-setup-step="2">
+        <div class="screen-header">
+          <div class="eyebrow">Kategorie wählen</div>
+          <h2>Worauf habt ihr Lust?</h2>
+        </div>
+        <div class="menu-grid" id="playStyleButtons">
+          <button class="menu-card" data-category="self">
+            <span class="card-icon">🎧</span>
+            <span class="card-title">Ich & meine Playlist</span>
+            <span class="card-subtitle">Songs erkennen und persönliche Top-Listen bauen.</span>
+          </button>
+          <button class="menu-card" data-category="social">
+            <span class="card-icon">💬</span>
+            <span class="card-title">Wer kennt meinen Geschmack?</span>
+            <span class="card-subtitle">Bewertungen und Entscheidungen der anderen einschätzen.</span>
+          </button>
+          <button class="menu-card" data-category="intro">
+            <span class="card-icon">🤝</span>
+            <span class="card-title">Kennenlernen</span>
+            <span class="card-subtitle">Playlists entdecken und locker ins Gespräch kommen.</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setupStep mode-screen" data-setup-step="3">
+        <div class="screen-header">
+          <div class="eyebrow">Modus wählen</div>
+          <h2>Welche Runde spielen wir?</h2>
+          <p id="modeHint" class="muted"></p>
+        </div>
+        <div class="menu-grid two" id="modeButtons"></div>
+
+        <!-- hidden legacy selects for compatibility with game logic -->
+        <div class="visually-hidden" aria-hidden="true">
+          <select id="modeSelect" tabindex="-1">
+            <option value="quick3">Songausschnitt raten</option>
+            <option value="rankingList">Ranking Liste</option>
+            <option value="introPlaylistGuess">Aus welcher Playlist ist das?</option>
+            <option value="introFirst3">Meine ersten 3 Songs</option>
+            <option value="ratingGuess">Song-Bewertung einschätzen</option>
+            <option value="bestFit">Song A oder B – was passt besser?</option>
+          </select>
+          <select id="partySelect" tabindex="-1">
+            <option value="rotate">Reihum (jeder ist dran)</option>
+            <option value="allguess">Alle raten gleichzeitig</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setupStep prep-screen" data-setup-step="4">
+        <div class="prep-layout">
+          <aside class="prep-summary panel-card">
+            <div class="eyebrow">Spielvorbereitung</div>
+            <h2>Bereit machen</h2>
+            <p class="muted">Spieler, Playlists und Ziel einstellen. Tracks laden automatisch nach der Playlist-Auswahl.</p>
+            <div class="config-block" id="endTypeRow">
+              <label for="endTypeSelect"><b>Spielende</b></label>
+              <select id="endTypeSelect">
+                <option value="rounds">Nach Runden</option>
+                <option value="points">Nach Punkten</option>
+              </select>
+            </div>
+            <div class="config-block" id="endTargetRow">
+              <label><b id="targetLabelText">Runden</b></label>
+              <div class="stepper">
+                <button id="targetMinusBtn" aria-label="Ziel reduzieren">−</button>
+                <input id="targetRoundsInput" type="number" min="1" max="50" value="5">
+                <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="display:none;">
+                <button id="targetPlusBtn" aria-label="Ziel erhöhen">+</button>
+              </div>
+            </div>
+            <div class="config-block">
+              <label><b>Spieleranzahl</b></label>
+              <div class="stepper">
+                <button id="playerMinusBtn">−</button>
+                <input id="playerCountInput" type="number" min="1" max="8" value="3">
+                <button id="playerPlusBtn">+</button>
+              </div>
+              <button id="buildPlayersBtn" style="display:none;">Spieler anlegen</button>
+            </div>
+            <div id="modeConfigArea" class="modeConfig panel-card" style="display:none;"></div>
+          </aside>
+          <main class="players-prep panel-card">
+            <div class="section-title-row">
+              <div>
+                <div class="eyebrow">Spieler & Playlists</div>
+                <h2>Wer spielt mit?</h2>
+              </div>
+              <span class="pill">mind. 5 Tracks pro Playlist</span>
+            </div>
+            <div id="playersConfig"></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="setup-nav" id="setupNav">
+        <button id="setupBackBtn" class="action-button secondary">← Zurück</button>
+        <div id="setupStepHint" class="setup-hint muted"></div>
+        <button id="setupContinueBtn" class="action-button primary">Weiter →</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenGame" class="screen" aria-label="Spiel">
+    <div class="game-stage">
+      <header class="game-topbar">
+        <div class="game-meta" id="gameMetaBanner">
+          <div>
+            <div class="eyebrow">Modus</div>
+            <div class="game-mode-label" id="gameModeLabel">–</div>
+            <div class="muted" id="gameModeSub">–</div>
+          </div>
+          <div>
+            <div class="eyebrow">Runde</div>
+            <div class="game-mode-label" id="roundLabel">–</div>
+          </div>
+        </div>
+        <div class="score-bar" id="scoreTable"></div>
+      </header>
+
+      <section class="current-player-card" id="turnPlayerBanner">
+        <div>
+          <div class="eyebrow">Spieler am Zug</div>
+          <div class="turn-player-name" id="turnPlayerName">–</div>
+          <div class="muted" id="turnInfo">–</div>
+        </div>
+        <div class="used-counter">
+          <span id="globalUsedLabel">0</span>
+          <small>gespielt</small>
+        </div>
+      </section>
+
+      <main class="game-main">
+        <div class="mode-panel">
+          <h2 id="modeAreaTitle">Spielbereich</h2>
+          <div id="modeArea"></div>
+        </div>
+      </main>
+
+      <footer class="game-actions">
+        <button id="readyBtn" class="action-button primary" disabled aria-label="Starten">Bereit!</button>
+        <button id="playToggleBtn" class="action-button" disabled aria-label="Wiedergabe steuern">▶️ Play</button>
+        <div id="quick3Controls" class="quick3Controls" style="display:none;"></div>
+        <button id="revealBtn" class="action-button reveal" disabled aria-label="Auflösen">Reveal</button>
+        <button id="nextBtn" class="action-button primary" disabled aria-label="Nächster Zug">Weiter</button>
+        <button id="quitBtn" class="action-button secondary" aria-label="Spiel beenden">Beenden</button>
+      </footer>
+      <div class="turn-flow-hint muted" id="turnFlowHint"></div>
+
+      <div id="revealBox" class="reveal-panel" style="display:none;">
+        <div id="revealText"></div>
+        <div id="revealExtra"></div>
+      </div>
+
+      <details class="playerSwitchBox debug-panel game-debug">
+        <summary>Spieler pausieren / Debug</summary>
+        <div id="playerSwitchPanel"></div>
+        <pre id="debugGame"></pre>
+      </details>
+    </div>
+  </section>
+
+  <section id="screenWinner" class="screen" aria-label="Ergebnis">
+    <div class="winner-stage panel-card">
+      <div class="eyebrow">Finale</div>
+      <h2>🏆 Gewinner</h2>
+      <div id="winnerHeadline" class="winner-headline"></div>
+      <div class="muted" id="winnerSub"></div>
+      <div class="final-score-wrap">
+        <h3>Endstand</h3>
+        <div class="score-grid" id="finalScoreTable"></div>
+      </div>
+      <button id="endBtn" class="action-button primary" aria-label="Zum Start zurück">Zurück zum Start</button>
+    </div>
+  </section>
 </div>
 
-<section id="screenSetup" class="screen active" aria-label="Setup">
-  <div class="box setupWizardHeader">
-    <div class="muted">Setup-Assistent</div>
-    <h2 id="setupWizardTitle" style="margin:6px 0 4px;">Schritt 1 · Spotify verbinden</h2>
-    <div class="muted" id="setupWizardSub">Verbinde zuerst den Spotify-Host-Account.</div>
-  </div>
-
-  <div class="box setupStep" data-setup-step="1">
-    <h2>1) Spotify verbinden</h2>
-    <div class="row">
-      <button id="loginBtn" class="primary" aria-label="Spotify verbinden">Verbinden</button>
-      <span id="connStatus" class="pill" aria-live="polite"></span>
-    </div>
-    <div class="muted">
-      Redirect URI ist diese Seite. In Spotify Developer musst du als Redirect URL exakt eintragen:
-      <br><span class="pill" id="redirectUriPill"></span>
-    </div>
-
-    <div class="row" style="margin-top:10px;"><span class="muted" id="playlistStatus" aria-live="polite"></span></div>
-  </div>
-
-  <div class="box setupStep" data-setup-step="2">
-    <h2>2) Hauptkategorie wählen</h2>
-    <div class="modeButtonGrid" id="playStyleButtons">
-      <button class="modeBtn" data-category="self">Ich & meine Playlist</button>
-      <button class="modeBtn" data-category="social">Wer kennt meinen Geschmack?</button>
-      <button class="modeBtn" data-category="intro">🤝 Kennenlernen</button>
-    </div>
-  </div>
-
-  <div class="box setupStep" data-setup-step="3">
-    <h2>3) Modus wählen</h2>
-    <div id="modeHint" class="muted" style="margin-bottom:8px;"></div>
-    <div class="modeButtonGrid" id="modeButtons"></div>
-
-    <!-- hidden legacy selects for compatibility -->
-    <div style="display:none;">
-      <select id="modeSelect">
-        <option value="quick3">Songausschnitt raten</option>
-        <option value="rankingList">Ranking Liste</option>
-        <option value="introPlaylistGuess">Aus welcher Playlist ist das?</option>
-        <option value="introFirst3">Meine ersten 3 Songs</option>
-        <option value="ratingGuess">Song-Bewertung einschätzen</option>
-        <option value="bestFit">Song A oder B – was passt besser?</option>
-      </select>
-      <select id="partySelect">
-        <option value="rotate">Reihum (jeder ist dran)</option>
-        <option value="allguess">Alle raten gleichzeitig</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="box setupStep" data-setup-step="4">
-    <h2>4) Punkte & Spieler</h2>
-    <div class="row" id="endTypeRow">
-      <label><b>Spielende</b></label>
-      <select id="endTypeSelect" style="min-width:180px;">
-        <option value="rounds">Nach Runden</option>
-        <option value="points">Nach Punkten</option>
-      </select>
-    </div>
-    <div class="row" id="endTargetRow">
-      <label><b id="targetLabelText">Runden</b></label>
-      <div class="stepper">
-        <button id="targetMinusBtn" aria-label="Ziel reduzieren">−</button>
-        <input id="targetRoundsInput" type="number" min="1" max="50" value="5" style="width:110px; text-align:center;">
-        <input id="targetPointsInput" type="number" min="1" max="999" value="15" style="width:110px; text-align:center; display:none;">
-        <button id="targetPlusBtn" aria-label="Ziel erhöhen">+</button>
-      </div>
-    </div>
-
-    <div class="row">
-      <label><b>Spieleranzahl</b></label>
-      <div class="stepper">
-        <button id="playerMinusBtn">−</button>
-        <input id="playerCountInput" type="number" min="1" max="8" value="3" style="width:110px; text-align:center;">
-        <button id="playerPlusBtn">+</button>
-      </div>
-      <button id="buildPlayersBtn" style="display:none;">Spieler anlegen</button>
-    </div>
-
-    <div class="muted">Playlist-Dropdown lädt automatisch <b>alle Tracks</b> (Pagination), sobald du auswählst.</div>
-    <div id="playersConfig" style="margin-top:10px;"></div>
-    <div id="modeConfigArea" class="box modeConfig" style="display:none;"></div>
-  </div>
-
-  <div class="box setupWizardNav">
-    <div class="row" style="justify-content:space-between;">
-      <button id="setupBackBtn">← Zurück</button>
-      <button id="setupNextBtn" class="primary">Weiter →</button>
-    </div>
-    <div id="setupStepHint" class="muted" style="margin-top:8px;"></div>
-  </div>
-</section>
-
-<section id="screenGame" class="screen" aria-label="Spiel">
-  <div class="box">
-    <div class="turnBanner" id="gameMetaBanner">
-      <div>
-        <div class="muted">Modus</div>
-        <div style="font-size:18px; font-weight:800;" id="gameModeLabel">–</div>
-        <div class="muted" id="gameModeSub">–</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="muted">Runde</div>
-        <div style="font-size:18px; font-weight:800;" id="roundLabel">–</div>
-      </div>
-    </div>
-
-    <div class="turnBanner" id="turnPlayerBanner" style="margin-top:12px;">
-      <div>
-        <div class="muted">Spieler am Zug</div>
-        <div style="font-size:24px; font-weight:900;" id="turnPlayerName">–</div>
-        <div class="muted" id="turnInfo">–</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="muted">Global gespielt</div>
-        <div style="font-size:18px; font-weight:800;" id="globalUsedLabel">0</div>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:12px;">
-      <button id="readyBtn" class="primary big" disabled aria-label="Starten">Bereit!</button>
-      <button id="playToggleBtn" class="big" disabled aria-label="Wiedergabe steuern">▶️ Play</button>
-      <div id="quick3Controls" class="quick3Controls" style="display:none;"></div>
-      <button id="revealBtn" class="big" disabled aria-label="Auflösen">Reveal</button>
-      <button id="nextBtn" class="primary big" disabled aria-label="Nächster Zug">Weiter</button>
-      <button id="quitBtn" class="big" aria-label="Spiel beenden">Beenden</button>
-    </div>
-    <div class="muted" id="turnFlowHint" style="margin-top:6px;"></div>
-    <details class="box playerSwitchBox" style="margin-top:10px;">
-      <summary>Spieler pausieren / aktivieren</summary>
-      <div id="playerSwitchPanel" style="margin-top:10px;"></div>
-    </details>
-
-    <div class="box" style="margin-top:14px;">
-      <h2 id="modeAreaTitle">Spielbereich</h2>
-      <div id="modeArea"></div>
-    </div>
-
-    <div id="revealBox" class="box" style="display:none; margin-top:12px;">
-      <div id="revealText"></div>
-      <div id="revealExtra" style="margin-top:10px;"></div>
-    </div>
-
-    <div class="box" style="margin-top:14px;">
-      <h2>Scores</h2>
-      <div class="scoreGrid" id="scoreTable"></div>
-    </div>
-  </div>
-</section>
-
-<section id="screenWinner" class="screen" aria-label="Ergebnis">
-  <div class="box">
-    <h2>🏆 Gewinner</h2>
-    <div id="winnerHeadline" style="font-size:24px; font-weight:900;"></div>
-    <div class="muted" id="winnerSub"></div>
-
-    <div class="box" style="margin-top:12px;">
-      <h2>Endstand</h2>
-      <div class="scoreGrid" id="finalScoreTable"></div>
-    </div>
-
-    <div class="row" style="margin-top:14px;">
-      <button id="endBtn" class="primary big" aria-label="Zum Setup zurück">Beenden</button>
-    </div>
-  </div>
-</section>
-
 <div id="quick3HelpOverlay" class="overlay">
-  <div class="overlayCard">
+  <div class="overlayCard reveal-panel">
     <h2>Anleitung · Songausschnitt raten</h2>
     <div class="muted">
-      1) Wähle 3 / 5 / 10 Sekunden oder Ganzer Song.<br>
-      2) <b>Play-Start</b> spielt immer vom Songanfang.<br>
-      3) <b>Play-Zufall</b> spielt eine gespeicherte Zufallsstelle für diesen Zug.<br>
-      4) Bei <b>Reveal</b> siehst du Lösung + Self-Check zusammen.
+      Wähle die Clip-Länge, spiele vom Anfang oder von einer gespeicherten Zufallsstelle und prüfe beim Reveal Titel, Interpret und Jahr.
     </div>
-    <div class="row" style="margin-top:10px;">
-      <button id="quick3HelpCloseBtn" class="primary big">Schließen</button>
-    </div>
+    <button id="quick3HelpCloseBtn" class="action-button primary">Schließen</button>
   </div>
 </div>
 
 <div id="quick3RevealOverlay" class="overlay">
-  <div class="overlayCard">
+  <div class="overlayCard reveal-panel">
     <h2>Auflösung + Selbst-Check</h2>
     <div id="quick3RevealContent"></div>
-    <div class="selfCheckList" style="margin-top:12px;">
+    <div class="selfCheckList">
       <label class="selfCheckItem"><input type="checkbox" id="quick3ChkTitle"> Titel (1)</label>
       <label class="selfCheckItem"><input type="checkbox" id="quick3ChkArtist"> Interpret (1)</label>
       <label class="selfCheckItem"><input type="checkbox" id="quick3ChkYear"> Jahr (1)</label>
     </div>
-    <div class="row selfCheckActions">
-      <button id="quick3ConfirmBtn" class="primary big">Punkte eintragen und weiter</button>
+    <div class="selfCheckActions">
+      <button id="quick3ConfirmBtn" class="action-button primary">Punkte eintragen und weiter</button>
       <span class="muted" id="quick3PtsStatus"></span>
     </div>
   </div>

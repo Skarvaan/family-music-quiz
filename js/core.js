@@ -191,19 +191,15 @@ FMQ.buildPlayersConfig = () => {
   const old = FMQ.app.players;
   FMQ.app.players = [];
   const wrap = document.createElement("div");
-  wrap.className = "box";
-  wrap.style.boxShadow = "none";
-  wrap.style.border = "1px dashed var(--line)";
-  wrap.innerHTML = '<div class="muted" style="margin-bottom:8px;">Spieler: Name + Playlist wählen (Tracks laden automatisch).</div>';
+  wrap.className = "player-grid";
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
     const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, active: prev.active !== false };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
-    row.className = "row";
-    row.style.margin = "8px 0";
-    row.innerHTML = `<span class="pill">#${i + 1}</span><input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}" style="min-width:180px;"><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button><select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect" style="min-width:320px;"><option value="">(Playlist wählen…)</option></select><span class="muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>`;
+    row.className = "player-card";
+    row.innerHTML = `<div class="player-card-head"><span class="pill">Spieler ${i + 1}</span><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">noch nicht geladen</span>`;
     wrap.appendChild(row);
   }
 
