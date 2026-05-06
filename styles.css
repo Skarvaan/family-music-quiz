@@ -357,3 +357,33 @@ select option{ color:#111827; }
   .abTransport select[id$="StartModeSelect"],
   .ratingTransportRow select[id$="StartModeSelect"]{ width:100%; flex-basis:100%; }
 }
+/* Responsive polish for many players and compact game headers. */
+.score-bar{
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+  scroll-snap-type:x proximity;
+}
+.score-bar .scoreCard{ flex:0 0 clamp(132px,16vw,190px); scroll-snap-align:start; }
+.current-player-card{ gap:18px; }
+.turn-player-name{ margin-bottom:10px; padding-bottom:4px; }
+.current-player-card .muted{ display:block; }
+.game-debug[open]{
+  width:min(520px,calc(100vw - 32px));
+  max-height:min(72vh,620px);
+  overflow:auto;
+}
+#playerSwitchPanel{ display:grid; gap:6px; max-height:48vh; overflow:auto; padding-right:4px; }
+.playerSwitchRow{ min-height:46px; padding:10px 4px; }
+.playerSwitchRow input{ width:26px; height:26px; flex:0 0 auto; }
+.autoRevealCountdown{ display:grid; justify-items:center; gap:10px; padding:18px; }
+.countNum{ font-size:clamp(52px,10vw,110px); line-height:1; font-weight:950; color:#fde68a; }
+.first3List{ display:grid; gap:14px; margin-top:8px; }
+.first3Row{ display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.07); }
+.first3Meta{ display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; }
+.first3Descriptor{ color:#fde68a; font-size:clamp(18px,2.6vw,28px); font-weight:950; }
+@media (max-width:900px){
+  .game-debug[open]{ inset:auto 10px 10px 10px; width:auto; max-height:58vh; }
+  #playerSwitchPanel{ max-height:38vh; }
+  .current-player-card{ align-items:flex-start; gap:12px; }
+}

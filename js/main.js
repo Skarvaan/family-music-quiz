@@ -37,10 +37,26 @@ FMQ.renderPlayerSwitchPanel = () => {
       inp.checked = true;
       return;
     }
-    if (!p.active && FMQ.currentPlayer()?.id === p.id && FMQ.$("screenGame").classList.contains("active")) {
+    if (FMQ.app.state.social?.respondingPlayersQueue) {
+      const activeIds = new Set(FMQ.activePlayers().map(x => x.id));
+      FMQ.app.state.social.respondingPlayersQueue = FMQ.app.state.social.respondingPlayersQueue.filter(id => activeIds.has(id));
+      FMQ.app.state.social.currentResponderIndex = Math.min(
+        FMQ.app.state.social.currentResponderIndex || 0,
+        Math.max(0, FMQ.app.state.social.respondingPlayersQueue.length - 1)
+      );
+    }
+    if (FMQ.$("screenGame").classList.contains("active")) {
       try { await FMQ.pausePlayback(); } catch {}
-      FMQ.advanceTurn();
-      FMQ.resetTurnUI();
+      if (!p.active && FMQ.currentPlayer()?.id === p.id) {
+        FMQ.advanceTurn();
+        FMQ.resetTurnUI();
+        return;
+      }
+      const mode = FMQ.app.config.mode;
+      if (FMQ.modes?.[mode]?.renderArea) FMQ.modes[mode].renderArea();
+      FMQ.renderHeader();
+      FMQ.renderScoreTable();
+      FMQ.applyAccessibilityLabels();
       return;
     }
     FMQ.renderHeader();
