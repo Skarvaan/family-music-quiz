@@ -64,8 +64,6 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .playerSwitchBox summary{ cursor:pointer; font-weight:700; }
 .playerSwitchRow{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
 .playerSwitchRow:last-child{ border-bottom:none; }
-.yearRangeToolbar{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
-.yearRangeToolbar select{ min-height:48px; }
 .abTransport{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:10px; }
 .choiceGridBig{ justify-content:center; }
 .abChoiceBig{ min-width:220px; min-height:92px; font-size:32px; font-weight:900; }

@@ -200,7 +200,9 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
         name: t.name,
         artists: (t.artists || []).map(a => a.name),
         year: y,
-        durationMs: typeof t.duration_ms === "number" ? t.duration_ms : null
+        durationMs: typeof t.duration_ms === "number" ? t.duration_ms : null,
+        normalizedTitle: FMQ.normalizeTitle(t.name),
+        normalizedArtist: FMQ.normalizeArtist((t.artists || []).map(a => a.name))
       });
     }
 

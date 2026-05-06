@@ -7,12 +7,13 @@ var FMQ = window.FMQ;
 // =========================================================
 FMQ.MODE_INFO = {
   quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
-  yearRange: { label: "Zeitraum/Jahr raten", category: "self", hint: "Jahr per Multiple Choice einordnen" },
+  rankingList: { label: "Ranking Liste", category: "self", hint: "Baue dein Top-5- oder Top-10-Ranking Song für Song" },
   ratingGuess: { label: "Song-Bewertung einschätzen", category: "social", hint: "Wie schätzen andere den Geschmack ein?" },
   bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur Hauptperson?" },
-  icebreaker: { label: "Kennenlernen: Top 3", category: "social", hint: "Erste 3 Songs je Playlist als Warm-up hören" }
+  introPlaylistGuess: { label: "Aus welcher Playlist ist das?", category: "intro", hint: "Alle raten nacheinander, aus welcher Playlist der Song stammt" },
+  introFirst3: { label: "Meine ersten 3 Songs", category: "intro", hint: "Die vorbereiteten ersten 3 Songs jeder Playlist locker anhören" }
 };
-FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit", "icebreaker"].includes(modeId);
+FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit"].includes(modeId);
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
 FMQ.REDIRECT_URI = (() => {
@@ -41,6 +42,22 @@ FMQ.shuffle = (arr) => {
   }
   return a;
 };
+FMQ.normalizeTitle = (s) => String(s || "")
+  .toLowerCase()
+  .replace(/\([^)]*(remaster|remastered|live|version|edit|mix|mono|stereo)[^)]*\)/gi, " ")
+  .replace(/\[[^\]]*(remaster|remastered|live|version|edit|mix|mono|stereo)[^\]]*\]/gi, " ")
+  .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+  .replace(/[-–—]\s*(remaster(ed)?|live|version|edit|mix|mono|stereo).*$/gi, " ")
+  .replace(/[^a-z0-9äöüß]+/gi, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+FMQ.normalizeArtist = (artists) => String(Array.isArray(artists) ? (artists[0] || "") : (artists || ""))
+  .toLowerCase()
+  .replace(/[^a-z0-9äöüß]+/gi, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+FMQ.trackIdentityKey = (track) => `${track.normalizedTitle || FMQ.normalizeTitle(track.name)}::${track.normalizedArtist || FMQ.normalizeArtist(track.artists)}`;
+
 FMQ.yearFromReleaseDate = (d) => {
   const y = parseInt(String(d || "").slice(0, 4), 10);
   const cy = new Date().getFullYear();
@@ -76,9 +93,9 @@ FMQ.app = {
   },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
-    yearRange: { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() },
-    playlistGuess: { picks: new Map() },
-    quick3: { clipSeconds: 3, randomStartMs: null },
+    rankingList: { size: 5, lists: {}, answers: {} },
+    introPlaylistGuess: { answers: {}, responderIndex: 0 },
+    quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
     social: null,
     finalRound: { pending: false, roundNumber: null },
     selfCheckPending: false,
@@ -108,9 +125,7 @@ FMQ.advanceTurn = () => {
 FMQ.renderModeConfig = () => {
   const mode = FMQ.$("modeSelect").value;
   const area = FMQ.$("modeConfigArea");
-  if (mode === "yearRange" || mode === "playlistGuess") {
-    area.innerHTML = `<div class="row"><label><b>Party-Option</b></label><select id="partySelect"><option value="rotate">Reihum (jeder ist dran)</option><option value="allguess">Alle raten gleichzeitig</option></select><span class="muted">Dieser Modus unterstützt beide Varianten.</span></div>`;
-  } else if (mode === "ratingGuess") {
+  if (mode === "ratingGuess") {
     area.innerHTML = `<div class="row"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select></div>`;
   } else {
     area.innerHTML = `<div class="row"><label><b>Party-Option</b></label><select id="partySelect" disabled><option value="rotate">Reihum (jeder ist dran)</option></select><span class="muted">In diesem Modus immer Reihum (übersichtlicher für Anfänger).</span></div>`;
@@ -276,9 +291,9 @@ FMQ.resetSession = () => {
   FMQ.app.state.isPlaying = false;
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
-  FMQ.app.state.yearRange = { step: null, points: 0, options: [], correctIdx: -1, picks: new Map() };
-  FMQ.app.state.playlistGuess = { picks: new Map() };
-  FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null };
+  FMQ.app.state.rankingList = { size: 5, lists: {}, answers: {} };
+  FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
+  FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null, answers: {} };
   FMQ.app.state.social = null;
   FMQ.app.state.socialPlayback = null;
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
@@ -357,4 +372,3 @@ FMQ.renderHeader = () => {
   FMQ.$("globalUsedLabel").textContent = String(FMQ.app.usedTrackIds.size);
 };
 
-FMQ.showRangeOverlay = (show) => FMQ.$("rangeOverlay").classList.toggle("show", !!show);

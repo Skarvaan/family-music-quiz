@@ -49,9 +49,9 @@ FMQ.renderPlayerSwitchPanel = () => {
 };
 
 FMQ.syncSetupForMode = () => {
-  const isIcebreaker = FMQ.$("modeSelect").value === "icebreaker";
-  if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = isIcebreaker ? "none" : "";
-  if (FMQ.$("endTargetRow")) FMQ.$("endTargetRow").style.display = isIcebreaker ? "none" : "";
+  const hideEndControls = FMQ.app.config.category === "intro";
+  if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = hideEndControls ? "none" : "";
+  if (FMQ.$("endTargetRow")) FMQ.$("endTargetRow").style.display = hideEndControls ? "none" : "";
 };
 
 // =========================================================
@@ -59,8 +59,8 @@ FMQ.syncSetupForMode = () => {
 // =========================================================
 FMQ.prepareTrackForTurn = async () => {
   const mode = FMQ.app.config.mode;
-  const draw = mode === "playlistGuess"
-    ? FMQ.drawTrackForCurrentTurn({ forceFromAny: true })
+  const draw = mode === "introPlaylistGuess"
+    ? FMQ.modes.introPlaylistGuess.drawUniqueTrack()
     : FMQ.drawTrackForCurrentTurn({ risk: "safe" });
 
   if (!draw?.track) throw new Error("Keine Songs mehr übrig.");
@@ -83,14 +83,7 @@ FMQ.prepareTrackForTurn = async () => {
     FMQ.app.state.currentSourcePlayerId = me.id;
   }
 
-  if (mode === "yearRange") {
-    const me = FMQ.currentPlayer();
-    const built = FMQ.modes.yearRange.buildOptionsForYear(draw.track.year, FMQ.app.state.yearRange.step, me.spanMin, me.spanMax);
-    FMQ.app.state.yearRange.options = built.buckets;
-    FMQ.app.state.yearRange.correctIdx = built.correctIdx;
-    FMQ.modes.yearRange.renderChoices();
-  }
-  if (mode === "playlistGuess") FMQ.modes.playlistGuess.renderGuessUI();
+  if (mode === "introPlaylistGuess") FMQ.modes.introPlaylistGuess.renderGuessUI();
 };
 
 FMQ.resetTurnUI = () => {
@@ -125,16 +118,10 @@ FMQ.resetTurnUI = () => {
   FMQ.$("playToggleBtn").textContent = "↻ Play von vorn";
 
   const mode = FMQ.app.config.mode;
+  if (mode === "introPlaylistGuess") FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
   FMQ.modes[mode].renderArea();
 
-  if (mode === "yearRange") {
-    FMQ.app.state.yearRange = { step: 10, points: FMQ.modes.yearRange.stepPoints(10), options: [], correctIdx: -1, picks: new Map() };
-    FMQ.$("readyBtn").style.display = "none";
-    FMQ.$("playToggleBtn").style.display = "none";
-    FMQ.$("revealBtn").style.display = "none";
-    FMQ.$("nextBtn").style.display = "none";
-    FMQ.$("readyBtn").disabled = false;
-  } else if (mode === "quick3") {
+  if (mode === "quick3" || mode === "rankingList" || mode === "introPlaylistGuess" || mode === "introFirst3") {
     FMQ.$("screenGame").classList.add("quick3Active");
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
@@ -173,7 +160,6 @@ FMQ.onReady = async () => {
   if (!FMQ.app.state.currentTrack) {
     await FMQ.prepareTrackForTurn();
   }
-  FMQ.showRangeOverlay(false);
 
   await FMQ.playTrackUri(FMQ.app.state.currentTrack.uri, { positionMs: 0 });
   FMQ.app.state.isPlaying = true;
@@ -184,7 +170,6 @@ FMQ.onReady = async () => {
   if (mode === "speedGuess") {
     FMQ.modes.speedGuess.startCountdown();
   }
-  if (mode === "yearRange" && FMQ.modes.yearRange.syncControlStates) FMQ.modes.yearRange.syncControlStates();
   FMQ.renderHeader();
 };
 
@@ -252,7 +237,7 @@ FMQ.onReveal = async () => {
   const owners = (t.owners || []).map(FMQ.getPlayerName).join(", ");
 
   FMQ.$("revealBox").style.display = "block";
-  FMQ.$("revealText").innerHTML = `<div style="font-size:18px; font-weight:900;">${FMQ.escapeHtml(res.headline)}</div><div><b>${FMQ.escapeHtml(t.name)}</b><br><span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>Jahr: <b>${t.year}</b><br><span class="muted">${FMQ.escapeHtml(mode === "playlistGuess" ? `Song ist in Playlist(s): ${owners}` : `Quelle: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}`)}</span><br><span class="muted">${FMQ.escapeHtml(res.detail || "")}</span></div>`;
+  FMQ.$("revealText").innerHTML = `<div style="font-size:18px; font-weight:900;">${FMQ.escapeHtml(res.headline)}</div><div><b>${FMQ.escapeHtml(t.name)}</b><br><span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>Jahr: <b>${t.year}</b><br><span class="muted">${FMQ.escapeHtml(mode === "introPlaylistGuess" ? `Song ist in Playlist: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}` : `Quelle: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}`)}</span><br><span class="muted">${FMQ.escapeHtml(res.detail || "")}</span></div>`;
 
   if (mode === "guessSong") FMQ.modes.guessSong.renderRevealExtras();
   if (mode === "speedGuess") FMQ.modes.speedGuess.renderRevealExtras();
@@ -282,12 +267,10 @@ FMQ.onReveal = async () => {
   FMQ.markFinalRoundIfNeeded();
   FMQ.$("revealBtn").disabled = true;
   FMQ.$("nextBtn").disabled = FMQ.app.state.selfCheckPending;
-  if (mode === "yearRange" && FMQ.modes.yearRange.syncControlStates) FMQ.modes.yearRange.syncControlStates();
   FMQ.applyAccessibilityLabels();
 };
 
 FMQ.finishGame = (winnerPlayer, reason) => {
-  FMQ.showRangeOverlay(false);
   FMQ.showScreen("screenWinner");
   FMQ.$("winnerHeadline").textContent = winnerPlayer ? `${winnerPlayer.name} gewinnt!` : "Spiel beendet";
   FMQ.$("winnerSub").textContent = reason || "";
@@ -328,7 +311,6 @@ FMQ.quitToMenu = async () => {
   try { await FMQ.pausePlayback(); } catch {}
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
-  FMQ.showRangeOverlay(false);
   FMQ.$("quick3RevealOverlay").classList.remove("show");
   FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("screenGame").classList.remove("quick3Active");
@@ -341,7 +323,7 @@ FMQ.quitToMenu = async () => {
 FMQ.startGame = () => {
   FMQ.app.config.mode = FMQ.$("modeSelect").value;
   FMQ.app.config.party = FMQ.$("partySelect").value;
-  if (FMQ.app.config.mode === "icebreaker") {
+  if (FMQ.app.config.category === "intro") {
     FMQ.app.config.endType = "rounds";
     FMQ.app.config.targetRounds = 1;
   } else {
@@ -363,10 +345,11 @@ FMQ.renderPlayStyleButtons = () => {
 FMQ.renderModeButtons = () => {
   const modeMeta = [
     { id: "quick3", label: `A) ${FMQ.MODE_INFO.quick3.label}`, category: FMQ.MODE_INFO.quick3.category },
-    { id: "yearRange", label: `B) ${FMQ.MODE_INFO.yearRange.label}`, category: FMQ.MODE_INFO.yearRange.category },
+    { id: "rankingList", label: `B) ${FMQ.MODE_INFO.rankingList.label}`, category: FMQ.MODE_INFO.rankingList.category },
     { id: "ratingGuess", label: `C) ${FMQ.MODE_INFO.ratingGuess.label}`, category: FMQ.MODE_INFO.ratingGuess.category },
     { id: "bestFit", label: `D) ${FMQ.MODE_INFO.bestFit.label}`, category: FMQ.MODE_INFO.bestFit.category },
-    { id: "icebreaker", label: `E) ${FMQ.MODE_INFO.icebreaker.label}`, category: FMQ.MODE_INFO.icebreaker.category }
+    { id: "introPlaylistGuess", label: `A) ${FMQ.MODE_INFO.introPlaylistGuess.label}`, category: FMQ.MODE_INFO.introPlaylistGuess.category },
+    { id: "introFirst3", label: `B) ${FMQ.MODE_INFO.introFirst3.label}`, category: FMQ.MODE_INFO.introFirst3.category }
   ];
   const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
@@ -412,15 +395,13 @@ FMQ.renderSetupWizard = () => {
     FMQ.$("setupNextBtn").textContent = "Weiter →";
   } else if (step === 2) {
     FMQ.$("setupWizardTitle").textContent = "Schritt 2 · Hauptkategorie";
-    FMQ.$("setupWizardSub").textContent = "Ich & meine Playlist oder Wer kennt meinen Geschmack?";
+    FMQ.$("setupWizardSub").textContent = "Ich & meine Playlist, Wer kennt meinen Geschmack? oder 🤝 Kennenlernen.";
   } else if (step === 3) {
     FMQ.$("setupWizardTitle").textContent = "Schritt 3 · Modus";
     FMQ.$("setupWizardSub").textContent = "Wähle den Spielmodus als große Schaltfläche.";
   } else if (step === 4) {
     FMQ.$("setupWizardTitle").textContent = "Schritt 4 · Punkte & Spieler";
-    FMQ.$("setupWizardSub").textContent = FMQ.$("modeSelect").value === "icebreaker"
-      ? "Kennenlernen-Modus: pro Spieler 3 Songs, dann weiter."
-      : "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
+    FMQ.$("setupWizardSub").textContent = FMQ.app.config.category === "intro" ? "Kennenlernen: kein Punkte-/Runden-Setup, pro Spieler per Weiter fortfahren." : "Lege Endziel (Punkte oder Runden) und Spieleranzahl fest.";
   }
   FMQ.$("setupBackBtn").disabled = step <= 1;
   FMQ.$("setupNextBtn").style.display = "";
@@ -445,11 +426,12 @@ FMQ.init = async () => {
   FMQ.$("quick3HelpCloseBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("quick3ConfirmBtn").onclick = () => {
     const me = FMQ.currentPlayer();
-    const pts =
-      (FMQ.$("quick3ChkTitle").checked ? 1 : 0) +
-      (FMQ.$("quick3ChkArtist").checked ? 1 : 0) +
-      (FMQ.$("quick3ChkYear").checked ? 1 : 0);
-    FMQ.awardPoints(me.id, pts);
+    const result = FMQ.modes.quick3.submitAnswer(me.id, {
+      title: FMQ.$("quick3ChkTitle").checked,
+      artist: FMQ.$("quick3ChkArtist").checked,
+      year: FMQ.$("quick3ChkYear").checked
+    });
+    const pts = result.points;
     FMQ.app.state.selfCheckPending = false;
     FMQ.$("quick3PtsStatus").innerHTML = `<span class="ok">+${pts} Punkte bestätigt</span>`;
     FMQ.$("quick3ConfirmBtn").disabled = true;
@@ -460,14 +442,6 @@ FMQ.init = async () => {
       FMQ.onNext();
     }, 220);
   };
-  FMQ.$("rangeOverlay").querySelectorAll("[data-step]").forEach(btn => btn.onclick = () => {
-    const step = parseInt(btn.dataset.step, 10);
-    FMQ.app.state.yearRange.step = step;
-    FMQ.app.state.yearRange.points = FMQ.modes.yearRange.stepPoints(step);
-    FMQ.showRangeOverlay(false);
-    FMQ.$("readyBtn").disabled = false;
-  });
-
   FMQ.$("loginBtn").onclick = () => FMQ.loginSpotify().catch(() => FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!");
   if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
   if (FMQ.$("loadMyPlaylistsBtn")) FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(() => { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; });
@@ -513,6 +487,7 @@ FMQ.init = async () => {
       FMQ.app.config.party = "rotate";
       FMQ.$("partySelect").value = "rotate";
       FMQ.renderModeButtons();
+      FMQ.syncSetupForMode();
       FMQ.renderSetupWizard();
     };
   });

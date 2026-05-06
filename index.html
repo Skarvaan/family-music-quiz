@@ -40,6 +40,7 @@
     <div class="modeButtonGrid" id="playStyleButtons">
       <button class="modeBtn" data-category="self">Ich & meine Playlist</button>
       <button class="modeBtn" data-category="social">Wer kennt meinen Geschmack?</button>
+      <button class="modeBtn" data-category="intro">🤝 Kennenlernen</button>
     </div>
   </div>
 
@@ -52,10 +53,11 @@
     <div style="display:none;">
       <select id="modeSelect">
         <option value="quick3">Songausschnitt raten</option>
-        <option value="yearRange">Zeitraum raten (MC)</option>
+        <option value="rankingList">Ranking Liste</option>
+        <option value="introPlaylistGuess">Aus welcher Playlist ist das?</option>
+        <option value="introFirst3">Meine ersten 3 Songs</option>
         <option value="ratingGuess">Song-Bewertung einschätzen</option>
         <option value="bestFit">Song A oder B – was passt besser?</option>
-        <option value="icebreaker">Kennenlernen: Top 3</option>
       </select>
       <select id="partySelect">
         <option value="rotate">Reihum (jeder ist dran)</option>
@@ -180,19 +182,6 @@
     </div>
   </div>
 </section>
-
-<div id="rangeOverlay" class="overlay">
-  <div class="overlayCard">
-    <h2>Schwierigkeit wählen</h2>
-    <div class="muted">Je genauer, desto mehr Punkte (bei richtig).</div>
-    <div class="bigRow">
-      <button class="big" data-step="10">Jahrzehnt · <b>+1</b></button>
-      <button class="big" data-step="5">5-Jahres-Block · <b>+2</b></button>
-      <button class="big" data-step="2">2-Jahres-Block · <b>+3</b></button>
-      <button class="big primary" data-step="1">Exaktes Jahr · <b>+4</b></button>
-    </div>
-  </div>
-</div>
 
 <div id="quick3HelpOverlay" class="overlay">
   <div class="overlayCard">
