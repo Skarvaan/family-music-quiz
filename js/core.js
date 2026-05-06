@@ -296,6 +296,7 @@ FMQ.resetSession = () => {
   FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null, answers: {} };
   FMQ.app.state.social = null;
   FMQ.app.state.socialPlayback = null;
+  FMQ.app.state.modeStartMs = {};
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
   FMQ.app.state.selfCheckPending = false;
 

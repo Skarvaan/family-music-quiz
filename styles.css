@@ -97,6 +97,44 @@ pre{ white-space: pre-wrap; word-break: break-word; background:var(--card); bord
 .abReminder{ display:flex; justify-content:center; gap:10px; margin-top:6px; }
 .abReminder .mini{ font-size:13px; padding:8px 12px; min-height:unset; opacity:.85; }
 .socialTurnLabel{ font-size:30px; font-weight:900; margin:8px 0 14px; text-align:center; }
+.rankingSongCard{
+  margin:16px auto 10px;
+  padding:16px 18px;
+  max-width:520px;
+  border:2px dashed rgba(249,115,22,.45);
+  border-radius:16px;
+  background:#fff7ed;
+  box-shadow:0 10px 22px rgba(249,115,22,.12);
+  cursor:grab;
+}
+.rankingSongCard:active{ cursor:grabbing; }
+.rankingSlots{ display:grid; gap:10px; text-align:left; }
+.rankingSlots.twoCols{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+.rankingSlot{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:66px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  cursor:pointer;
+  transition:border-color .12s ease, box-shadow .12s ease, transform .08s ease;
+}
+.rankingSlot:hover{ border-color:#fb923c; box-shadow:0 8px 18px rgba(249,115,22,.14); transform:translateY(-1px); }
+.rankBadge{
+  display:grid;
+  place-items:center;
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  border-radius:999px;
+  background:#fed7aa;
+  color:#9a3412;
+  font-weight:900;
+  font-size:20px;
+}
 .socialScaleBtn{ min-width:72px; min-height:72px; font-size:32px; font-weight:900; }
 .socialRevealBig{ text-align:center; font-size:24px; line-height:1.4; display:grid; gap:14px; margin:10px 0; }
 .socialTruthLine{ font-size:36px; font-weight:900; }
