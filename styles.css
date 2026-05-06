@@ -113,7 +113,7 @@ pre{ white-space:pre-wrap; word-break:break-word; max-height:220px; overflow:aut
 .section-title-row h2,.prep-summary h2{ font-size:clamp(28px,4vw,46px); margin:4px 0 8px; }
 .config-block{ display:grid; gap:8px; margin-top:16px; }
 .setup-nav{
-  display:grid;
+  display:none;
   grid-template-columns:auto 1fr auto;
   align-items:center;
   gap:14px;

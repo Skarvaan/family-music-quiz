@@ -94,7 +94,7 @@ FMQ.app = {
   },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
-    rankingList: { size: FMQ.app.config.rankingSize || 5, lists: {}, answers: {} },
+    rankingList: { size: 5, lists: {}, answers: {} },
     introPlaylistGuess: { answers: {}, responderIndex: 0 },
     quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
     social: null,
