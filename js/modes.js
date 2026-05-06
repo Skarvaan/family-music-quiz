@@ -60,14 +60,23 @@ FMQ.submitMainAnswerToSession = (session, playerId, answer) => {
 
 
 
+FMQ.getPlaybackPlayerId = () => {
+  const s = FMQ.app.state.social;
+  if (s) {
+    if (s.phase === "listen" || s.phase === "mainAnswer") return s.mainPlayerId || FMQ.currentPlayer()?.id || "default";
+    return FMQ.getSocialResponderId() || s.mainPlayerId || FMQ.currentPlayer()?.id || "default";
+  }
+  return FMQ.currentPlayer()?.id || "default";
+};
+
 FMQ.getPlayerStartMode = (fallback = "start") => {
-  const playerId = FMQ.currentPlayer()?.id || "default";
+  const playerId = FMQ.getPlaybackPlayerId();
   FMQ.app.state.playStartModes = FMQ.app.state.playStartModes || {};
   return FMQ.app.state.playStartModes[playerId] || fallback;
 };
 
 FMQ.setPlayerStartMode = (mode) => {
-  const playerId = FMQ.currentPlayer()?.id || "default";
+  const playerId = FMQ.getPlaybackPlayerId();
   FMQ.app.state.playStartModes = FMQ.app.state.playStartModes || {};
   FMQ.app.state.playStartModes[playerId] = mode === "random" ? "random" : "start";
 };
@@ -378,7 +387,7 @@ FMQ.modes = {
       const t = FMQ.app.state.currentTrack;
       FMQ.renderModeLikeQuick3({
         heading: `Ranking von ${me.name}`,
-        subtitle: "Ziehe oder klicke den Song auf einen festen Platz. Erst mit Weiter wird er fixiert.",
+        subtitle: "Klicke den Song auf einen freien festen Platz. Erst mit Weiter wird er fixiert.",
         heroName: "",
         panelClass: "theme-playlist",
         bodyHtml: `<div class="pill">${st.size === 10 ? "Top 10" : "Top 5"}</div><div class="quick3Controls" style="justify-content:center; margin-top:10px;"><select id="rankingLenSelect"><option value="3">3 Sekunden</option><option value="5">5 Sekunden</option><option value="10">10 Sekunden</option><option value="full">Ganzer Song</option></select><select id="rankingStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="rankingPlayBtn" class="big">▶️ Song hören</button><button id="rankingStopBtn" class="big">⏸️ Stop</button></div><div id="rankingCurrentCard" class="rankingSongCard"><b>${FMQ.escapeHtml(t.name)}</b><br><span>${FMQ.escapeHtml(t.artists.join(", "))} · ${t.year}</span><div class="muted">Leeren Platz anklicken, dann mit Weiter fixieren</div></div><div id="rankingSlotsWrap" style="margin-top:12px;">${FMQ.modes.rankingList.renderRanking(me.id)}</div><div class="row" style="justify-content:center; margin-top:18px;"><button id="rankingNextBtn" class="big primary" disabled>Weiter</button></div>`
@@ -539,7 +548,7 @@ FMQ.modes = {
     submitMainAnswer(playerId, answer) { FMQ.submitMainAnswerToSession(FMQ.app.state.social, playerId, answer); },
     transportHtml(phase = "guess") {
       const label = phase === "listen" ? "▶️ Song hören" : "▶️ Weiter";
-      return `<div class="row ratingTransportRow" style="justify-content:center;"><select id="ratingStartModeSelect"><option value="start">Von Anfang</option><option value="random">Zufall aus der Mitte</option></select><button id="ratingPlayResumeBtn" class="big">${label}</button><button id="ratingStopBtn" class="big">⏸️ Stop</button></div>`;
+      return `<div class="row ratingTransportRow" style="justify-content:center;"><select id="ratingStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="ratingPlayResumeBtn" class="big">${label}</button><button id="ratingStopBtn" class="big">⏸️ Stop</button></div>`;
     },
     bindTransport(phase = "guess") {
       const t = FMQ.app.state.currentTrack;

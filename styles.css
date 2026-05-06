@@ -331,3 +331,29 @@ select option{ color:#111827; }
 .rankingSlot.occupied:hover{ transform:none; border-color:var(--line); box-shadow:none; }
 .playlistRevealLine{ font-size:clamp(24px,3.3vw,42px); font-weight:950; color:#fde68a; line-height:1.12; }
 .playlistRevealLine.multi{ font-size:clamp(18px,2.4vw,30px); color:#dbeafe; }
+
+/* Clean playback controls: start-position dropdown sits above clip/action rows. */
+.quick3Controls select[id$="StartModeSelect"],
+.quick3Controls #quick3StartModeSelectInline,
+.abTransport select[id$="StartModeSelect"],
+.ratingTransportRow select[id$="StartModeSelect"]{
+  order:-10;
+  flex:0 1 330px;
+  width:min(330px,100%);
+  margin:0 auto 4px;
+  border-color:rgba(34,211,238,.42);
+  background:rgba(5,10,28,.86);
+  font-weight:900;
+}
+.quick3Controls select:not([id$="StartModeSelect"]):not(#quick3StartModeSelectInline){ flex:0 1 210px; }
+.quick3Controls button,.abTransport button,.ratingTransportRow button{ margin:0; }
+.quick3Panel{ display:grid; gap:18px; }
+.rankingSongCard{ cursor:default; }
+.rankingSongCard:active{ cursor:default; }
+.rankingSlot.pending .rankBadge{ background:#fde68a; color:#78350f; }
+@media (max-width:640px){
+  .quick3Controls select[id$="StartModeSelect"],
+  .quick3Controls #quick3StartModeSelectInline,
+  .abTransport select[id$="StartModeSelect"],
+  .ratingTransportRow select[id$="StartModeSelect"]{ width:100%; flex-basis:100%; }
+}
