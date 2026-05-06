@@ -20,9 +20,18 @@ FMQ.renderModeLikeQuick3 = ({ heading, subtitle, bodyHtml, panelClass = "", hero
   if (typeof FMQ.applyAccessibilityLabels === "function") FMQ.applyAccessibilityLabels();
 };
 
+
+FMQ.canPlayerActNow = (playerId) => {
+  const p = FMQ.app.players.find(x => x.id === playerId);
+  if (!p || p.active === false) return false;
+  return !(FMQ.app.state.pauseApplyMode === "next" && p.pendingActive === false);
+};
+
+FMQ.actingPlayers = () => FMQ.activePlayers().filter(p => FMQ.canPlayerActNow(p.id));
+
 FMQ.initSocialRound = ({ modeId, startPhase = "othersGuessing" }) => {
   const mainPlayerId = FMQ.app.state.currentSourcePlayerId || FMQ.currentPlayer().id;
-  const activePlayers = FMQ.activePlayers();
+  const activePlayers = FMQ.actingPlayers();
   FMQ.app.state.social = {
     modeId,
     phase: startPhase,
@@ -39,8 +48,7 @@ FMQ.initSocialRound = ({ modeId, startPhase = "othersGuessing" }) => {
 FMQ.getSocialResponderId = () => {
   const s = FMQ.app.state.social;
   if (!s) return null;
-  const activeIds = new Set(FMQ.activePlayers().map(p => p.id));
-  while (s.respondingPlayersQueue[s.currentResponderIndex] && !activeIds.has(s.respondingPlayersQueue[s.currentResponderIndex])) {
+  while (s.respondingPlayersQueue[s.currentResponderIndex] && !FMQ.canPlayerActNow(s.respondingPlayersQueue[s.currentResponderIndex])) {
     s.currentResponderIndex++;
   }
   return s.respondingPlayersQueue[s.currentResponderIndex] || null;
@@ -504,8 +512,9 @@ FMQ.modes = {
     },
     renderGuessUI() {
       const c = FMQ.$("plGuessPanel");
-      const activePlayers = FMQ.activePlayers();
-      const responder = activePlayers[FMQ.app.state.introPlaylistGuess.responderIndex] || null;
+      const responders = FMQ.actingPlayers();
+      const answered = FMQ.app.state.introPlaylistGuess.answers || {};
+      const responder = responders.find(p => !Object.prototype.hasOwnProperty.call(answered, p.id)) || null;
       if (!responder) {
         if (FMQ.app.state.introPlaylistGuess.countdownStarted) return;
         FMQ.app.state.introPlaylistGuess.countdownStarted = true;
@@ -522,10 +531,9 @@ FMQ.modes = {
         }, 700);
         return;
       }
-      c.innerHTML = `<div class="socialTurnLabel">${FMQ.escapeHtml(responder.name)} tippt</div><div class="choiceGrid">${activePlayers.map(p => `<button class="choiceBtn" data-owner="${p.id}">${FMQ.escapeHtml(p.name)}</button>`).join("")}</div>`;
+      c.innerHTML = `<div class="socialTurnLabel">${FMQ.escapeHtml(responder.name)} tippt</div><div class="choiceGrid">${FMQ.app.players.map(p => `<button class="choiceBtn" data-owner="${p.id}">${FMQ.escapeHtml(p.name)}</button>`).join("")}</div>`;
       c.querySelectorAll("[data-owner]").forEach(btn => btn.onclick = () => {
         FMQ.modes.introPlaylistGuess.submitAnswer(responder.id, btn.getAttribute("data-owner"));
-        FMQ.app.state.introPlaylistGuess.responderIndex++;
         FMQ.modes.introPlaylistGuess.renderGuessUI();
       });
     },

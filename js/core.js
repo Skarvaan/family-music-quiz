@@ -98,6 +98,7 @@ FMQ.app = {
     introPlaylistGuess: { answers: {}, responderIndex: 0 },
     quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
     playStartModes: {},
+    pauseApplyMode: "next",
     social: null,
     finalRound: { pending: false, roundNumber: null },
     selfCheckPending: false,
@@ -113,15 +114,18 @@ FMQ.currentPlayer = () => {
 };
 FMQ.getPlayerName = (id) => FMQ.app.players.find(p => p.id === id)?.name || "Unbekannt";
 FMQ.advanceTurn = () => {
+  const players = FMQ.app.players;
   const active = FMQ.activePlayers();
-  if (!active.length) return;
-  const currentId = FMQ.currentPlayer()?.id || active[0].id;
-  const curPos = Math.max(0, active.findIndex(p => p.id === currentId));
-  const nextPos = (curPos + 1) % active.length;
-  const wrapped = nextPos === 0;
-  const nextId = active[nextPos].id;
-  FMQ.app.state.turnIndex = Math.max(0, FMQ.app.players.findIndex(p => p.id === nextId));
-  if (wrapped) FMQ.app.state.round++;
+  if (!active.length || !players.length) return;
+  const startIndex = Math.max(0, Math.min(players.length - 1, FMQ.app.state.turnIndex || 0));
+  for (let step = 1; step <= players.length; step++) {
+    const idx = (startIndex + step) % players.length;
+    if (players[idx]?.active !== false) {
+      FMQ.app.state.turnIndex = idx;
+      if (idx <= startIndex) FMQ.app.state.round++;
+      return;
+    }
+  }
 };
 
 FMQ.renderModeConfig = () => {
@@ -207,7 +211,7 @@ FMQ.buildPlayersConfig = () => {
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
-    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, active: prev.active !== false };
+    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, active: prev.active !== false, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "player-card";
@@ -309,6 +313,8 @@ FMQ.resetSession = () => {
   FMQ.app.state.socialPlayback = null;
   FMQ.app.state.modeStartMs = {};
   FMQ.app.state.playStartModes = {};
+  FMQ.app.state.pauseApplyMode = FMQ.app.state.pauseApplyMode || "next";
+  FMQ.app.players.forEach(p => { p.pendingActive = undefined; });
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
   FMQ.app.state.selfCheckPending = false;
 

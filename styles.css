@@ -387,3 +387,7 @@ select option{ color:#111827; }
   #playerSwitchPanel{ max-height:38vh; }
   .current-player-card{ align-items:flex-start; gap:12px; }
 }
+.playerSwitchMode{ display:grid; gap:8px; padding:8px 4px 12px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+.playerSwitchMode select{ min-height:46px; }
+.playerSwitchRow.pending{ border-color:rgba(253,230,138,.45); color:#fde68a; }
+.playerSwitchRow small{ color:#fde68a; font-weight:900; }

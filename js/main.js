@@ -21,47 +21,76 @@ FMQ.applyAccessibilityLabels = () => {
 FMQ.renderPlayerSwitchPanel = () => {
   const panel = FMQ.$("playerSwitchPanel");
   if (!panel) return;
-  panel.innerHTML = FMQ.app.players.map(p => `
-    <label class="playerSwitchRow">
-      <span>${FMQ.escapeHtml(p.name)}</span>
-      <input type="checkbox" data-role="active-switch" data-pid="${p.id}" ${p.active !== false ? "checked" : ""}>
-    </label>
-  `).join("");
-  panel.querySelectorAll('input[data-role="active-switch"]').forEach(inp => inp.onchange = async () => {
+  const mode = FMQ.app.state.pauseApplyMode || "next";
+  panel.innerHTML = `
+    <div class="playerSwitchMode">
+      <label for="pauseApplyModeSelect"><b>Pause anwenden</b></label>
+      <select id="pauseApplyModeSelect">
+        <option value="next" ${mode === "next" ? "selected" : ""}>Bei Weiter / nächstem Einsatz</option>
+        <option value="round" ${mode === "round" ? "selected" : ""}>Erst am Rundenende</option>
+        <option value="game" ${mode === "game" ? "selected" : ""}>Erst nach Spielende</option>
+      </select>
+    </div>
+    ${FMQ.app.players.map(p => {
+      const checked = (typeof p.pendingActive === "boolean" ? p.pendingActive : p.active !== false);
+      const pending = typeof p.pendingActive === "boolean" && p.pendingActive !== (p.active !== false);
+      return `
+        <label class="playerSwitchRow ${pending ? "pending" : ""}">
+          <span>${FMQ.escapeHtml(p.name)}${pending ? ` <small>(vorgemerkt)</small>` : ""}</span>
+          <input type="checkbox" data-role="active-switch" data-pid="${p.id}" ${checked ? "checked" : ""}>
+        </label>
+      `;
+    }).join("")}
+  `;
+  const modeSelect = FMQ.$("pauseApplyModeSelect");
+  if (modeSelect) modeSelect.onchange = () => { FMQ.app.state.pauseApplyMode = modeSelect.value; FMQ.renderPlayerSwitchPanel(); };
+  panel.querySelectorAll('input[data-role="active-switch"]').forEach(inp => inp.onchange = () => {
     const pid = inp.getAttribute("data-pid");
     const p = FMQ.app.players.find(x => x.id === pid);
     if (!p) return;
-    p.active = !!inp.checked;
-    if (!FMQ.activePlayers().length) {
-      p.active = true;
+    p.pendingActive = !!inp.checked;
+    const desiredActiveCount = FMQ.app.players.filter(x => (typeof x.pendingActive === "boolean" ? x.pendingActive : x.active !== false)).length;
+    if (!desiredActiveCount) {
+      p.pendingActive = true;
       inp.checked = true;
       return;
     }
-    if (FMQ.app.state.social?.respondingPlayersQueue) {
-      const activeIds = new Set(FMQ.activePlayers().map(x => x.id));
-      FMQ.app.state.social.respondingPlayersQueue = FMQ.app.state.social.respondingPlayersQueue.filter(id => activeIds.has(id));
-      FMQ.app.state.social.currentResponderIndex = Math.min(
-        FMQ.app.state.social.currentResponderIndex || 0,
-        Math.max(0, FMQ.app.state.social.respondingPlayersQueue.length - 1)
-      );
-    }
-    if (FMQ.$("screenGame").classList.contains("active")) {
-      try { await FMQ.pausePlayback(); } catch {}
-      if (!p.active && FMQ.currentPlayer()?.id === p.id) {
-        FMQ.advanceTurn();
-        FMQ.resetTurnUI();
-        return;
-      }
-      const mode = FMQ.app.config.mode;
-      if (FMQ.modes?.[mode]?.renderArea) FMQ.modes[mode].renderArea();
-      FMQ.renderHeader();
-      FMQ.renderScoreTable();
-      FMQ.applyAccessibilityLabels();
-      return;
-    }
-    FMQ.renderHeader();
-    FMQ.renderScoreTable();
+    FMQ.renderPlayerSwitchPanel();
   });
+};
+
+FMQ.applyPendingPlayerActivity = ({ roundEnd = false, gameEnd = false } = {}) => {
+  const mode = FMQ.app.state.pauseApplyMode || "next";
+  if (mode === "round" && !roundEnd && !gameEnd) return false;
+  if (mode === "game" && !gameEnd) return false;
+  const pending = FMQ.app.players.filter(p => typeof p.pendingActive === "boolean");
+  if (!pending.length) return false;
+  const nextActiveCount = FMQ.app.players.filter(p => typeof p.pendingActive === "boolean" ? p.pendingActive : p.active !== false).length;
+  if (!nextActiveCount) return false;
+  let changed = false;
+  pending.forEach(p => {
+    if ((p.active !== false) !== p.pendingActive) changed = true;
+    p.active = p.pendingActive;
+    p.pendingActive = undefined;
+  });
+  if (changed && FMQ.app.state.social?.respondingPlayersQueue) {
+    const activeIds = new Set(FMQ.activePlayers().map(p => p.id));
+    while (FMQ.app.state.social.respondingPlayersQueue[FMQ.app.state.social.currentResponderIndex]
+      && !activeIds.has(FMQ.app.state.social.respondingPlayersQueue[FMQ.app.state.social.currentResponderIndex])) {
+      FMQ.app.state.social.currentResponderIndex++;
+    }
+  }
+  FMQ.ensureActiveTurnIndex();
+  FMQ.renderPlayerSwitchPanel();
+  return changed;
+};
+
+FMQ.ensureActiveTurnIndex = () => {
+  const cur = FMQ.app.players[FMQ.app.state.turnIndex];
+  if (cur && cur.active !== false) return;
+  const first = FMQ.activePlayers()[0];
+  if (!first) return;
+  FMQ.app.state.turnIndex = Math.max(0, FMQ.app.players.findIndex(p => p.id === first.id));
 };
 
 FMQ.syncSetupForMode = () => {
@@ -289,6 +318,7 @@ FMQ.onReveal = async () => {
 };
 
 FMQ.finishIntroSession = () => {
+  FMQ.applyPendingPlayerActivity({ gameEnd: true });
   FMQ.showScreen("screenWinner");
   if (FMQ.$("winnerTitle")) FMQ.$("winnerTitle").textContent = "Kennenlernen";
   FMQ.$("winnerHeadline").textContent = "Zurück zum Start";
@@ -298,6 +328,7 @@ FMQ.finishIntroSession = () => {
 };
 
 FMQ.finishGame = (winnerPlayer, reason) => {
+  FMQ.applyPendingPlayerActivity({ gameEnd: true });
   FMQ.showScreen("screenWinner");
   if (FMQ.$("winnerTitle")) FMQ.$("winnerTitle").textContent = "🏆 Gewinner";
   if (FMQ.$("finalScoreWrap")) FMQ.$("finalScoreWrap").style.display = "";
@@ -310,6 +341,8 @@ FMQ.finishGame = (winnerPlayer, reason) => {
 };
 
 FMQ.onNext = () => {
+  const roundBeforeNext = FMQ.app.state.round;
+  FMQ.applyPendingPlayerActivity();
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
     if (FMQ.app.config.mode === "introFirst3") { FMQ.finishIntroSession(); return; }
     if (FMQ.app.config.mode === "rankingList") { FMQ.modes.rankingList.renderFinal(); return; }
@@ -323,6 +356,8 @@ FMQ.onNext = () => {
   }
 
   FMQ.advanceTurn();
+  const roundEnded = FMQ.app.state.round !== roundBeforeNext;
+  if (roundEnded) FMQ.applyPendingPlayerActivity({ roundEnd: true });
 
   const winnerAfterAdvance = FMQ.checkFinishAfterNext();
   if (winnerAfterAdvance) {
