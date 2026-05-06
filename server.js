@@ -1,0 +1,231 @@
+const crypto = require("crypto");
+const os = require("os");
+const path = require("path");
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+
+const PORT = process.env.PORT || 3000;
+const ROOT = __dirname;
+const ROOM_CODE_LENGTH = 6;
+const ROOM_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+const room = {
+  code: makeRoomCode(),
+  hostSocketId: null,
+  playersById: new Map(),
+  playerIdByName: new Map(),
+  prompt: null,
+  answers: new Map()
+};
+
+function makeRoomCode() {
+  let code = "";
+  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
+    code += ROOM_ALPHABET[crypto.randomInt(ROOM_ALPHABET.length)];
+  }
+  return code;
+}
+
+function normalizeName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function publicPlayer(player) {
+  return {
+    id: player.id,
+    name: player.name,
+    active: player.active !== false,
+    connected: !!player.socketId,
+    lastSeenAt: player.lastSeenAt
+  };
+}
+
+function roomSnapshot() {
+  return {
+    roomCode: room.code,
+    players: [...room.playersById.values()].map(publicPlayer),
+    prompt: room.prompt,
+    answeredPlayerIds: [...room.answers.keys()]
+  };
+}
+
+function emitRoomState() {
+  io.to(room.code).emit("room:state", roomSnapshot());
+  if (room.hostSocketId) io.to(room.hostSocketId).emit("host:players", roomSnapshot());
+}
+
+function resolveRoomCode(inputCode) {
+  const code = String(inputCode || room.code).trim().toLowerCase();
+  return code || room.code;
+}
+
+app.use("/family-music-quiz", express.static(ROOT));
+app.use("/public", express.static(path.join(ROOT, "public")));
+app.get("/", (_req, res) => res.sendFile(path.join(ROOT, "index.html")));
+app.get("/player", (_req, res) => res.sendFile(path.join(ROOT, "public", "player.html")));
+
+io.on("connection", socket => {
+  socket.on("host:createRoom", (_payload = {}, ack) => {
+    room.hostSocketId = socket.id;
+    socket.join(room.code);
+    ack?.(roomSnapshot());
+    emitRoomState();
+  });
+
+  socket.on("player:join", (payload = {}, ack) => {
+    const requestedCode = resolveRoomCode(payload.roomCode);
+    if (requestedCode !== room.code) {
+      ack?.({ ok: false, error: "Raum nicht gefunden." });
+      return;
+    }
+
+    const cleanName = String(payload.name || "").trim().replace(/\s+/g, " ");
+    const normalized = normalizeName(cleanName);
+    if (!normalized) {
+      ack?.({ ok: false, error: "Bitte Namen eingeben." });
+      return;
+    }
+
+    let player = room.playersById.get(room.playerIdByName.get(normalized));
+    if (!player) {
+      player = {
+        id: crypto.randomUUID(),
+        name: cleanName,
+        active: true,
+        socketId: socket.id,
+        lastSeenAt: Date.now()
+      };
+      room.playersById.set(player.id, player);
+      room.playerIdByName.set(normalized, player.id);
+    } else {
+      player.name = cleanName;
+      player.socketId = socket.id;
+      player.active = payload.active === false ? false : player.active !== false;
+      player.lastSeenAt = Date.now();
+    }
+
+    socket.data.playerId = player.id;
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt });
+    emitRoomState();
+  });
+
+  socket.on("player:setActive", (payload = {}, ack) => {
+    const playerId = payload.playerId || socket.data.playerId;
+    const player = room.playersById.get(playerId);
+    if (!player) {
+      ack?.({ ok: false, error: "Spieler nicht gefunden." });
+      return;
+    }
+    player.active = payload.active !== false;
+    player.lastSeenAt = Date.now();
+    ack?.({ ok: true, player: publicPlayer(player) });
+    emitRoomState();
+  });
+
+  socket.on("player:submitAnswer", (payload = {}, ack) => {
+    const playerId = payload.playerId || socket.data.playerId;
+    const player = room.playersById.get(playerId);
+    if (!player) {
+      ack?.({ ok: false, error: "Spieler nicht gefunden." });
+      return;
+    }
+    if (!room.prompt || payload.promptId !== room.prompt.id) {
+      ack?.({ ok: false, error: "Diese Frage ist nicht mehr aktiv." });
+      return;
+    }
+    const answerPayload = {
+      playerId,
+      playerName: player.name,
+      promptId: payload.promptId,
+      type: room.prompt.type,
+      answer: payload.answer,
+      submittedAt: Date.now()
+    };
+    room.answers.set(playerId, answerPayload);
+    io.to(room.code).emit("host:answerSubmitted", answerPayload);
+    emitRoomState();
+    ack?.({ ok: true });
+  });
+
+  socket.on("host:startPrompt", (payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann Prompts starten." });
+      return;
+    }
+    room.prompt = {
+      id: payload.id || crypto.randomUUID(),
+      type: payload.type || "generic",
+      title: payload.title || "Neue Frage",
+      text: payload.text || "Bitte antworten.",
+      options: Array.isArray(payload.options) ? payload.options : [],
+      recipientIds: Array.isArray(payload.recipientIds) ? payload.recipientIds : null,
+      excludedPlayerIds: Array.isArray(payload.excludedPlayerIds) ? payload.excludedPlayerIds : [],
+      createdAt: Date.now()
+    };
+    room.answers = new Map();
+    io.to(room.code).emit("player:prompt", room.prompt);
+    emitRoomState();
+    ack?.({ ok: true, prompt: room.prompt });
+  });
+
+  socket.on("host:reveal", (payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann Reveal starten." });
+      return;
+    }
+    io.to(room.code).emit("player:reveal", payload);
+    ack?.({ ok: true });
+  });
+
+  socket.on("host:resetRound", (_payload = {}, ack) => {
+    if (socket.id !== room.hostSocketId) {
+      ack?.({ ok: false, error: "Nur der Host kann Runden zurücksetzen." });
+      return;
+    }
+    room.prompt = null;
+    room.answers = new Map();
+    io.to(room.code).emit("player:resetRound");
+    emitRoomState();
+    ack?.({ ok: true });
+  });
+
+  socket.on("disconnect", () => {
+    if (room.hostSocketId === socket.id) room.hostSocketId = null;
+    if (socket.data.playerId) {
+      const player = room.playersById.get(socket.data.playerId);
+      if (player) {
+        player.socketId = null;
+        player.lastSeenAt = Date.now();
+      }
+    }
+    emitRoomState();
+  });
+});
+
+function getLanAddresses() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter(Boolean)
+    .filter(net => net.family === "IPv4" && !net.internal)
+    .map(net => `http://${net.address}:${PORT}`);
+}
+
+server.listen(PORT, () => {
+  console.log("Family Music Quiz local multi-device server läuft.");
+  console.log(`Host lokal: http://localhost:${PORT}`);
+  const lan = getLanAddresses();
+  if (lan.length) {
+    console.log("Im selben WLAN diese Adresse auf Handys verwenden:");
+    lan.forEach(url => console.log(`  ${url}/player`));
+  } else {
+    console.log("Hinweis: Für Handys bitte die lokale WLAN-IP dieses Rechners verwenden, z.B. http://<wlan-ip>:3000/player");
+  }
+  console.log(`Raumcode: ${room.code}`);
+});
