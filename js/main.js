@@ -438,7 +438,34 @@ FMQ.renderSetupWizard = () => {
   FMQ.applyAccessibilityLabels();
 };
 
+
+FMQ.goToSetupStep = (step) => {
+  FMQ.app.state.setupStep = Math.max(1, Math.min(4, step));
+  try {
+    FMQ.renderSetupWizard();
+  } catch (e) {
+    document.querySelectorAll(".setupStep").forEach(el => {
+      el.classList.toggle("active", parseInt(el.getAttribute("data-setup-step"), 10) === FMQ.app.state.setupStep);
+    });
+    const nav = FMQ.$("setupNav");
+    if (nav) nav.style.display = FMQ.app.state.setupStep <= 1 ? "none" : "grid";
+    if (FMQ.$("setupContinueBtn")) FMQ.$("setupContinueBtn").style.visibility = FMQ.app.state.setupStep === 4 ? "visible" : "hidden";
+    FMQ.setDebug(e.stack || e.message);
+  }
+};
+
 FMQ.init = async () => {
+  if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => FMQ.goToSetupStep(2);
+  if (FMQ.$("setupBackBtn")) FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
+  if (FMQ.$("setupContinueBtn")) FMQ.$("setupContinueBtn").onclick = () => {
+    if (!FMQ.setupCanProceed()) return;
+    if (FMQ.app.state.setupStep === 4) {
+      FMQ.startGame();
+      return;
+    }
+    FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) + 1);
+  };
+
   FMQ.$("redirectUriPill").textContent = FMQ.REDIRECT_URI;
 
   FMQ.$("quick3HelpCloseBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.remove("show");
@@ -510,22 +537,15 @@ FMQ.init = async () => {
       FMQ.renderSetupWizard();
     };
   });
-  FMQ.$("setupBackBtn").onclick = () => {
-    FMQ.app.state.setupStep = Math.max(1, FMQ.app.state.setupStep - 1);
-    FMQ.renderSetupWizard();
-  };
-  FMQ.$("setupNextBtn").onclick = () => {
-    FMQ.app.state.setupStep = 2;
-    FMQ.renderSetupWizard();
-  };
+  FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
+  FMQ.$("setupNextBtn").onclick = () => FMQ.goToSetupStep(2);
   FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
     if (FMQ.app.state.setupStep === 4) {
       FMQ.startGame();
       return;
     }
-    FMQ.app.state.setupStep = Math.min(4, FMQ.app.state.setupStep + 1);
-    FMQ.renderSetupWizard();
+    FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) + 1);
   };
   FMQ.$("readyBtn").onclick = () => FMQ.onReady().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("playToggleBtn").onclick = () => FMQ.onTogglePlay().catch(e => FMQ.setGameDebug(e.stack || e.message));
