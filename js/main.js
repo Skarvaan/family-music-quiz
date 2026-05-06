@@ -104,6 +104,8 @@ FMQ.resetTurnUI = () => {
   FMQ.app.state.selfCheckPending = false;
   FMQ.app.state.quick3.randomStartMs = null;
 
+  FMQ.$("turnPlayerBanner").style.display = "";
+  FMQ.$("gameMetaBanner").style.display = "";
   FMQ.$("readyBtn").style.display = "";
   FMQ.$("playToggleBtn").style.display = "";
   FMQ.$("revealBtn").style.display = "";
@@ -294,6 +296,7 @@ FMQ.finishGame = (winnerPlayer, reason) => {
 FMQ.onNext = () => {
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
     if (FMQ.app.config.mode === "introFirst3") { FMQ.finishIntroSession(); return; }
+    if (FMQ.app.config.mode === "rankingList") { FMQ.modes.rankingList.renderFinal(); return; }
     FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
     return;
   }
@@ -313,6 +316,7 @@ FMQ.onNext = () => {
 
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
     if (FMQ.app.config.mode === "introFirst3") { FMQ.finishIntroSession(); return; }
+    if (FMQ.app.config.mode === "rankingList") { FMQ.modes.rankingList.renderFinal(); return; }
     FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Runden sind gespielt.`);
     return;
   }

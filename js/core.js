@@ -97,6 +97,7 @@ FMQ.app = {
     rankingList: { size: 5, lists: {}, answers: {} },
     introPlaylistGuess: { answers: {}, responderIndex: 0 },
     quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
+    playStartModes: {},
     social: null,
     finalRound: { pending: false, roundNumber: null },
     selfCheckPending: false,
@@ -307,6 +308,7 @@ FMQ.resetSession = () => {
   FMQ.app.state.social = null;
   FMQ.app.state.socialPlayback = null;
   FMQ.app.state.modeStartMs = {};
+  FMQ.app.state.playStartModes = {};
   FMQ.app.state.finalRound = { pending: false, roundNumber: null };
   FMQ.app.state.selfCheckPending = false;
 
