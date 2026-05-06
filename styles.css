@@ -442,3 +442,10 @@ select option{ color:#111827; }
   .multiLobbyGrid{ grid-template-columns:1fr; justify-items:center; }
   .joinInstructions{ text-align:center; }
 }
+body.joined .player-card-mobile{ min-height:min(78vh,680px); justify-content:center; }
+body.joined .player-card-mobile > .eyebrow,
+body.joined .player-card-mobile > h1{ display:none; }
+.player-focus-card{ min-height:clamp(220px,52vh,460px); display:grid; place-items:center; text-align:center; font-size:clamp(28px,8vw,54px); font-weight:950; }
+.player-question-card.player-focus-card{ place-items:stretch; align-content:center; font-size:inherit; }
+.autoRevealCountdown.compact{ padding:12px; gap:6px; }
+.autoRevealCountdown.compact .countNum{ font-size:clamp(42px,8vw,82px); }

@@ -18,8 +18,10 @@
   const setStatus = text => { $("playerStatus").textContent = text; };
 
   const showJoinedView = () => {
+    document.body.classList.add("joined");
     $("joinForm").hidden = true;
-    $("activePanel").hidden = false;
+    $("playerStatus").hidden = true;
+    $("activePanel").hidden = true;
   };
 
   const isRecipient = prompt => {
@@ -37,26 +39,26 @@
       return;
     }
     if (!state.player.active) {
-      panel.innerHTML = `<div class="player-wait-card">Du bist pausiert und blockierst die Runde nicht.</div>`;
+      panel.innerHTML = `<div class="player-wait-card player-focus-card">Du bist pausiert.</div>`;
       return;
     }
     if (!prompt) {
-      panel.innerHTML = `<div class="player-wait-card"><b>${escapeHtml(state.player.name)}</b><br>Warte auf Auswahl …</div>`;
+      panel.innerHTML = `<div class="player-wait-card player-focus-card"><b>${escapeHtml(state.player.name)}</b><br>Warte auf Auswahl …</div>`;
       return;
     }
     if (!isRecipient(prompt)) {
-      panel.innerHTML = `<div class="player-wait-card">Diese Eingabe ist gerade nicht für dich. Bitte warten …</div>`;
+      panel.innerHTML = `<div class="player-wait-card player-focus-card">${escapeHtml(prompt.waitingText || "Bitte warten …")}</div>`;
       return;
     }
     if (state.answeredPromptId === prompt.id) {
-      panel.innerHTML = `<div class="player-wait-card ok">Antwort gesendet. Warte auf Reveal …</div>`;
+      panel.innerHTML = `<div class="player-wait-card ok player-focus-card">${escapeHtml(prompt.sentText || "Antwort gesendet. Bitte warten …")}</div>`;
       return;
     }
 
     const options = prompt.options?.length ? prompt.options : [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }];
     panel.innerHTML = `
-      <div class="player-question-card">
-        <div class="eyebrow">Aktuelle Frage</div>
+      <div class="player-question-card player-focus-card">
+        <div class="eyebrow">Jetzt antworten</div>
         <h2>${escapeHtml(prompt.title || "Frage")}</h2>
         <p>${escapeHtml(prompt.text || "Bitte wähle eine Antwort.")}</p>
         <div class="player-answer-grid">
