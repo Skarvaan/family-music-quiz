@@ -13,11 +13,12 @@
     <div class="setup-stage">
       <div class="setupStep start-screen active" data-setup-step="1">
         <div class="hero-panel">
-          <div class="eyebrow">Spotify Premium Host · Ein-Gerät-Modus</div>
+          <div class="eyebrow">Spotify Premium Host · Single oder Local Multi Device</div>
           <h1 class="hero-title">Family Music Quiz</h1>
           <p class="hero-subtitle">Das Playlist-Partyspiel für Sofa, Küche und große Runden.</p>
+          <div id="deviceModePanel" class="deviceModePanel"></div>
           <div class="start-actions">
-            <button id="setupNextBtn" class="action-button primary">Spiel starten</button>
+            <button id="setupNextBtn" class="action-button primary">Ein-Gerät-Modus starten</button>
             <button id="loginBtn" class="action-button spotify" aria-label="Spotify verbinden">Spotify verbinden</button>
           </div>
           <div class="connection-strip">
@@ -126,6 +127,7 @@
               <span class="pill">mind. 5 Tracks pro Playlist</span>
             </div>
             <div id="playersConfig"></div>
+          <div id="multiplayerSetupPanel" class="multiplayerSetupPanel"></div>
           </main>
         </div>
       </div>
@@ -154,6 +156,7 @@
         </div>
         <div class="score-bar" id="scoreTable"></div>
       </header>
+      <aside id="multiplayerPanel" class="multiplayerPanel" style="display:none;"></aside>
 
       <section class="current-player-card" id="turnPlayerBanner">
         <div>
@@ -240,6 +243,7 @@
 
 <script src="/family-music-quiz/js/core.js" defer></script>
 <script src="/family-music-quiz/js/spotify.js" defer></script>
+<script src="/family-music-quiz/js/multiplayer.js" defer></script>
 <script src="/family-music-quiz/js/modes.js" defer></script>
 <script src="/family-music-quiz/js/main.js" defer></script>
 </body>

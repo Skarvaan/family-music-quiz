@@ -199,6 +199,7 @@ FMQ.resetTurnUI = () => {
   FMQ.renderHeader();
   FMQ.renderScoreTable();
   FMQ.renderPlayerSwitchPanel();
+  FMQ.renderMultiplayerPanel?.();
   FMQ.applyAccessibilityLabels();
 };
 
@@ -385,11 +386,15 @@ FMQ.quitToMenu = async () => {
   FMQ.app.state.setupStep = 1;
   FMQ.showScreen("screenSetup");
   FMQ.refreshPlaylistDropdowns();
+  FMQ.resetMultiplayerRound?.();
   FMQ.renderSetupWizard();
   FMQ.setGameDebug("");
 };
 
 FMQ.startGame = () => {
+  if (FMQ.isMultiDevice?.() && FMQ.$("modeSelect").value !== FMQ.multiplayer.supportedMode) {
+    FMQ.$("modeSelect").value = FMQ.multiplayer.supportedMode;
+  }
   FMQ.app.config.mode = FMQ.$("modeSelect").value;
   FMQ.app.config.party = FMQ.$("partySelect").value;
   if (FMQ.app.config.category === "intro") {
@@ -402,6 +407,7 @@ FMQ.startGame = () => {
   }
   if (FMQ.$("rankingSizeSetupSelect")) FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
   FMQ.resetSession();
+  FMQ.resetMultiplayerRound?.();
   FMQ.showScreen("screenGame");
   FMQ.resetTurnUI();
 };
@@ -421,7 +427,9 @@ FMQ.renderModeButtons = () => {
     { id: "introPlaylistGuess", label: "Aus welcher Playlist?", category: FMQ.MODE_INFO.introPlaylistGuess.category },
     { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category }
   ];
-  const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
+  const allowed = FMQ.isMultiDevice?.()
+    ? modeMeta.filter(m => m.id === FMQ.multiplayer.supportedMode)
+    : modeMeta.filter(m => m.category === FMQ.app.config.category);
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
     FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
@@ -490,6 +498,8 @@ FMQ.renderSetupWizard = () => {
   FMQ.renderPlayStyleButtons();
   FMQ.renderModeButtons();
   FMQ.syncSetupForMode();
+  FMQ.renderDeviceModePanel?.();
+  FMQ.renderMultiplayerPanel?.();
   FMQ.applyAccessibilityLabels();
 };
 
@@ -510,7 +520,7 @@ FMQ.goToSetupStep = (step) => {
 };
 
 FMQ.init = async () => {
-  if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => FMQ.goToSetupStep(2);
+  if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => { FMQ.setDeviceMode?.("single"); FMQ.goToSetupStep(2); };
   if (FMQ.$("setupBackBtn")) FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
   if (FMQ.$("setupContinueBtn")) FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
@@ -572,11 +582,11 @@ FMQ.init = async () => {
     FMQ.renderSetupWizard();
   };
   FMQ.$("playerPlusBtn").onclick = () => {
-    FMQ.$("playerCountInput").value = String(Math.min(15, parseInt(FMQ.$("playerCountInput").value || "1", 10) + 1));
+    FMQ.$("playerCountInput").value = String(Math.min(15, parseInt(FMQ.$("playerCountInput").value || "0", 10) + 1));
     rebuildFromPlayerCount();
   };
   FMQ.$("playerMinusBtn").onclick = () => {
-    FMQ.$("playerCountInput").value = String(Math.max(1, parseInt(FMQ.$("playerCountInput").value || "1", 10) - 1));
+    FMQ.$("playerCountInput").value = String(Math.max(FMQ.isMultiDevice?.() ? 0 : 1, parseInt(FMQ.$("playerCountInput").value || "1", 10) - 1));
     rebuildFromPlayerCount();
   };
   FMQ.$("playerCountInput").addEventListener("change", rebuildFromPlayerCount);
@@ -593,7 +603,7 @@ FMQ.init = async () => {
     };
   });
   FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
-  FMQ.$("setupNextBtn").onclick = () => FMQ.goToSetupStep(2);
+  FMQ.$("setupNextBtn").onclick = () => { FMQ.setDeviceMode?.("single"); FMQ.goToSetupStep(2); };
   FMQ.$("setupContinueBtn").onclick = () => {
     if (!FMQ.setupCanProceed()) return;
     if (FMQ.app.state.setupStep === 4) {
@@ -610,6 +620,7 @@ FMQ.init = async () => {
   FMQ.$("endBtn").onclick = () => FMQ.quitToMenu();
 
   FMQ.buildPlayersConfig();
+  FMQ.renderDeviceModePanel?.();
   FMQ.renderPlayerSwitchPanel();
   FMQ.$("endTypeSelect").dispatchEvent(new Event("change"));
   FMQ.syncSetupForMode();

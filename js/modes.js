@@ -567,8 +567,8 @@ FMQ.modes = {
   ratingGuess: {
     label: "Song-Bewertung einschätzen",
     supportsAllGuess: false,
-    submitVote(playerId, vote) { FMQ.submitVoteToSession(FMQ.app.state.social, playerId, vote); },
-    submitMainAnswer(playerId, answer) { FMQ.submitMainAnswerToSession(FMQ.app.state.social, playerId, answer); },
+    submitVote(playerId, vote) { FMQ.submitVote?.(playerId, vote) ?? FMQ.submitVoteToSession(FMQ.app.state.social, playerId, vote); },
+    submitMainAnswer(playerId, answer) { FMQ.submitMainAnswer?.(playerId, answer) ?? FMQ.submitMainAnswerToSession(FMQ.app.state.social, playerId, answer); },
     transportHtml(phase = "guess") {
       const label = phase === "listen" ? "▶️ Song hören" : "▶️ Weiter";
       return `<div class="row ratingTransportRow" style="justify-content:center;"><select id="ratingStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="ratingPlayResumeBtn" class="big">${label}</button><button id="ratingStopBtn" class="big">⏸️ Stop</button></div>`;
@@ -839,8 +839,81 @@ FMQ.modes = {
   bestFit: {
     label: "Song A oder B",
     supportsAllGuess: false,
-    submitVote(playerId, vote) { FMQ.submitVoteToSession(FMQ.app.state.social, playerId, vote); },
-    submitMainAnswer(playerId, answer) { FMQ.submitMainAnswerToSession(FMQ.app.state.social, playerId, answer); },
+    submitVote(playerId, vote) { FMQ.submitVote?.(playerId, vote) ?? FMQ.submitVoteToSession(FMQ.app.state.social, playerId, vote); },
+    submitMainAnswer(playerId, answer) { FMQ.submitMainAnswer?.(playerId, answer) ?? FMQ.submitMainAnswerToSession(FMQ.app.state.social, playerId, answer); },
+    expectedVoteIds() {
+      const s = FMQ.app.state.social;
+      return FMQ.activePlayers().filter(p => p.id !== s?.mainPlayerId).map(p => p.id);
+    },
+    expectedMainIds() {
+      const s = FMQ.app.state.social;
+      return FMQ.activePlayers().filter(p => p.id === s?.mainPlayerId).map(p => p.id);
+    },
+    answerStatusHtml(expectedIds, answersByPlayer) {
+      if (!expectedIds.length) return `<div class="muted">Keine aktiven Handy-Spieler für diese Eingabe.</div>`;
+      return `<div class="multiAnswerStatus">${expectedIds.map(id => {
+        const answered = Object.prototype.hasOwnProperty.call(answersByPlayer || {}, id);
+        return `<div class="multiAnswerRow ${answered ? "done" : "missing"}"><span>${FMQ.escapeHtml(FMQ.getPlayerName(id))}</span><b>${answered ? "hat abgestimmt" : "fehlt noch"}</b></div>`;
+      }).join("")}</div>`;
+    },
+    allAnswered(expectedIds, answersByPlayer) {
+      return expectedIds.every(id => Object.prototype.hasOwnProperty.call(answersByPlayer || {}, id));
+    },
+    startVotePromptOnce() {
+      const s = FMQ.app.state.social;
+      if (s.multiVotePromptStarted) return;
+      s.multiVotePromptStarted = true;
+      s.multiVotePromptId = crypto.randomUUID();
+      FMQ.startMultiplayerPrompt?.({
+        id: s.multiVotePromptId,
+        type: "bestFitVote",
+        title: "Song A oder B?",
+        text: "Was glaubst du: Welchen Song findet die Hauptperson besser?",
+        options: [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }],
+        recipientIds: FMQ.modes.bestFit.expectedVoteIds()
+      });
+    },
+    startMainPromptOnce() {
+      const s = FMQ.app.state.social;
+      if (s.multiMainPromptStarted) return;
+      s.multiMainPromptStarted = true;
+      s.multiMainPromptId = crypto.randomUUID();
+      FMQ.startMultiplayerPrompt?.({
+        id: s.multiMainPromptId,
+        type: "bestFitMain",
+        title: "Deine echte Antwort",
+        text: "Welchen Song findest du besser?",
+        options: [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }],
+        recipientIds: FMQ.modes.bestFit.expectedMainIds()
+      });
+    },
+    finishReveal() {
+      const s = FMQ.app.state.social;
+      const mainName = FMQ.getPlayerName(s.mainPlayerId);
+      const truth = s.mainAnswer || "A";
+      const lines = [];
+      for (const p of FMQ.activePlayers()) {
+        if (p.id === s.mainPlayerId) continue;
+        const guessed = s.answersByPlayer?.[p.id];
+        const pts = guessed === truth ? 1 : 0;
+        if (pts) FMQ.awardPoints(p.id, pts);
+        lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${guessed || "-"} → <b>+${pts}</b></div>`);
+      }
+      FMQ.pausePlayback().catch(() => {});
+      FMQ.revealMultiplayerPrompt?.({ truth, mode: "bestFit" });
+      FMQ.renderModeLikeQuick3({
+        heading: `Auflösung: ${mainName}`,
+        subtitle: "",
+        heroName: "",
+        panelClass: "theme-playlist",
+        bodyHtml: `<div class="socialRevealBig"><div class="socialTruthLine">${mainName} wählt: <b>Song ${truth}</b></div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>`
+      });
+      FMQ.app.state.social = null;
+      FMQ.renderScoreTable();
+      FMQ.renderMultiplayerPanel?.();
+      FMQ.markFinalRoundIfNeeded();
+      FMQ.$("socialDoneBtn").onclick = () => FMQ.onNext();
+    },
     transportHtml() {
       return `<div class="abTransport"><select id="bestFitStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="playAFromStartBtn" class="big">🅰️ ▶️ Song A</button><button id="playBFromStartBtn" class="big">🅱️ ▶️ Song B</button><button id="bestFitStopBtn" class="big">⏸️ Stop</button></div>`;
     },
@@ -881,8 +954,28 @@ FMQ.modes = {
           bodyHtml: `${FMQ.modes.bestFit.transportHtml()}<div class="row" style="justify-content:center; margin-top:10px;"><button id="bestFitContinueBtn" class="primary big">Weiter zur Tipp-Runde</button></div>`
         });
         FMQ.modes.bestFit.bindTransport(trackA, trackB);
-        FMQ.$("bestFitContinueBtn").onclick = () => { s.phase = "othersGuessing"; FMQ.modes.bestFit.renderArea(); };
+        FMQ.$("bestFitContinueBtn").onclick = () => {
+          s.phase = "othersGuessing";
+          if (FMQ.isMultiDevice?.()) FMQ.modes.bestFit.startVotePromptOnce();
+          FMQ.modes.bestFit.renderArea();
+        };
       } else if (s.phase === "othersGuessing") {
+        if (FMQ.isMultiDevice?.()) {
+          FMQ.modes.bestFit.startVotePromptOnce();
+          const expectedIds = FMQ.modes.bestFit.expectedVoteIds();
+          const allDone = FMQ.modes.bestFit.allAnswered(expectedIds, s.answersByPlayer);
+          FMQ.renderModeLikeQuick3({
+            heading: `Handy-Tipps: Welchen Song findet "${mainName}" besser?`,
+            subtitle: "Host spielt Song A/B. Alle aktiven Nicht-Hauptspieler stimmen am Handy ab.",
+            heroName: "",
+            panelClass: "theme-playlist",
+            bodyHtml: `${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, s.answersByPlayer)}<div class="row" style="justify-content:center;"><button id="bfToMainBtn" class="big primary" ${allDone ? "" : "disabled"}>Weiter zur Hauptantwort</button></div>`
+          });
+          FMQ.modes.bestFit.bindTransport(trackA, trackB);
+          FMQ.$("bfToMainBtn").onclick = () => { s.phase = "mainAnswer"; FMQ.modes.bestFit.startMainPromptOnce(); FMQ.modes.bestFit.renderArea(); };
+          FMQ.renderMultiplayerPanel?.();
+          return;
+        }
         const pid = FMQ.getSocialResponderId();
         if (!pid) {
           s.phase = "mainAnswer";
@@ -909,6 +1002,28 @@ FMQ.modes = {
           FMQ.modes.bestFit.renderArea();
         };
       } else if (s.phase === "mainAnswer") {
+        if (FMQ.isMultiDevice?.()) {
+          FMQ.modes.bestFit.startMainPromptOnce();
+          const expectedIds = FMQ.modes.bestFit.expectedMainIds();
+          const hasMainAnswer = !!s.mainAnswer;
+          FMQ.renderModeLikeQuick3({
+            heading: `${mainName}, welche Antwort ist wahr?`,
+            subtitle: "Die Hauptperson antwortet am Handy. Host kann als Fallback ebenfalls wählen.",
+            heroName: "",
+            panelClass: "theme-playlist",
+            bodyHtml: `${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}<div class="choiceGrid choiceGridBig"><button class="choiceBtn abChoiceBig" data-main-pick="A">Fallback: Song A</button><button class="choiceBtn abChoiceBig" data-main-pick="B">Fallback: Song B</button></div><div class="row" style="justify-content:center;"><button id="bfRevealBtn" class="big primary" ${hasMainAnswer ? "" : "disabled"}>Reveal</button></div>`
+          });
+          FMQ.modes.bestFit.bindTransport(trackA, trackB);
+          FMQ.$("modeArea").querySelectorAll("[data-main-pick]").forEach(btn => btn.onclick = () => {
+            FMQ.$("modeArea").querySelectorAll("[data-main-pick]").forEach(x => x.classList.remove("selected"));
+            btn.classList.add("selected");
+            FMQ.modes.bestFit.submitMainAnswer(s.mainPlayerId, btn.getAttribute("data-main-pick"));
+            FMQ.$("bfRevealBtn").disabled = false;
+          });
+          FMQ.$("bfRevealBtn").onclick = () => FMQ.modes.bestFit.finishReveal();
+          FMQ.renderMultiplayerPanel?.();
+          return;
+        }
         FMQ.renderModeLikeQuick3({
           heading: `Welchen Song findet "${mainName}" besser?`,
           subtitle: `${mainName} ist dran`,
@@ -923,29 +1038,7 @@ FMQ.modes = {
           FMQ.modes.bestFit.submitMainAnswer(s.mainPlayerId, btn.getAttribute("data-main-pick"));
           FMQ.$("bfRevealBtn").disabled = false;
         });
-        FMQ.$("bfRevealBtn").onclick = () => {
-          const truth = s.mainAnswer || "A";
-          const lines = [];
-          for (const p of FMQ.activePlayers()) {
-            if (p.id === s.mainPlayerId) continue;
-            const guessed = s.answersByPlayer?.[p.id];
-            const pts = guessed === truth ? 1 : 0;
-            if (pts) FMQ.awardPoints(p.id, pts);
-            lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${guessed || "-"} → <b>+${pts}</b></div>`);
-          }
-          FMQ.pausePlayback().catch(() => {});
-          FMQ.renderModeLikeQuick3({
-            heading: `Auflösung: ${mainName}`,
-            subtitle: "",
-            heroName: "",
-            panelClass: "theme-playlist",
-            bodyHtml: `<div class="socialRevealBig"><div class="socialTruthLine">${mainName} wählt: <b>Song ${truth}</b></div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>`
-          });
-          FMQ.app.state.social = null;
-          FMQ.renderScoreTable();
-          FMQ.markFinalRoundIfNeeded();
-          FMQ.$("socialDoneBtn").onclick = () => FMQ.onNext();
-        };
+        FMQ.$("bfRevealBtn").onclick = () => FMQ.modes.bestFit.finishReveal();
       }
     },
     onReveal() { return { skipReveal: true, disableReveal: true }; }

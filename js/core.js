@@ -98,6 +98,7 @@ FMQ.app = {
     introPlaylistGuess: { answers: {}, responderIndex: 0 },
     quick3: { clipSeconds: 3, randomStartMs: null, answers: {} },
     playStartModes: {},
+    deviceMode: "single",
     pauseApplyMode: "next",
     social: null,
     finalRound: { pending: false, roundNumber: null },
@@ -200,26 +201,35 @@ FMQ.getEndTargetText = () => FMQ.app.config.endType === "points"
 
 FMQ.getWinnerByScore = () => [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
 
-FMQ.buildPlayersConfig = () => {
-  const n = Math.max(1, Math.min(15, parseInt(FMQ.$("playerCountInput").value || "1", 10)));
-  FMQ.$("playerCountInput").value = String(n);
-
+FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
+  const input = FMQ.$("playerCountInput");
+  const minPlayers = FMQ.isMultiDevice?.() ? 0 : 1;
   const old = FMQ.app.players;
+  const requested = preserveCount ? old.length : parseInt(input.value || String(minPlayers || 1), 10);
+  const n = Math.max(minPlayers, Math.min(15, Number.isFinite(requested) ? requested : minPlayers));
+  input.min = String(minPlayers);
+  input.value = String(n);
+
   FMQ.app.players = [];
   const wrap = document.createElement("div");
   wrap.className = "player-grid";
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
-    const p = { id: crypto.randomUUID(), name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: 0, active: prev.active !== false, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
+    const p = { id: prev.id || crypto.randomUUID(), remoteId: prev.remoteId, remoteConnected: prev.remoteConnected, name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: prev.score || 0, active: prev.active !== false, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "player-card";
     const statusHtml = (p.tracks?.length || 0) >= 5
       ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
       : "noch nicht geladen";
-    row.innerHTML = `<div class="player-card-head"><span class="pill">Spieler ${i + 1}</span><button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
+    const remotePill = p.remoteId ? `<span class="pill ${p.remoteConnected ? "ok" : ""}">${p.remoteConnected ? "Handy online" : "Handy offline"}</span>` : `<span class="pill">Spieler ${i + 1}</span>`;
+    row.innerHTML = `<div class="player-card-head">${remotePill}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
     wrap.appendChild(row);
+  }
+
+  if (!n && FMQ.isMultiDevice?.()) {
+    wrap.innerHTML = `<div class="muted multiEmptyPlayers">Noch keine Handy-Spieler verbunden. Handys öffnen /player, geben den Raumcode ein und nutzen bei Rejoin exakt denselben Namen.</div>`;
   }
 
   FMQ.$("playersConfig").innerHTML = "";
@@ -279,6 +289,7 @@ FMQ.buildPlayersConfig = () => {
 
   FMQ.rebuildTrackUniverse();
   FMQ.checkReadyToStart();
+  FMQ.renderMultiplayerPanel?.();
 };
 
 FMQ.refreshConnStatus = () => {
