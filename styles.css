@@ -461,3 +461,13 @@ body.joined .player-focus-card{ min-height:clamp(180px,44vh,420px); }
 body.joined .player-active-panel{ margin-top:4px; }
 .player-control-panel:has(button:only-child){ grid-template-columns:1fr; }
 body.joined.player-body{ place-items:start center; }
+
+[hidden]{ display:none!important; }
+body.joined #joinForm,
+body.joined #playerStatus{ display:none!important; }
+body.joined #promptPanel{ margin-top:0; }
+.joined-view{ display:grid; grid-template-rows:auto minmax(0,1fr) auto auto; gap:12px; min-height:calc(100vh - 28px); }
+body.joined .player-shell{ width:min(720px,100%); }
+body.joined .player-card-mobile{ min-height:calc(100vh - 36px); }
+body.joined .player-prompt-panel{ min-height:0; display:grid; }
+body.joined .player-prompt-panel:empty::before{ content:"Warte auf Auswahl …"; display:grid; place-items:center; min-height:55vh; padding:14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); text-align:center; font-size:clamp(28px,8vw,54px); font-weight:950; }

@@ -36,9 +36,20 @@ FMQ.loadSocketIoClient = () => {
 };
 
 FMQ.setDeviceMode = (mode) => {
-  FMQ.app.state.deviceMode = mode === "multi" ? "multi" : "single";
-  FMQ.multiplayer.enabled = FMQ.app.state.deviceMode === "multi";
-  if (!FMQ.multiplayer.enabled) FMQ.closeMultiplayerRoom?.();
+  const nextMode = mode === "multi" ? "multi" : "single";
+  const wasMulti = FMQ.multiplayer.enabled === true;
+  FMQ.app.state.deviceMode = nextMode;
+  FMQ.multiplayer.enabled = nextMode === "multi";
+
+  if (!FMQ.multiplayer.enabled) {
+    if (wasMulti) FMQ.closeMultiplayerRoom?.();
+    if (FMQ.$("playerCountInput")) {
+      FMQ.$("playerCountInput").min = "1";
+      if (!FMQ.app.players.length) FMQ.$("playerCountInput").value = "1";
+    }
+    if (!FMQ.app.players.length) FMQ.buildPlayersConfig?.();
+  }
+
   FMQ.renderDeviceModePanel?.();
   FMQ.renderSetupWizard?.();
 };
@@ -116,17 +127,23 @@ FMQ.ensureRemotePlayer = (remotePlayer) => {
 };
 
 FMQ.syncRemotePlayers = (remotePlayers = []) => {
+  if (!FMQ.isMultiDevice()) return;
   remotePlayers.forEach(FMQ.ensureRemotePlayer);
   const remoteIds = new Set(remotePlayers.map(p => p.id));
   FMQ.app.players.forEach(p => {
     if (p.remoteId && !remoteIds.has(p.remoteId)) p.remoteConnected = false;
   });
   const input = FMQ.$("playerCountInput");
-  if (input && FMQ.isMultiDevice()) input.value = String(FMQ.app.players.length);
+  if (input) input.value = String(FMQ.app.players.length);
   FMQ.rebuildTrackUniverse?.();
-  FMQ.buildPlayersConfig?.({ preserveCount: true });
-  FMQ.renderMultiplayerPanel?.();
-  FMQ.checkReadyToStart?.();
+
+  // Socket room snapshots can arrive while the user is tapping category/mode cards.
+  // Rebuilding the prep form at that moment re-renders setup and can swallow those clicks.
+  // Only rebuild the playlist/player form once the setup is actually on the prep step.
+  if ((FMQ.app.state.setupStep || 1) === 4) {
+    FMQ.buildPlayersConfig?.({ preserveCount: true });
+    FMQ.checkReadyToStart?.();
+  }
 };
 
 FMQ.playerUrlWithRoom = (baseUrl) => {
@@ -199,6 +216,7 @@ FMQ.bindMultiplayerSocket = (socket) => {
     FMQ.renderMultiplayerPanel?.();
   });
   socket.on("host:players", snapshot => {
+    if (!FMQ.isMultiDevice()) return;
     FMQ.multiplayer.roomCode = snapshot.roomCode || FMQ.multiplayer.roomCode;
     FMQ.multiplayer.hostUrls = snapshot.hostUrls || FMQ.multiplayer.hostUrls || [];
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();

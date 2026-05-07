@@ -420,6 +420,51 @@ FMQ.renderPlayStyleButtons = () => {
   });
 };
 
+FMQ.selectSetupCategory = (category) => {
+  if (!category) return;
+  FMQ.app.config.category = category;
+  FMQ.app.config.party = "rotate";
+  if (FMQ.$("partySelect")) FMQ.$("partySelect").value = "rotate";
+  FMQ.app.state.setupStep = 3;
+  FMQ.renderModeButtons();
+  FMQ.syncSetupForMode();
+  FMQ.renderSetupWizard();
+};
+
+FMQ.selectSetupMode = (modeId) => {
+  if (!modeId) return;
+  FMQ.$("modeSelect").value = modeId;
+  FMQ.app.config.mode = modeId;
+  FMQ.renderModeHints();
+  FMQ.renderModeButtons();
+  FMQ.syncSetupForMode();
+  FMQ.app.state.setupStep = 4;
+  FMQ.renderSetupWizard();
+};
+
+FMQ.handleSetupPointerNavigation = (event) => {
+  if (!FMQ.$("screenSetup")?.classList.contains("active")) return;
+  const target = event.target.closest?.("#singleDeviceModeBtn,#multiDeviceModeBtn,[data-category],[data-mode-id]");
+  if (!target) return;
+  event.preventDefault();
+  if (target.id === "singleDeviceModeBtn") {
+    FMQ.setDeviceMode?.("single");
+    FMQ.showMultiDeviceHint?.("Ein-Gerät-Modus aktiv.");
+    return;
+  }
+  if (target.id === "multiDeviceModeBtn") {
+    FMQ.enableMultiDeviceMode?.().catch(e => FMQ.showMultiDeviceHint?.(e.message));
+    return;
+  }
+  if (target.hasAttribute("data-category")) {
+    FMQ.selectSetupCategory(target.getAttribute("data-category"));
+    return;
+  }
+  if (target.hasAttribute("data-mode-id")) {
+    FMQ.selectSetupMode(target.getAttribute("data-mode-id"));
+  }
+};
+
 FMQ.renderModeButtons = () => {
   const modeMeta = [
     { id: "quick3", label: "Song erraten", category: FMQ.MODE_INFO.quick3.category },
@@ -437,15 +482,7 @@ FMQ.renderModeButtons = () => {
   }
   FMQ.$("modeButtons").innerHTML = allowed.map(m => `<button class="menu-card modeBtn ${m.id===FMQ.app.config.mode?"active":""}" data-mode-id="${m.id}"><span class="card-title">${m.label}</span><span class="card-subtitle">${FMQ.escapeHtml(FMQ.MODE_INFO[m.id]?.hint || "")}</span></button>`).join("");
   FMQ.$("modeButtons").querySelectorAll("[data-mode-id]").forEach(btn => {
-    btn.onclick = () => {
-      FMQ.$("modeSelect").value = btn.getAttribute("data-mode-id");
-      FMQ.app.config.mode = FMQ.$("modeSelect").value;
-      FMQ.renderModeHints();
-      FMQ.renderModeButtons();
-      FMQ.syncSetupForMode();
-      FMQ.app.state.setupStep = 4;
-      FMQ.renderSetupWizard();
-    };
+    btn.onclick = () => FMQ.selectSetupMode(btn.getAttribute("data-mode-id"));
   });
 };
 
@@ -523,6 +560,10 @@ FMQ.goToSetupStep = (step) => {
 };
 
 FMQ.init = async () => {
+  if (!FMQ.setupPointerNavigationBound) {
+    FMQ.setupPointerNavigationBound = true;
+    document.addEventListener("pointerdown", FMQ.handleSetupPointerNavigation, true);
+  }
   if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => {
     if (!FMQ.isMultiDevice?.()) FMQ.setDeviceMode?.("single");
     FMQ.goToSetupStep(2);
@@ -597,16 +638,7 @@ FMQ.init = async () => {
   };
   FMQ.$("playerCountInput").addEventListener("change", rebuildFromPlayerCount);
   document.querySelectorAll("[data-category]").forEach(btn => {
-    btn.onclick = () => {
-      const category = btn.getAttribute("data-category");
-      FMQ.app.config.category = category;
-      FMQ.app.config.party = "rotate";
-      FMQ.$("partySelect").value = "rotate";
-      FMQ.app.state.setupStep = 3;
-      FMQ.renderModeButtons();
-      FMQ.syncSetupForMode();
-      FMQ.renderSetupWizard();
-    };
+    btn.onclick = () => FMQ.selectSetupCategory(btn.getAttribute("data-category"));
   });
   FMQ.$("setupBackBtn").onclick = () => FMQ.goToSetupStep((FMQ.app.state.setupStep || 1) - 1);
   FMQ.$("setupNextBtn").onclick = () => {

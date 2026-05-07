@@ -28,10 +28,9 @@
     state.controllerActions = [];
     $("joinForm").hidden = false;
     $("playerStatus").hidden = false;
-    $("activePanel").hidden = true;
+    $("joinedView").hidden = true;
     $("controlPanel").hidden = true;
     $("controlPanel").innerHTML = "";
-    $("joinedName").hidden = true;
     $("joinedName").textContent = "";
     $("promptPanel").innerHTML = "";
     setStatus(message);
@@ -41,9 +40,8 @@
     document.body.classList.add("joined");
     $("joinForm").hidden = true;
     $("playerStatus").hidden = true;
-    $("joinedName").hidden = false;
+    $("joinedView").hidden = false;
     $("joinedName").textContent = state.player?.name || "";
-    $("activePanel").hidden = false;
   };
 
   const isRecipient = prompt => {

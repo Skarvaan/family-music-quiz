@@ -9,7 +9,6 @@
 <body class="player-body">
   <main class="player-shell">
     <section class="player-card-mobile">
-      <div id="joinedName" class="joined-name" hidden></div>
       <div class="eyebrow player-brand">Family Music Quiz</div>
       <h1 class="player-title">Family Music Quiz</h1>
 
@@ -24,10 +23,14 @@
       </form>
 
       <section id="playerStatus" class="player-status-panel muted">Raumcode und Namen eingeben.</section>
-      <section id="promptPanel" class="player-prompt-panel"></section>
-      <section id="controlPanel" class="player-control-panel" hidden></section>
-      <section id="activePanel" class="player-active-panel" hidden>
-        <label class="playerSwitchRow"><span>Ich spiele aktiv mit</span><input id="activeToggle" type="checkbox" checked></label>
+
+      <section id="joinedView" class="joined-view" hidden>
+        <div id="joinedName" class="joined-name"></div>
+        <section id="promptPanel" class="player-prompt-panel"></section>
+        <section id="controlPanel" class="player-control-panel" hidden></section>
+        <section id="activePanel" class="player-active-panel">
+          <label class="playerSwitchRow"><span>Ich spiele aktiv mit</span><input id="activeToggle" type="checkbox" checked></label>
+        </section>
       </section>
     </section>
   </main>
