@@ -63,7 +63,7 @@
       return;
     }
     if (!prompt) {
-      panel.innerHTML = `<div class="player-wait-card player-focus-card"><b>${escapeHtml(state.player.name)}</b><br>Warte auf Auswahl …</div>`;
+      panel.innerHTML = `<div class="player-wait-card player-focus-card">Warte auf Auswahl …</div>`;
       return;
     }
     if (!isRecipient(prompt)) {

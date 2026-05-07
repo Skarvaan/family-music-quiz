@@ -126,6 +126,13 @@ FMQ.ensureRemotePlayer = (remotePlayer) => {
   return player;
 };
 
+
+FMQ.isSetupControlActive = () => {
+  const active = document.activeElement;
+  if (!active) return false;
+  return !!active.closest?.("#playersConfig,#multiplayerSetupPanel,#modeConfigArea,#setupNav");
+};
+
 FMQ.syncRemotePlayers = (remotePlayers = []) => {
   if (!FMQ.isMultiDevice()) return;
   remotePlayers.forEach(FMQ.ensureRemotePlayer);
@@ -141,6 +148,7 @@ FMQ.syncRemotePlayers = (remotePlayers = []) => {
   // Rebuilding the prep form at that moment re-renders setup and can swallow those clicks.
   // Only rebuild the playlist/player form once the setup is actually on the prep step.
   if ((FMQ.app.state.setupStep || 1) === 4) {
+    if (FMQ.isSetupControlActive?.()) return;
     FMQ.buildPlayersConfig?.({ preserveCount: true });
     FMQ.checkReadyToStart?.();
   }
@@ -454,6 +462,7 @@ FMQ.renderMultiplayerPanel = () => {
     </div>
   `;
   panels.forEach(panel => {
+    if (panel.contains(document.activeElement) && document.activeElement?.matches?.("select,input,button,textarea")) return;
     panel.style.display = "block";
     panel.innerHTML = html;
     panel.querySelectorAll('[data-role="multi-active"]').forEach(inp => inp.onchange = () => FMQ.setPlayerActive(inp.getAttribute("data-pid"), inp.checked));
