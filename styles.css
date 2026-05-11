@@ -492,3 +492,14 @@ body.joined .player-prompt-panel:empty::before{ min-height:72vh; font-size:clamp
 .multiEmergency summary{ cursor:pointer; font-weight:950; color:#fde68a; }
 .multiEmergency .row{ margin-top:8px; gap:8px; }
 .multiEmergency select{ flex:1 1 180px; }
+
+.playerOrderControls{ display:inline-flex; align-items:center; gap:6px; margin-left:auto; }
+.orderBadge{ display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:30px; border-radius:999px; background:rgba(34,211,238,.16); border:1px solid rgba(34,211,238,.35); color:#cffafe; font-weight:900; }
+.miniOrderBtn{ min-width:32px; height:30px; padding:0 8px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:var(--text); font-weight:900; cursor:pointer; }
+.miniOrderBtn:disabled{ opacity:.35; cursor:not-allowed; }
+.joinLiveCount{ margin-top:12px; padding:10px 12px; border-radius:14px; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.32); color:#dcfce7; }
+.phoneControlGroup{ display:grid; gap:8px; padding:10px; border-radius:18px; background:rgba(255,255,255,.07); border:1px solid var(--line); }
+.phoneControlMain:disabled{ opacity:1; cursor:default; }
+.phoneControlOptions{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.phoneControlOptions .action-button{ min-width:0; padding-left:8px; padding-right:8px; }
+@media (max-width: 560px){ .phoneControlOptions{ grid-template-columns:1fr; } .player-card-head{ gap:8px; } .playerOrderControls{ margin-left:0; } }

@@ -220,7 +220,7 @@ io.on("connection", socket => {
       ack?.({ ok: false, error: "Du hast gerade keine Steuerung." });
       return;
     }
-    const allowedActions = new Set((room.controllerActions || []).map(action => action.id));
+    const allowedActions = new Set((room.controllerActions || []).flatMap(action => [action.id, ...((action.options || []).map(option => option.id))]));
     if (!allowedActions.has(payload.action)) {
       ack?.({ ok: false, error: "Diese Steuerung ist gerade nicht verfügbar." });
       return;
@@ -235,7 +235,13 @@ io.on("connection", socket => {
       return;
     }
     room.controllerActions = Array.isArray(payload.actions)
-      ? payload.actions.filter(action => action && action.id && action.label).slice(0, 4).map(action => ({ id: String(action.id), label: String(action.label) }))
+      ? payload.actions.filter(action => action && action.id && action.label).slice(0, 8).map(action => ({
+        id: String(action.id),
+        label: String(action.label),
+        options: Array.isArray(action.options)
+          ? action.options.filter(option => option && option.id && option.label).slice(0, 4).map(option => ({ id: String(option.id), label: String(option.label) }))
+          : []
+      }))
       : [];
     emitRoomState();
     ack?.({ ok: true, controllerActions: room.controllerActions });

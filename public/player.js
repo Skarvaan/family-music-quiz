@@ -154,15 +154,33 @@
     });
   });
 
+  const sendControlAction = (action) => {
+    if (!action || !state.player) return;
+    socket.emit("player:controlAction", { playerId: state.player.id, action }, res => {
+      if (!res?.ok) {
+        setStatus(res?.error || "Steuerung gerade nicht verfügbar.");
+        return;
+      }
+      setStatus("Steuerung gesendet.");
+    });
+  };
+
   const renderController = () => {
     const panel = $("controlPanel");
     if (!panel || !state.player) return;
     const canControl = state.controllerId && state.controllerId === state.player.id;
     const actions = canControl ? (state.controllerActions || []) : [];
     panel.hidden = !canControl || actions.length === 0;
-    panel.innerHTML = actions.map(action => `<button class="action-button primary" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`).join("");
-    panel.querySelectorAll("[data-control]").forEach(btn => btn.onclick = () => socket.emit("player:controlAction", { playerId: state.player.id, action: btn.getAttribute("data-control") }, res => {
-      if (!res?.ok) setStatus(res?.error || "Steuerung gerade nicht verfügbar.");
+    panel.innerHTML = actions.map(action => {
+      const options = Array.isArray(action.options) ? action.options : [];
+      if (options.length) {
+        return `<div class="phoneControlGroup"><button type="button" class="action-button primary phoneControlMain" disabled>${escapeHtml(action.label)}</button><div class="phoneControlOptions">${options.map(opt => `<button type="button" class="action-button secondary" data-control="${escapeHtml(opt.id)}">${escapeHtml(opt.label)}</button>`).join("")}</div></div>`;
+      }
+      return `<button type="button" class="action-button primary" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`;
+    }).join("");
+    panel.querySelectorAll("[data-control]").forEach(btn => btn.addEventListener("click", event => {
+      event.preventDefault();
+      sendControlAction(btn.getAttribute("data-control"));
     }));
   };
 

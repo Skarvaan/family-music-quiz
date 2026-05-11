@@ -201,6 +201,16 @@ FMQ.getEndTargetText = () => FMQ.app.config.endType === "points"
 
 FMQ.getWinnerByScore = () => [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
 
+FMQ.movePlayerConfig = (playerId, delta) => {
+  const players = FMQ.app.players || [];
+  const index = players.findIndex(p => p.id === playerId || p.remoteId === playerId);
+  const nextIndex = index + delta;
+  if (index < 0 || nextIndex < 0 || nextIndex >= players.length) return;
+  const [player] = players.splice(index, 1);
+  players.splice(nextIndex, 0, player);
+  FMQ.buildPlayersConfig({ preserveCount: true });
+};
+
 FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
   const input = FMQ.$("playerCountInput");
   const minPlayers = FMQ.isMultiDevice?.() ? 0 : 1;
@@ -224,7 +234,8 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
       ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
       : "noch nicht geladen";
     const remotePill = p.remoteId ? `<span class="pill ${p.remoteConnected ? "ok" : ""}">${p.remoteConnected ? "Handy online" : "Handy offline"}</span>` : `<span class="pill">Spieler ${i + 1}</span>`;
-    row.innerHTML = `<div class="player-card-head">${remotePill}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
+    const orderControls = `<div class="playerOrderControls" aria-label="Reihenfolge"><span class="orderBadge">#${i + 1}</span><button data-role="move-player" data-delta="-1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === 0 ? "disabled" : ""}>↑</button><button data-role="move-player" data-delta="1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === n - 1 ? "disabled" : ""}>↓</button></div>`;
+    row.innerHTML = `<div class="player-card-head">${remotePill}${orderControls}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
     wrap.appendChild(row);
   }
 
@@ -240,6 +251,10 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
     if (p) p.name = inp.value.trim() || "Spieler";
     FMQ.checkReadyToStart();
   }));
+  FMQ.$("playersConfig").querySelectorAll('button[data-role="move-player"]').forEach(btn => btn.addEventListener("click", () => {
+    FMQ.movePlayerConfig(btn.getAttribute("data-pid"), parseInt(btn.getAttribute("data-delta"), 10));
+  }));
+
   FMQ.$("playersConfig").querySelectorAll('button[data-role="clear-name"]').forEach(btn => btn.addEventListener("click", () => {
     const pid = btn.getAttribute("data-pid");
     const inp = FMQ.$("playersConfig").querySelector(`input[data-role="name"][data-pid="${pid}"]`);
