@@ -503,6 +503,7 @@ body.joined .player-prompt-panel:empty::before{ min-height:72vh; font-size:clamp
 .phoneControlOptions{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .phoneControlOptions .action-button{ min-width:0; padding-left:8px; padding-right:8px; }
 @media (max-width: 560px){ .phoneControlOptions{ grid-template-columns:1fr; } .player-card-head{ gap:8px; } .playerOrderControls{ margin-left:0; } }
+<<<<<<< codex/refactor-code-for-game-functionality-and-structure-qojec2
 
 /* Compact party layout: avoid scrolling on tablets by keeping only actionable UI prominent. */
 .screen{ padding:10px; }
@@ -598,3 +599,5 @@ body.joined .player-prompt-panel:empty::before{ min-height:0; font-size:clamp(24
   .game-actions .action-button{ flex:1 1 46%; min-width:0; }
   .rankingSlots.twoCols{ grid-template-columns:1fr; }
 }
+=======
+>>>>>>> main
