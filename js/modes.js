@@ -1140,9 +1140,9 @@ FMQ.modes = {
       FMQ.$("playBFromStartBtn").onclick = () => play(trackB).catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("bestFitStopBtn").onclick = () => FMQ.pausePlayback().catch(() => {});
     },
-    choiceHtml(attr, fallback = false) {
+    choiceHtml(attr, fallback = false, prompt = "Was findest du besser?", sub = "Erzähl gerne, warum!") {
       const prefix = fallback ? "Fallback: " : "";
-      return `<div class="bestFitChoicePanel"><div class="choicePromptBig">Was findest du besser? <span>Erzähl gerne, warum!</span></div><div class="choiceGrid choiceGridBig bestFitPickGrid"><button class="choiceBtn bestFitPickBtn" ${attr}="A">${prefix}Song A wählen</button><button class="choiceBtn bestFitPickBtn" ${attr}="B">${prefix}Song B wählen</button></div></div>`;
+      return `<div class="bestFitChoicePanel"><div class="choicePromptBig">${FMQ.escapeHtml(prompt)} <span>${FMQ.escapeHtml(sub)}</span></div><div class="choiceGrid choiceGridBig bestFitPickGrid"><button class="choiceBtn bestFitPickBtn" ${attr}="A">${prefix}Song A wählen</button><button class="choiceBtn bestFitPickBtn" ${attr}="B">${prefix}Song B wählen</button></div></div>`;
     },
     async newSongs() {
       try { await FMQ.pausePlayback(); } catch {}
@@ -1206,8 +1206,8 @@ FMQ.modes = {
           const allDone = FMQ.modes.bestFit.allAnswered(expectedIds, answerMap);
           FMQ.modes.bestFit.clearAutoAdvance();
           FMQ.renderModeLikeQuick3({
-            heading: `Handy-Tipps: Welchen Song findet "${mainName}" besser?`,
-            subtitle: "Host spielt Song A/B. Alle aktiven Spieler stimmen gleichzeitig am Handy ab.",
+            heading: "Handy-Tipps laufen …",
+            subtitle: `Was glaubst du? Welchen Song findet ${mainName} besser?`,
             heroName: "",
             panelClass: "theme-playlist",
             bodyHtml: `<div class="bestFitStableArea">${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfToMainBtn" class="big primary" ${allDone ? "" : "disabled"}>${FMQ.escapeHtml(mainName)} löst auf</button></div></div>`
@@ -1225,11 +1225,11 @@ FMQ.modes = {
           return;
         }
         FMQ.renderModeLikeQuick3({
-          heading: `Welchen Song findet "${mainName}" besser?`,
+          heading: "Tipp-Runde",
           subtitle: "",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="bestFitStableArea"><div class="socialTurnLabel">${FMQ.escapeHtml(FMQ.getPlayerName(pid))} ist dran</div>${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.choiceHtml("data-pick")}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfNextBtn" class="big primary" disabled>Weiter</button></div></div>`
+          bodyHtml: `<div class="bestFitStableArea"><div class="socialTurnLabel">${FMQ.escapeHtml(FMQ.getPlayerName(pid))} ist dran</div>${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.choiceHtml("data-pick", false, `Was glaubst du? Welchen Song findet ${mainName} besser?`, "Tippe auf deinen Favoriten.")}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfNextBtn" class="big primary" disabled>Weiter</button></div></div>`
         });
         FMQ.modes.bestFit.bindTransport(trackA, trackB);
         FMQ.$("bestFitNewSongsBtn").onclick = () => FMQ.modes.bestFit.newSongs().catch(e => FMQ.setGameDebug(e.stack || e.message));

@@ -69,6 +69,21 @@ FMQ.setPlayerActive = (playerId, active, { notify = true } = {}) => {
   return true;
 };
 
+FMQ.skipMultiplayerPlayer = (playerId) => {
+  const player = FMQ.app.players.find(p => p.id === playerId || p.remoteId === playerId);
+  if (!player) return;
+  const wasCurrent = FMQ.currentPlayer()?.id === player.id;
+  FMQ.setPlayerActive(player.remoteId || player.id, false);
+  FMQ.showMultiDeviceHint?.(`${player.name} wurde für den Moment übersprungen.`);
+  if (wasCurrent && typeof FMQ.onNext === "function" && FMQ.$("screenGame")?.classList.contains("active")) {
+    FMQ.onNext();
+    return;
+  }
+  const mode = FMQ.app.config.mode;
+  if (FMQ.$("screenGame")?.classList.contains("active") && FMQ.modes?.[mode]?.renderArea) FMQ.modes[mode].renderArea();
+  FMQ.renderMultiplayerPanel?.();
+};
+
 FMQ.submitAnswer = (playerId, answer) => {
   const session = FMQ.app.state.social;
   if (!session) return null;
@@ -460,6 +475,7 @@ FMQ.renderMultiplayerPanel = () => {
           return `<div class="multiRosterRow ${p.active === false ? "paused" : ""}"><span><b>${FMQ.escapeHtml(p.name)}</b><small>${p.remoteConnected ? "online" : "offline"} · ${p.active === false ? "pausiert" : "aktiv"}${answered ? " · geantwortet" : ""}</small></span><label><input type="checkbox" data-role="multi-active" data-pid="${FMQ.escapeHtml(id)}" ${p.active !== false ? "checked" : ""}> aktiv</label></div>`;
         }).join("") || `<div class="muted">Noch keine Handy-Spieler verbunden.</div>`}
       </div>
+      <details class="multiEmergency"><summary>Notfall</summary><div class="muted">Wenn jemand nicht mehr abstimmt: Person kurz pausieren und nicht weiter auf sie warten.</div><div class="row"><select data-role="skip-player"><option value="">Person auswählen …</option>${players.map(p => `<option value="${FMQ.escapeHtml(p.remoteId || p.id)}">${FMQ.escapeHtml(p.name)}</option>`).join("")}</select><button class="action-button secondary" data-role="skip-player-btn">Person überspringen</button></div></details>
     </div>
   `;
   panels.forEach(panel => {
@@ -468,5 +484,9 @@ FMQ.renderMultiplayerPanel = () => {
     panel.innerHTML = html;
     panel.querySelectorAll('[data-role="multi-active"]').forEach(inp => inp.onchange = () => FMQ.setPlayerActive(inp.getAttribute("data-pid"), inp.checked));
     panel.querySelectorAll('[data-role="controller-select"]').forEach(sel => sel.onchange = () => FMQ.setMultiplayerController(sel.value || null));
+    panel.querySelectorAll('[data-role="skip-player-btn"]').forEach(btn => btn.onclick = () => {
+      const select = btn.closest("details")?.querySelector('[data-role="skip-player"]');
+      if (select?.value) FMQ.skipMultiplayerPlayer(select.value);
+    });
   });
 };

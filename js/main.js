@@ -388,7 +388,7 @@ FMQ.quitToMenu = async () => {
   FMQ.$("quick3RevealOverlay").classList.remove("show");
   FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("screenGame").classList.remove("quick3Active");
-  FMQ.app.state.setupStep = 1;
+  FMQ.app.state.setupStep = 3;
   FMQ.showScreen("screenSetup");
   FMQ.refreshPlaylistDropdowns();
   FMQ.resetMultiplayerRound?.();
