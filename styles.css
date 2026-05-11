@@ -477,3 +477,13 @@ body.joined .player-card-mobile{ min-height:calc(100vh - 16px); border-radius:18
 body.joined .player-focus-card{ min-height:clamp(360px,72vh,760px); font-size:clamp(34px,10vw,72px); }
 body.joined .player-question-card.player-focus-card{ min-height:clamp(420px,76vh,820px); }
 body.joined .player-prompt-panel:empty::before{ min-height:72vh; font-size:clamp(34px,10vw,72px); }
+.bestFitStableArea{ min-height:clamp(520px,62vh,780px); display:grid; align-content:start; gap:18px; }
+.bestFitTransportSettings{ display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:12px; width:min(560px,100%); }
+.bestFitTransportSettings label{ display:grid; gap:6px; font-weight:950; color:#dbeafe; }
+.playSongBtn{ background:linear-gradient(135deg,rgba(59,130,246,.95),rgba(14,165,233,.9)); border-color:rgba(147,197,253,.55); }
+.bestFitChoicePanel{ margin-top:4px; padding:18px; border:2px solid rgba(253,230,138,.42); border-radius:24px; background:rgba(120,53,15,.26); display:grid; gap:14px; }
+.choicePromptBig{ font-size:clamp(24px,3vw,38px); font-weight:950; text-align:center; color:#fde68a; }
+.choicePromptBig span{ display:block; font-size:clamp(15px,1.6vw,20px); color:#e2e8f0; margin-top:4px; }
+.bestFitPickBtn{ min-height:112px; background:linear-gradient(135deg,#f97316,#be123c); border:2px solid rgba(253,230,138,.75); box-shadow:0 16px 50px rgba(190,18,60,.25); font-size:clamp(24px,3vw,42px); }
+.bestFitPickBtn.selected{ background:linear-gradient(135deg,#22c55e,#16a34a); border-color:#bbf7d0; }
+@media (max-width:700px){ .bestFitTransportSettings{ grid-template-columns:1fr; } .bestFitStableArea{ min-height:auto; } .bestFitPickBtn{ min-height:92px; } }

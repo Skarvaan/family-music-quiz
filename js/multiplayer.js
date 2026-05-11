@@ -273,6 +273,7 @@ FMQ.collectVisibleHostControls = (root = document) => {
   ]);
   const preferredIds = [
     "bestFitContinueBtn", "ratingListenNextBtn", "revealBtnInline", "revealBtn", "bfToMainBtn", "bfRevealBtn",
+    "first3Play0_10", "first3Play0_20", "first3Play0_full", "first3Play1_10", "first3Play1_20", "first3Play1_full", "first3Play2_10", "first3Play2_20", "first3Play2_full", "iceStopBtn",
     "rankingNextBtn", "introGuessRevealBtn", "introGuessNextBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
   ];
   const actions = [];
@@ -333,7 +334,7 @@ FMQ.handleMultiplayerAnswer = (payload) => {
     const s = FMQ.app.state.social;
     if (payload.playerId === s?.mainPlayerId) FMQ.submitMainAnswer(payload.playerId, payload.answer);
     else FMQ.submitVote(payload.playerId, payload.answer);
-  } else if (payload.type === "ratingGuessAll") {
+  } else if (payload.type === "ratingGuessAll" || payload.type === "ratingGuessMain") {
     const s = FMQ.app.state.social;
     if (payload.playerId === s?.mainPlayerId) FMQ.submitMainAnswer(payload.playerId, parseInt(payload.answer, 10));
     else FMQ.submitVote(payload.playerId, parseInt(payload.answer, 10));
