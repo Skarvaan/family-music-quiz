@@ -136,7 +136,7 @@ FMQ.renderModeConfig = () => {
   if (mode === "ratingGuess") {
     area.innerHTML = `<div class="config-block"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   } else if (mode === "rankingList") {
-    area.innerHTML = `<div class="config-block"><label><b>Ranking-Größe</b></label><select id="rankingSizeSetupSelect"><option value="5">Top 5</option><option value="10">Top 10</option></select></div><div class="muted">Wird vor Spielstart festgelegt und bleibt bis Spielende unverändert.</div>`;
+    area.innerHTML = `<div class="config-block"><label><b>Ranking-Größe</b></label><select id="rankingSizeSetupSelect"><option value="5">Top 5 · 5 Runden</option><option value="10">Top 10 · 10 Runden</option></select></div><div class="muted">Top 5 spielt automatisch 5 Runden, Top 10 automatisch 10 Runden.</div>`;
   } else {
     area.innerHTML = `<div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   }
@@ -151,7 +151,12 @@ FMQ.renderModeConfig = () => {
   }
   if (FMQ.$("rankingSizeSetupSelect")) {
     FMQ.$("rankingSizeSetupSelect").value = String(FMQ.app.config.rankingSize || 5);
-    FMQ.$("rankingSizeSetupSelect").onchange = () => FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
+    FMQ.$("rankingSizeSetupSelect").onchange = () => {
+      FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
+      FMQ.app.config.targetRounds = FMQ.app.config.rankingSize;
+      if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").value = String(FMQ.app.config.rankingSize);
+      FMQ.syncSetupForMode?.();
+    };
   }
 };
 
@@ -332,7 +337,7 @@ FMQ.resetSession = () => {
   FMQ.app.state.isPlaying = false;
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
-  FMQ.app.state.rankingList = { size: 5, lists: {}, answers: {} };
+  FMQ.app.state.rankingList = { size: FMQ.app.config.rankingSize || 5, lists: {}, answers: {} };
   FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
   FMQ.app.state.quick3 = { clipSeconds: 3, randomStartMs: null, answers: {} };
   FMQ.app.state.social = null;

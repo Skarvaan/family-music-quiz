@@ -503,3 +503,101 @@ body.joined .player-prompt-panel:empty::before{ min-height:72vh; font-size:clamp
 .phoneControlOptions{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .phoneControlOptions .action-button{ min-width:0; padding-left:8px; padding-right:8px; }
 @media (max-width: 560px){ .phoneControlOptions{ grid-template-columns:1fr; } .player-card-head{ gap:8px; } .playerOrderControls{ margin-left:0; } }
+<<<<<<< codex/refactor-code-for-game-functionality-and-structure-qojec2
+
+/* Compact party layout: avoid scrolling on tablets by keeping only actionable UI prominent. */
+.screen{ padding:10px; }
+.setup-stage{ min-height:calc(100vh - 20px); gap:8px; align-items:stretch; }
+.screen-header{ margin:0 auto 10px; }
+.screen-header h2{ font-size:clamp(22px,3.2vw,36px); margin:4px 0; }
+.screen-header .muted,.card-subtitle,.hero-subtitle{ font-size:13px; }
+.menu-grid{ gap:10px; }
+.menu-card{ min-height:clamp(118px,18vh,168px); padding:16px; border-radius:20px; gap:8px; }
+.card-icon{ font-size:30px; }
+.card-title{ font-size:clamp(19px,2.4vw,28px); }
+.menu-card:hover,.menu-card:focus-visible,.menu-card.active{ transform:none; }
+.prep-screen{ padding-block:0; }
+.prep-layout{ grid-template-columns:minmax(230px,300px) 1fr; gap:10px; }
+.prep-summary,.players-prep{ padding:12px; }
+.section-title-row{ margin-bottom:8px; }
+.section-title-row h2,.prep-summary h2{ font-size:clamp(20px,2.5vw,30px); margin:2px 0; }
+.player-card{ padding:10px; gap:8px; border-radius:16px; }
+.player-grid{ gap:8px; }
+.setup-nav{ padding:6px; gap:8px; }
+
+#screenGame{ padding:8px; }
+.game-stage{ width:min(1180px,100%); min-height:calc(100vh - 16px); max-height:calc(100vh - 16px); grid-template-rows:auto auto minmax(0,1fr) auto; gap:6px; overflow:hidden; }
+.game-topbar{ grid-template-columns:auto 1fr; gap:6px; }
+.game-meta{ padding:8px 10px; gap:10px; align-items:center; }
+.game-meta .eyebrow,.game-mode-label + .muted,#turnInfo,.used-counter{ display:none; }
+.game-mode-label{ font-size:15px; white-space:nowrap; }
+.score-bar{ padding:6px; gap:6px; overflow:hidden; }
+.score-bar .scoreCard{ min-width:92px; flex:1 1 92px; padding:6px 8px; border-radius:12px; }
+.scoreCard .name{ font-size:13px; }
+.scoreCard .pts{ font-size:15px; }
+.scoreCard .span{ display:none; }
+.current-player-card{ padding:8px 12px; min-height:0; }
+.current-player-card .eyebrow{ display:none; }
+.turn-player-name{ font-size:clamp(28px,4vw,48px); margin:0; padding:0; }
+.mode-panel{ padding:8px; overflow:hidden; }
+.mode-panel>h2,.quick3Hero,.turn-flow-hint{ display:none!important; }
+.quick3Stage{ height:100%; align-items:center; }
+.quick3Panel{ width:100%; padding:12px; gap:10px; max-height:100%; overflow:hidden; }
+.quick3Panel h3{ font-size:clamp(18px,2.2vw,28px); margin:0 0 6px; }
+.quick3Controls{ gap:8px; }
+.quick3Controls button,.quick3Controls select,.abTransport button,.ratingTransportRow button{ min-height:44px; min-width:132px; }
+.game-actions{ padding:6px; gap:6px; }
+.game-actions .action-button{ min-height:44px; min-width:118px; padding:8px 12px; }
+.revealCenter{ margin-top:8px; padding-top:4px; }
+.socialTurnLabel{ font-size:clamp(20px,3vw,34px); margin:4px 0 8px; }
+.socialScaleBtn{ min-width:54px; min-height:54px; font-size:24px; }
+.choiceGrid{ gap:8px; }
+.choiceBtn{ min-width:112px; min-height:50px; padding:10px 12px; }
+.socialRevealBig{ font-size:clamp(16px,2vw,24px); gap:8px; }
+.socialTruthLine{ font-size:clamp(24px,3.5vw,44px); }
+.socialPointsBlock{ gap:5px; font-size:clamp(15px,2vw,22px); }
+.bestFitStableArea{ min-height:0; gap:8px; align-content:center; }
+.bestFitChoicePanel{ padding:10px; gap:8px; }
+.bestFitPickBtn{ min-height:68px; font-size:clamp(18px,2.5vw,30px); }
+.choicePromptBig{ font-size:clamp(18px,2.3vw,28px); }
+.rankingSongCard{ margin:8px auto; padding:10px; font-size:15px; border-radius:14px; }
+.rankingSlots{ gap:6px; }
+.rankingSlot{ min-height:42px; padding:6px; border-radius:12px; gap:8px; }
+.rankBadge{ flex-basis:30px; width:30px; height:30px; font-size:16px; }
+.first3List{ gap:8px; }
+.first3Row{ padding:8px; gap:6px; }
+.first3Descriptor{ font-size:16px; }
+#revealBox{ max-height:calc(100vh - 16px); }
+.overlay{ padding:8px; }
+.overlayCard{ max-height:calc(100vh - 16px); overflow:auto; }
+
+body.joined.player-body{ padding:8px; min-height:100svh; overflow:hidden; }
+body.joined .player-card-mobile{ min-height:calc(100svh - 16px); max-height:calc(100svh - 16px); padding:10px; gap:8px; overflow:hidden; }
+body.joined .joined-view{ min-height:0; grid-template-rows:auto minmax(0,1fr) auto auto; gap:8px; }
+body.joined .player-focus-card,body.joined .player-question-card.player-focus-card{ min-height:0; font-size:clamp(24px,8vw,52px); }
+body.joined .player-prompt-panel:empty::before{ min-height:0; font-size:clamp(24px,8vw,52px); }
+.player-question-card h2{ font-size:clamp(24px,8vw,44px); margin-bottom:6px; }
+.player-question-card p{ margin-bottom:8px; }
+.player-answer-grid,.player-check-grid{ gap:8px; margin-top:8px; }
+.abChoiceBig{ min-height:64px; }
+.player-control-panel{ gap:8px; }
+.player-active-panel{ font-size:13px; }
+
+@media (max-width:900px){
+  .prep-layout{ grid-template-columns:1fr; }
+  .prep-summary{ display:none; }
+  .game-topbar{ grid-template-columns:1fr; }
+  .game-meta{ display:none; }
+  .rankingSlots.twoCols{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:640px){
+  .screen{ padding:6px; }
+  .menu-grid,.menu-grid.two{ grid-template-columns:1fr; }
+  .game-stage{ min-height:calc(100svh - 12px); max-height:calc(100svh - 12px); }
+  .score-bar{ display:none; }
+  .turn-player-name{ font-size:30px; }
+  .game-actions .action-button{ flex:1 1 46%; min-width:0; }
+  .rankingSlots.twoCols{ grid-template-columns:1fr; }
+}
+=======
+>>>>>>> main

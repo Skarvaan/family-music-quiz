@@ -494,6 +494,7 @@ FMQ.modes = {
       FMQ.$("revealBtn").style.display = "none";
       FMQ.$("nextBtn").style.display = "none";
       FMQ.$("quick3Controls").style.display = "none";
+      if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "none";
       FMQ.renderModeLikeQuick3({ heading: "Finale Top-Listen", subtitle: "Es gibt keinen Gewinner – tippe einen Namen, um die Top-Liste ein-/auszublenden.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="choiceGrid" style="justify-content:center;">${FMQ.activePlayers().map(p => `<button class="choiceBtn" data-final-ranking="${p.id}">${FMQ.escapeHtml(p.name)}</button>`).join("")}</div><div id="finalRankingList" style="margin-top:12px;"></div><div class="row" style="justify-content:center; margin-top:10px;"><button id="rankingEndBtn" class="big primary">Zurück zum Start</button></div>` });
       let openPid = null;
       FMQ.$("modeArea").querySelectorAll("[data-final-ranking]").forEach(btn => btn.onclick = () => {
@@ -600,8 +601,7 @@ FMQ.modes = {
       });
     },
     async reveal() {
-      try { await FMQ.pausePlayback(); } catch {}
-      clearTimeout(FMQ.app.state.playTimer);
+      await FMQ.stopPlaybackNow?.();
       const sourceId = FMQ.app.state.currentSourcePlayerId;
       const validOwnerIds = FMQ.modes.introPlaylistGuess.matchingPlaylistOwnerIds(FMQ.app.state.currentTrack);
       let cnt = 0;
@@ -746,7 +746,7 @@ FMQ.modes = {
           });
           FMQ.modes.ratingGuess.bindTransport();
           if (FMQ.$("ratingRevealBtn")) FMQ.$("ratingRevealBtn").onclick = async () => {
-            try { await FMQ.socialPlaybackPause({ key: "rating" }); } catch {}
+            await FMQ.stopPlaybackNow?.();
             const truth = Math.max(1, Math.min(10, parseInt(String(s.mainAnswer || "0"), 10)));
             const lines = [];
             for (const p of FMQ.activePlayers()) {
@@ -778,7 +778,7 @@ FMQ.modes = {
           FMQ.$("ratingRevealBtn").disabled = false;
         });
         FMQ.$("ratingRevealBtn").onclick = async () => {
-          try { await FMQ.socialPlaybackPause({ key: "rating" }); } catch {}
+          await FMQ.stopPlaybackNow?.();
           const truth = Math.max(1, Math.min(10, parseInt(String(s.mainAnswer || "0"), 10)));
           const lines = [];
           for (const p of FMQ.activePlayers()) {
@@ -896,7 +896,8 @@ FMQ.modes = {
         };
         FMQ.bindPlayerStartModeSelect("knowStartModeSelect");
         FMQ.$("knowPlayBtn").onclick = () => FMQ.onQuick3Play(FMQ.getBoundStartMode("knowStartModeSelect")).catch(e => FMQ.setGameDebug(e.stack || e.message));
-        FMQ.$("knowRevealBtn").onclick = () => {
+        FMQ.$("knowRevealBtn").onclick = async () => {
+          await FMQ.stopPlaybackNow?.();
           s.mainAnswer = { artist: FMQ.$("knowTruthArtist").checked, title: FMQ.$("knowTruthTitle").checked, year: FMQ.$("knowTruthYear").checked };
           const truth = s.mainAnswer;
           FMQ.awardPoints(s.mainPlayerId, (truth.artist?1:0)+(truth.title?1:0)+(truth.year?1:0));
@@ -1099,7 +1100,7 @@ FMQ.modes = {
         if (pts) FMQ.awardPoints(p.id, pts);
         lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${guessed || "-"} → <b>+${pts}</b></div>`);
       }
-      FMQ.pausePlayback().catch(() => {});
+      FMQ.stopPlaybackNow?.();
       FMQ.revealMultiplayerPrompt?.({ truth, mode: "bestFit" });
       FMQ.renderModeLikeQuick3({
         heading: `Auflösung: ${mainName}`,

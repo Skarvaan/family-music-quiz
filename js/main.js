@@ -94,7 +94,15 @@ FMQ.ensureActiveTurnIndex = () => {
 };
 
 FMQ.syncSetupForMode = () => {
-  const hideEndControls = FMQ.app.config.category === "intro";
+  const selectedMode = FMQ.$("modeSelect")?.value || FMQ.app.config.mode;
+  const hideEndControls = FMQ.app.config.category === "intro" || selectedMode === "rankingList";
+  if (selectedMode === "rankingList") {
+    const size = FMQ.app.config.rankingSize || parseInt(FMQ.$("rankingSizeSetupSelect")?.value || "5", 10) || 5;
+    FMQ.app.config.endType = "rounds";
+    FMQ.app.config.targetRounds = size;
+    if (FMQ.$("endTypeSelect")) FMQ.$("endTypeSelect").value = "rounds";
+    if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").value = String(size);
+  }
   if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = hideEndControls ? "none" : "";
   if (FMQ.$("endTargetRow")) FMQ.$("endTargetRow").style.display = hideEndControls ? "none" : "";
 };
@@ -102,6 +110,50 @@ FMQ.syncSetupForMode = () => {
 // =========================================================
 // TURN-VORBEREITUNG / ZIEHLOGIK
 // =========================================================
+
+FMQ.stopPlaybackNow = async () => {
+  try { await FMQ.pausePlayback(); } catch {}
+  clearTimeout(FMQ.app.state.playTimer);
+  FMQ.app.state.playTimer = null;
+  if (FMQ.app.state.speed?.timer) clearInterval(FMQ.app.state.speed.timer);
+  const socialPlayback = FMQ.app.state.socialPlayback || {};
+  Object.values(socialPlayback).forEach(pb => { if (pb) pb.startedAt = null; });
+  FMQ.app.state.isPlaying = false;
+};
+
+FMQ.onNewTrack = async () => {
+  const mode = FMQ.app.config.mode;
+  if (mode === "bestFit") {
+    await FMQ.modes.bestFit.newSongs();
+    return;
+  }
+  await FMQ.stopPlaybackNow();
+  FMQ.resetMultiplayerRound?.();
+  FMQ.$("revealBox").style.display = "none";
+  FMQ.$("revealText").innerHTML = "";
+  FMQ.$("revealExtra").innerHTML = "";
+  FMQ.$("quick3RevealOverlay").classList.remove("show");
+  FMQ.app.state.currentTrack = null;
+  FMQ.app.state.currentSourcePlayerId = null;
+  FMQ.app.state.selfCheckPending = false;
+  FMQ.app.state.speed = null;
+  if (FMQ.app.state.social?.autoAdvanceTimer) clearInterval(FMQ.app.state.social.autoAdvanceTimer);
+  FMQ.app.state.quick3.randomStartMs = null;
+  FMQ.app.state.quick3.answers = {};
+  FMQ.app.state.quick3.multiReveal = false;
+  if (mode === "introPlaylistGuess") FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
+  if (mode === "rankingList") {
+    FMQ.app.state.rankingList.answers = {};
+    FMQ.app.state.rankingList.multiPromptTrackId = null;
+  }
+  if (FMQ.isSocialMode(mode)) FMQ.app.state.social = null;
+  FMQ.modes[mode]?.renderArea?.();
+  FMQ.$("revealBtn").disabled = mode === "quick3" ? false : true;
+  FMQ.$("nextBtn").disabled = true;
+  FMQ.renderHeader();
+  FMQ.renderScoreTable();
+  FMQ.refreshPhoneControls?.();
+};
 FMQ.prepareTrackForTurn = async () => {
   const mode = FMQ.app.config.mode;
   const draw = mode === "introPlaylistGuess"
@@ -129,6 +181,8 @@ FMQ.prepareTrackForTurn = async () => {
   }
 
   if (mode === "introPlaylistGuess") FMQ.modes.introPlaylistGuess.renderGuessUI();
+  if (FMQ.$("screenGame")?.classList.contains("active")) FMQ.renderHeader();
+  FMQ.refreshPhoneControls?.();
 };
 
 FMQ.resetTurnUI = () => {
@@ -159,6 +213,7 @@ FMQ.resetTurnUI = () => {
   FMQ.$("playToggleBtn").style.display = "";
   FMQ.$("revealBtn").style.display = "";
   FMQ.$("nextBtn").style.display = "";
+  if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "";
   FMQ.$("quick3Controls").style.display = "none";
   FMQ.$("screenGame").classList.remove("quick3Active");
   FMQ.$("readyBtn").textContent = "▶️ Play-Start";
@@ -178,17 +233,20 @@ FMQ.resetTurnUI = () => {
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
     FMQ.$("nextBtn").style.display = "none";
+    if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = mode === "introFirst3" ? "none" : "";
     FMQ.$("quick3Controls").style.display = "flex";
     FMQ.$("revealBtn").disabled = false;
   } else if (mode === "speedGuess") {
     FMQ.$("revealBtn").style.display = "none";
     FMQ.$("nextBtn").style.display = "none";
+    if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "";
     FMQ.$("readyBtn").disabled = false;
   } else if (FMQ.isSocialMode(mode)) {
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
     FMQ.$("nextBtn").style.display = "none";
+    if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "";
   } else {
     FMQ.$("readyBtn").disabled = false;
     FMQ.$("revealBtn").disabled = false;
@@ -268,10 +326,7 @@ FMQ.checkFinishAfterNext = () => {
 
 FMQ.onReveal = async () => {
   if (!FMQ.app.state.currentTrack) return;
-  try { await FMQ.pausePlayback(); } catch {}
-  clearTimeout(FMQ.app.state.playTimer);
-  FMQ.app.state.playTimer = null;
-  FMQ.app.state.isPlaying = false;
+  await FMQ.stopPlaybackNow();
   FMQ.$("playToggleBtn").disabled = true;
 
   const t = FMQ.app.state.currentTrack;
@@ -408,6 +463,10 @@ FMQ.startGame = () => {
     FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "5", 10));
   }
   if (FMQ.$("rankingSizeSetupSelect")) FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
+  if (FMQ.app.config.mode === "rankingList") {
+    FMQ.app.config.endType = "rounds";
+    FMQ.app.config.targetRounds = FMQ.app.config.rankingSize || 5;
+  }
   FMQ.resetSession();
   FMQ.resetMultiplayerRound?.();
   FMQ.showScreen("screenGame");
@@ -457,6 +516,7 @@ FMQ.handleSetupPointerNavigation = (event) => {
     return;
   }
   if (target.hasAttribute("data-category")) {
+    FMQ.suppressSetupClickUntil = Date.now() + 450;
     FMQ.selectSetupCategory(target.getAttribute("data-category"));
     return;
   }
@@ -563,6 +623,12 @@ FMQ.init = async () => {
   if (!FMQ.setupPointerNavigationBound) {
     FMQ.setupPointerNavigationBound = true;
     document.addEventListener("pointerdown", FMQ.handleSetupPointerNavigation, true);
+    document.addEventListener("click", event => {
+      if ((FMQ.suppressSetupClickUntil || 0) > Date.now()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
   }
   if (FMQ.$("setupNextBtn")) FMQ.$("setupNextBtn").onclick = () => {
     if (!FMQ.isMultiDevice?.()) FMQ.setDeviceMode?.("single");
@@ -656,6 +722,7 @@ FMQ.init = async () => {
   FMQ.$("readyBtn").onclick = () => FMQ.onReady().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("playToggleBtn").onclick = () => FMQ.onTogglePlay().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("revealBtn").onclick = () => FMQ.onReveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
+  if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").onclick = () => FMQ.onNewTrack().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("nextBtn").onclick = () => FMQ.onNext();
   FMQ.$("quitBtn").onclick = () => FMQ.quitToMenu();
   FMQ.$("endBtn").onclick = () => FMQ.quitToMenu();

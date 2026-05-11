@@ -299,7 +299,7 @@ FMQ.collectVisibleHostControls = (root = document) => {
     "ratingPlayBtn", "ratingStopBtn", "bfPlayBtn", "bfStopBtn", "introGuessPlayBtn", "introGuessStopBtn"
   ]);
   const preferredIds = [
-    "bestFitContinueBtn", "ratingListenNextBtn", "revealBtnInline", "revealBtn", "bfToMainBtn", "bfRevealBtn",
+    "bestFitContinueBtn", "ratingListenNextBtn", "revealBtnInline", "revealBtn", "newTrackBtn", "bestFitNewSongsBtn", "bfToMainBtn", "bfRevealBtn",
     "first3Play0_10", "first3Play0_20", "first3Play0_full", "first3Play1_10", "first3Play1_20", "first3Play1_full", "first3Play2_10", "first3Play2_20", "first3Play2_full", "iceStopBtn",
     "rankingNextBtn", "introGuessRevealBtn", "introGuessNextBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
   ];
@@ -367,6 +367,7 @@ FMQ.handleRemoteControlAction = (action) => {
     return false;
   };
   if (action === "reveal") clickFirst(["bfRevealBtn", "introGuessRevealBtn", "revealBtnInline", "revealBtn"]);
+  if (action === "newTrack") clickFirst(["newTrackBtn", "bestFitNewSongsBtn"]);
   if (action === "next") clickFirst(["bestFitContinueBtn", "ratingListenNextBtn", "bfToMainBtn", "rankingNextBtn", "socialDoneBtn", "introGuessNextBtn", "iceNextBtn", "nextBtn"]);
 };
 
