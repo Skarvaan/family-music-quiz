@@ -617,3 +617,14 @@ body.joined .player-prompt-panel:empty::before{ min-height:0; font-size:clamp(24
 .songPickBtn span{ color:var(--muted); font-size:14px; }
 @media (max-width:700px){ .challengeTypeGrid,.duelPair,.duelSongs{ grid-template-columns:1fr; } .songSelectList{ max-height:42vh; } }
 
+/* Mobile reliability: no hover-jump on phones; every answer/control button is a stable tap target. */
+.player-body button,.player-body .choiceBtn,.player-body .action-button{ touch-action:manipulation; -webkit-tap-highlight-color:rgba(34,211,238,.22); }
+.player-body button:not(:disabled):hover,.player-body .choiceBtn:not(:disabled):hover,.player-body .action-button:not(:disabled):hover{ transform:none; filter:none; }
+body.joined .player-card-mobile,body.joined .joined-view,body.joined .player-prompt-panel{ min-height:0; }
+body.joined .player-prompt-panel{ overflow:hidden; }
+body.joined .song-select-card{ display:grid!important; grid-template-rows:auto auto auto auto minmax(0,1fr); max-height:calc(100svh - 130px); overflow:hidden!important; align-content:stretch!important; }
+.songSelectList{ min-height:0; max-height:none; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; border-radius:14px; padding:2px 4px 10px 0; }
+.songPickBtn{ width:100%; color:var(--fg); border:1px solid var(--line); touch-action:manipulation; transform:none!important; }
+.songPickBtn:active,.choiceBtn:active,.action-button:active{ filter:brightness(1.15); }
+.songPickBtn:disabled{ opacity:.6; }
+@media (max-width:700px){ body.joined .song-select-card{ max-height:calc(100svh - 120px); } }

@@ -53,9 +53,17 @@
 
   const renderSongSelectPrompt = (panel, prompt) => {
     const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
+    const pickTrack = (trackId) => {
+      if (!trackId || state.answeredPromptId === prompt.id) return;
+      const track = tracks.find(t => t.id === trackId);
+      if (!track) return;
+      panel.querySelectorAll("[data-track-id]").forEach(btn => { btn.disabled = true; });
+      submitAnswer(track);
+    };
+
     const renderList = (query = "") => {
       const q = query.trim().toLowerCase();
-      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q)).slice(0, 28);
+      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
       const list = panel.querySelector("#songSelectList");
       if (!list) return;
       list.innerHTML = filtered.map(t => `
@@ -63,10 +71,6 @@
           <b>${escapeHtml(t.name)}</b><span>${escapeHtml(t.artistName || "")}${t.year ? ` · ${escapeHtml(t.year)}` : ""}</span>
         </button>
       `).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
-      list.querySelectorAll("[data-track-id]").forEach(btn => btn.onclick = () => {
-        const track = tracks.find(t => t.id === btn.getAttribute("data-track-id"));
-        if (track) submitAnswer(track);
-      });
     };
 
     panel.innerHTML = `
@@ -79,6 +83,13 @@
         <div id="songSelectList" class="songSelectList"></div>
       </div>
     `;
+    const list = panel.querySelector("#songSelectList");
+    list.addEventListener("click", event => {
+      const btn = event.target.closest?.("[data-track-id]");
+      if (!btn) return;
+      event.preventDefault();
+      pickTrack(btn.getAttribute("data-track-id"));
+    });
     const input = panel.querySelector("#songSearchInput");
     input.oninput = () => renderList(input.value);
     renderList("");
@@ -143,6 +154,7 @@
     }, res => {
       if (!res?.ok) {
         setStatus(res?.error || "Antwort konnte nicht gesendet werden.");
+        renderPrompt();
         return;
       }
       state.answeredPromptId = state.prompt.id;

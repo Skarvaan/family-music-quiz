@@ -1448,7 +1448,8 @@ FMQ.modes = {
         const duel = st.duels[st.currentDuelIndex];
         this.startCurrentDuelPrompt(st);
         const ready = !!(duel?.submissionA && duel?.submissionB);
-        FMQ.renderModeLikeQuick3({ heading: `Prompt ${st.currentDuelIndex + 1}/${st.duels.length}`, subtitle: duel?.promptText || "", heroName: "", panelClass: "theme-playlist", bodyHtml: duel ? `<div class="duelPair"><span>${FMQ.escapeHtml(this.playerName(duel.playerAId))}: ${duel.submissionA ? "✅" : "…"}</span><span>${FMQ.escapeHtml(this.playerName(duel.playerBId))}: ${duel.submissionB ? "✅" : "…"}</span></div><div class="row" style="justify-content:center;"><button id="duelNextPromptBtn" class="big primary" ${ready ? "" : "disabled"}>${st.currentDuelIndex + 1 >= st.duels.length ? "Auswertung starten" : "Nächster Prompt"}</button></div>` : `<div class="bad">Zu wenige Spieler für Duelle.</div>` });
+        const readyCount = [duel?.submissionA, duel?.submissionB].filter(Boolean).length;
+        FMQ.renderModeLikeQuick3({ heading: `Prompt ${st.currentDuelIndex + 1}/${st.duels.length}`, subtitle: duel?.promptText || "", heroName: "", panelClass: "theme-playlist", bodyHtml: duel ? `<div class="challengeProgress"><b>${readyCount}/2</b> bereit</div><div class="muted" style="text-align:center;">Frage bereit. Sobald beide Songs eingeloggt sind, geht es weiter.</div><div class="row" style="justify-content:center;"><button id="duelNextPromptBtn" class="big primary" ${ready ? "" : "disabled"}>${st.currentDuelIndex + 1 >= st.duels.length ? "Auswertung starten" : "Nächster Prompt"}</button></div>` : `<div class="bad">Zu wenige Spieler für Duelle.</div>` });
         if (FMQ.$("duelNextPromptBtn")) FMQ.$("duelNextPromptBtn").onclick = () => { FMQ.resetMultiplayerRound?.(); if (st.currentDuelIndex + 1 >= st.duels.length) { st.phase = "duelReveal"; st.currentDuelIndex = 0; } else st.currentDuelIndex++; this.renderArea(); };
         return;
       }
