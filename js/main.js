@@ -95,7 +95,7 @@ FMQ.ensureActiveTurnIndex = () => {
 
 FMQ.syncSetupForMode = () => {
   const selectedMode = FMQ.$("modeSelect")?.value || FMQ.app.config.mode;
-  const hideEndControls = FMQ.app.config.category === "intro" || selectedMode === "rankingList";
+  const hideEndControls = FMQ.app.config.category === "intro" || selectedMode === "rankingList" || selectedMode === "songChallenge";
   if (selectedMode === "rankingList") {
     const size = FMQ.app.config.rankingSize || parseInt(FMQ.$("rankingSizeSetupSelect")?.value || "5", 10) || 5;
     FMQ.app.config.endType = "rounds";
@@ -166,16 +166,16 @@ FMQ.prepareTrackForTurn = async () => {
 
   if (mode === "bestFit") {
     const me = FMQ.currentPlayer();
-    const ownIds = FMQ.shuffle((me.tracks || []).map(t => t.id).filter(id => id && !FMQ.app.usedTrackIds.has(id)));
+    const ownIds = FMQ.shuffle((me.tracks || []).map(t => t.id).filter(id => id && !FMQ.isTrackUsed(id)));
     if (ownIds.length < 2) throw new Error("Für Song A/B werden mindestens 2 ungenutzte Songs in der Haupt-Playlist benötigt.");
     const aId = ownIds.pop();
     const bId = ownIds.pop();
-    FMQ.app.usedTrackIds.add(aId);
-    FMQ.app.usedTrackIds.add(bId);
     FMQ.app.state.bestFitTracks = {
       a: FMQ.app.trackMap.get(aId),
       b: FMQ.app.trackMap.get(bId)
     };
+    FMQ.markTrackUsed(FMQ.app.state.bestFitTracks.a);
+    FMQ.markTrackUsed(FMQ.app.state.bestFitTracks.b);
     FMQ.app.state.currentTrack = FMQ.app.state.bestFitTracks.a;
     FMQ.app.state.currentSourcePlayerId = me.id;
   }
@@ -241,12 +241,12 @@ FMQ.resetTurnUI = () => {
     FMQ.$("nextBtn").style.display = "none";
     if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "";
     FMQ.$("readyBtn").disabled = false;
-  } else if (FMQ.isSocialMode(mode)) {
+  } else if (FMQ.isSocialMode(mode) || mode === "songChallenge") {
     FMQ.$("readyBtn").style.display = "none";
     FMQ.$("playToggleBtn").style.display = "none";
     FMQ.$("revealBtn").style.display = "none";
     FMQ.$("nextBtn").style.display = "none";
-    if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = "";
+    if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").style.display = mode === "songChallenge" ? "none" : "";
   } else {
     FMQ.$("readyBtn").disabled = false;
     FMQ.$("revealBtn").disabled = false;
@@ -342,10 +342,8 @@ FMQ.onReveal = async () => {
     return;
   }
   if (FMQ.app.state.speed?.timer) clearInterval(FMQ.app.state.speed.timer);
-  const owners = (t.owners || []).map(FMQ.getPlayerName).join(", ");
-
   FMQ.$("revealBox").style.display = "block";
-  FMQ.$("revealText").innerHTML = `<div style="font-size:18px; font-weight:900;">${FMQ.escapeHtml(res.headline)}</div><div><b>${FMQ.escapeHtml(t.name)}</b><br><span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>Jahr: <b>${t.year}</b><br><span class="muted">${FMQ.escapeHtml(mode === "introPlaylistGuess" ? `Song ist in Playlist: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}` : `Quelle: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}`)}</span><br><span class="muted">${FMQ.escapeHtml(res.detail || "")}</span></div>`;
+  FMQ.$("revealText").innerHTML = `<div class="songRevealBlock"><div class="songRevealEyebrow">${FMQ.escapeHtml(res.headline)}</div><div class="songRevealTitle">${FMQ.escapeHtml(t.name)}</div><div class="songRevealArtist">${FMQ.escapeHtml(t.artists.join(", "))}</div><div class="songRevealYear">${t.year}</div><div class="muted">${FMQ.escapeHtml(mode === "introPlaylistGuess" ? `Song ist in Playlist: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}` : `Quelle: ${FMQ.getPlayerName(FMQ.app.state.currentSourcePlayerId)}`)}</div><div class="muted">${FMQ.escapeHtml(res.detail || "")}</div></div>`;
 
   if (mode === "guessSong") FMQ.modes.guessSong.renderRevealExtras();
   if (mode === "speedGuess") FMQ.modes.speedGuess.renderRevealExtras();
@@ -353,11 +351,11 @@ FMQ.onReveal = async () => {
   if (mode === "quick3") {
     FMQ.$("revealBox").style.display = "none";
     FMQ.$("quick3RevealContent").innerHTML = `
-      <div style="font-size:20px; font-weight:900; margin-bottom:8px;">${FMQ.escapeHtml(res.headline)}</div>
-      <div>
-        <b>${FMQ.escapeHtml(t.name)}</b><br>
-        <span class="muted">${FMQ.escapeHtml(t.artists.join(", "))}</span><br>
-        Jahr: <b>${t.year}</b>
+      <div class="songRevealBlock">
+        <div class="songRevealEyebrow">${FMQ.escapeHtml(res.headline)}</div>
+        <div class="songRevealTitle">${FMQ.escapeHtml(t.name)}</div>
+        <div class="songRevealArtist">${FMQ.escapeHtml(t.artists.join(", "))}</div>
+        <div class="songRevealYear">${t.year}</div>
       </div>
     `;
     FMQ.$("quick3ChkTitle").checked = false;
@@ -467,6 +465,11 @@ FMQ.startGame = () => {
     FMQ.app.config.endType = "rounds";
     FMQ.app.config.targetRounds = FMQ.app.config.rankingSize || 5;
   }
+  if (FMQ.app.config.mode === "songChallenge") {
+    FMQ.app.config.endType = "rounds";
+    FMQ.app.config.targetRounds = 1;
+    if (FMQ.$("songChallengeTypeSelect")) FMQ.app.config.songChallengeType = FMQ.$("songChallengeTypeSelect").value;
+  }
   FMQ.resetSession();
   FMQ.resetMultiplayerRound?.();
   FMQ.showScreen("screenGame");
@@ -475,12 +478,16 @@ FMQ.startGame = () => {
 
 FMQ.renderPlayStyleButtons = () => {
   document.querySelectorAll("[data-category]").forEach(btn => {
+    const isChallenge = btn.getAttribute("data-category") === "challenge";
+    btn.hidden = isChallenge && !FMQ.isMultiDevice?.();
+    btn.disabled = isChallenge && !FMQ.isMultiDevice?.();
     btn.classList.toggle("active", btn.getAttribute("data-category") === FMQ.app.config.category);
   });
 };
 
 FMQ.selectSetupCategory = (category) => {
   if (!category) return;
+  if (category === "challenge" && !FMQ.isMultiDevice?.()) return;
   FMQ.app.config.category = category;
   FMQ.app.config.party = "rotate";
   if (FMQ.$("partySelect")) FMQ.$("partySelect").value = "rotate";
@@ -532,9 +539,10 @@ FMQ.renderModeButtons = () => {
     { id: "ratingGuess", label: "Bewertung 1–10", category: FMQ.MODE_INFO.ratingGuess.category },
     { id: "bestFit", label: FMQ.MODE_INFO.bestFit.label, category: FMQ.MODE_INFO.bestFit.category },
     { id: "introPlaylistGuess", label: "Aus welcher Playlist?", category: FMQ.MODE_INFO.introPlaylistGuess.category },
-    { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category }
+    { id: "introFirst3", label: FMQ.MODE_INFO.introFirst3.label, category: FMQ.MODE_INFO.introFirst3.category },
+    { id: "songChallenge", label: FMQ.MODE_INFO.songChallenge.label, category: FMQ.MODE_INFO.songChallenge.category }
   ];
-  const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category);
+  const allowed = modeMeta.filter(m => m.category === FMQ.app.config.category && (m.id !== "songChallenge" || FMQ.isMultiDevice?.()));
   if (!allowed.some(m => m.id === FMQ.$("modeSelect").value)) {
     FMQ.$("modeSelect").value = allowed[0]?.id || "quick3";
     FMQ.app.config.mode = FMQ.$("modeSelect").value;
