@@ -616,3 +616,4 @@ body.joined .player-prompt-panel:empty::before{ min-height:0; font-size:clamp(24
 .songPickBtn{ display:grid; gap:3px; text-align:left; min-height:58px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.1); }
 .songPickBtn span{ color:var(--muted); font-size:14px; }
 @media (max-width:700px){ .challengeTypeGrid,.duelPair,.duelSongs{ grid-template-columns:1fr; } .songSelectList{ max-height:42vh; } }
+
