@@ -263,6 +263,8 @@ io.on("connection", socket => {
       waitingText: payload.waitingText || "",
       sentText: payload.sentText || "",
       kind: payload.kind || "",
+      tracksByPlayer: payload.tracksByPlayer && typeof payload.tracksByPlayer === "object" ? payload.tracksByPlayer : null,
+      meta: payload.meta && typeof payload.meta === "object" ? payload.meta : null,
       createdAt: Date.now()
     };
     room.answers = new Map();

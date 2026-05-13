@@ -40,6 +40,11 @@ FMQ.setDeviceMode = (mode) => {
   const wasMulti = FMQ.multiplayer.enabled === true;
   FMQ.app.state.deviceMode = nextMode;
   FMQ.multiplayer.enabled = nextMode === "multi";
+  if (!FMQ.multiplayer.enabled && FMQ.app.config.category === "challenge") {
+    FMQ.app.config.category = "self";
+    FMQ.app.config.mode = "quick3";
+    if (FMQ.$("modeSelect")) FMQ.$("modeSelect").value = "quick3";
+  }
 
   if (!FMQ.multiplayer.enabled) {
     if (wasMulti) FMQ.closeMultiplayerRoom?.();
@@ -388,6 +393,12 @@ FMQ.handleMultiplayerAnswer = (payload) => {
     FMQ.modes.introPlaylistGuess.submitAnswer(payload.playerId, payload.answer);
   } else if (payload.type === "rankingList") {
     FMQ.modes.rankingList.submitAnswer(payload.playerId, { track: FMQ.app.state.currentTrack, rank: parseInt(payload.answer, 10) });
+  } else if (payload.type === "songChallengeShared") {
+    FMQ.modes.songChallenge.submitShared(payload.playerId, payload.answer);
+  } else if (payload.type === "songChallengeDuelSubmit") {
+    FMQ.modes.songChallenge.submitDuel(payload.playerId, payload.answer, FMQ.multiplayer.prompt?.meta || {});
+  } else if (payload.type === "songChallengeDuelVote") {
+    FMQ.modes.songChallenge.submitVote(payload.playerId, payload.answer, FMQ.multiplayer.prompt?.meta || {});
   }
   if (FMQ.modes[mode]?.renderArea) FMQ.modes[mode].renderArea();
 };

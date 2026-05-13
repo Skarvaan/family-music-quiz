@@ -51,6 +51,39 @@
     return true;
   };
 
+  const renderSongSelectPrompt = (panel, prompt) => {
+    const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
+    const renderList = (query = "") => {
+      const q = query.trim().toLowerCase();
+      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q)).slice(0, 28);
+      const list = panel.querySelector("#songSelectList");
+      if (!list) return;
+      list.innerHTML = filtered.map(t => `
+        <button type="button" class="songPickBtn" data-track-id="${escapeHtml(t.id)}">
+          <b>${escapeHtml(t.name)}</b><span>${escapeHtml(t.artistName || "")}${t.year ? ` · ${escapeHtml(t.year)}` : ""}</span>
+        </button>
+      `).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
+      list.querySelectorAll("[data-track-id]").forEach(btn => btn.onclick = () => {
+        const track = tracks.find(t => t.id === btn.getAttribute("data-track-id"));
+        if (track) submitAnswer(track);
+      });
+    };
+
+    panel.innerHTML = `
+      <div class="player-question-card song-select-card">
+        <div class="eyebrow">Song-Challenge</div>
+        <h2>${escapeHtml(prompt.title || "Wähle einen Song")}</h2>
+        <p>${escapeHtml(prompt.text || "Suche in deiner Playlist und logge genau einen Song ein.")}</p>
+        <input id="songSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
+        <div class="muted">${tracks.length} Songs geladen · max. 300</div>
+        <div id="songSelectList" class="songSelectList"></div>
+      </div>
+    `;
+    const input = panel.querySelector("#songSearchInput");
+    input.oninput = () => renderList(input.value);
+    renderList("");
+  };
+
   const renderPrompt = () => {
     const panel = $("promptPanel");
     const prompt = state.prompt;
@@ -72,6 +105,11 @@
     }
     if (state.answeredPromptId === prompt.id) {
       panel.innerHTML = `<div class="player-wait-card ok player-focus-card">${escapeHtml(prompt.sentText || "Antwort gesendet. Bitte warten …")}</div>`;
+      return;
+    }
+
+    if (prompt.kind === "songSelect") {
+      renderSongSelectPrompt(panel, prompt);
       return;
     }
 
