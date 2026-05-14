@@ -1296,11 +1296,11 @@ FMQ.modes = {
   }
   ,
   songChallenge: {
-    label: "Song-Challenges",
+    label: "Song-Geschichten",
     supportsAllGuess: false,
-    promptPools() { return window.FMQ_SONG_PROMPTS || { sharedPrompts: [], duelPrompts: [] }; },
+    promptPools() { return window.FMQ_SONG_PROMPTS || { storyPrompts: [], duelPrompts: [] }; },
     pickPrompt(type = "shared") {
-      const list = type === "duel" ? this.promptPools().duelPrompts : this.promptPools().sharedPrompts;
+      const list = type === "duel" ? this.promptPools().duelPrompts : this.promptPools().storyPrompts;
       return FMQ.shuffle(list)[0] || { id: "fallback", text: "Wähle einen Song, der dazu passt." };
     },
     trackOptionsFor(player) {
@@ -1321,7 +1321,7 @@ FMQ.modes = {
     ensureState() {
       if (!FMQ.app.state.songChallenge) {
         FMQ.app.state.songChallenge = {
-          mode: FMQ.app.config.songChallengeType || "sharedPrompt",
+          mode: FMQ.app.config.songChallengeType || FMQ.app.config.mode || "storyPrompt",
           phase: "start",
           submissions: {},
           revealIndex: 0,
@@ -1334,20 +1334,20 @@ FMQ.modes = {
     playerName(id) { return FMQ.getPlayerName(id); },
     activeIds() { return FMQ.activePlayers().map(p => p.remoteId || p.id); },
     renderArea() {
-      FMQ.$("modeAreaTitle").textContent = "Song-Challenges";
+      FMQ.$("modeAreaTitle").textContent = FMQ.MODE_INFO[FMQ.app.config.mode]?.label || this.label;
       if (!FMQ.isMultiDevice?.()) {
         FMQ.renderModeLikeQuick3({ heading: "Nur im Mehrgeräte-Modus", subtitle: "Song-Challenges erscheinen nur, wenn Handys in der Lobby genutzt werden.", heroName: "", panelClass: "theme-playlist" });
         return;
       }
       const st = this.ensureState();
-      if (st.mode === "duelPrompt") this.renderDuel(st);
+      if (st.mode === "promptDuel") this.renderDuel(st);
       else this.renderShared(st);
       FMQ.renderScoreTable();
       FMQ.refreshPhoneControls?.();
     },
     startShared(st) {
       const prompt = this.pickPrompt("shared");
-      st.mode = "sharedPrompt";
+      st.mode = "storyPrompt";
       st.phase = "selecting";
       st.promptId = prompt.id;
       st.promptText = prompt.text;
@@ -1363,7 +1363,7 @@ FMQ.modes = {
         recipientIds: this.activeIds(),
         waitingText: "Die anderen wählen gerade ihren Song.",
         sentText: "Song eingeloggt. Warte auf die anderen …",
-        meta: { challengeMode: "sharedPrompt", promptId: prompt.id }
+        meta: { challengeMode: "storyPrompt", promptId: prompt.id }
       });
       this.renderArea();
     },
@@ -1371,20 +1371,19 @@ FMQ.modes = {
       const ids = this.activeIds();
       if (st.phase === "start") {
         FMQ.renderModeLikeQuick3({
-          heading: "Song-Challenge starten",
+          heading: "Song-Geschichten starten",
           subtitle: "Alle bekommen denselben Prompt und wählen je einen Song aus der eigenen Playlist.",
           heroName: "",
           panelClass: "theme-playlist",
-          bodyHtml: `<div class="challengeTypeGrid"><button id="startSharedChallengeBtn" class="big primary">Alle gleicher Prompt starten</button><button id="switchToDuelChallengeBtn" class="big secondary">Zu Song-Duell wechseln</button></div>`
+          bodyHtml: `<div class="challengeTypeGrid"><button id="startSharedChallengeBtn" class="big primary">Song-Geschichten starten</button></div>`
         });
         FMQ.$("startSharedChallengeBtn").onclick = () => this.startShared(st);
-        FMQ.$("switchToDuelChallengeBtn").onclick = () => { FMQ.app.config.songChallengeType = "duelPrompt"; FMQ.app.state.songChallenge = { mode: "duelPrompt", phase: "start", duels: [], currentDuelIndex: 0 }; this.renderArea(); };
         return;
       }
       const done = Object.keys(st.submissions || {}).length;
       if (st.phase === "selecting") {
         FMQ.renderModeLikeQuick3({
-          heading: "Alle gleicher Prompt",
+          heading: "Song-Geschichten",
           subtitle: st.promptText,
           heroName: "",
           panelClass: "theme-playlist",
@@ -1434,14 +1433,13 @@ FMQ.modes = {
         recipientIds: [duel.playerAId, duel.playerBId],
         waitingText: "Das aktuelle Duell sucht Songs aus.",
         sentText: "Song fürs Duell eingeloggt. Bitte warten …",
-        meta: { challengeMode: "duelPrompt", duelId: duel.duelId }
+        meta: { challengeMode: "promptDuel", duelId: duel.duelId }
       });
     },
     renderDuel(st) {
       if (st.phase === "start") {
-        FMQ.renderModeLikeQuick3({ heading: "Song-Duell", subtitle: "Jeder bekommt zwei Duell-Prompts. Pro Prompt haben genau zwei Personen dieselbe Aufgabe.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="challengeTypeGrid"><button id="startDuelChallengeBtn" class="big primary">Song-Duell starten</button><button id="switchToSharedChallengeBtn" class="big secondary">Zu Alle gleicher Prompt</button></div>` });
+        FMQ.renderModeLikeQuick3({ heading: "Song-Duell", subtitle: "Jeder bekommt zwei Duell-Prompts. Pro Prompt haben genau zwei Personen dieselbe Aufgabe.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="challengeTypeGrid"><button id="startDuelChallengeBtn" class="big primary">Song-Duell starten</button></div>` });
         FMQ.$("startDuelChallengeBtn").onclick = () => { st.duels = this.createDuels(); st.phase = "duelSelecting"; st.currentDuelIndex = 0; this.renderArea(); };
-        FMQ.$("switchToSharedChallengeBtn").onclick = () => { FMQ.app.config.songChallengeType = "sharedPrompt"; FMQ.app.state.songChallenge = { mode: "sharedPrompt", phase: "start", submissions: {}, revealIndex: 0 }; this.renderArea(); };
         return;
       }
       if (st.phase === "duelSelecting") {
@@ -1492,3 +1490,6 @@ FMQ.modes = {
   }
 
 };
+
+FMQ.modes.storyPrompt = Object.assign(Object.create(FMQ.modes.songChallenge), { label: "Song-Geschichten" });
+FMQ.modes.promptDuel = Object.assign(Object.create(FMQ.modes.songChallenge), { label: "Song-Duell" });

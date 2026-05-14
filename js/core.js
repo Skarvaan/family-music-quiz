@@ -12,7 +12,8 @@ FMQ.MODE_INFO = {
   bestFit: { label: "Song A oder B", category: "social", hint: "Welcher Song passt besser zur ausgewählten Person?" },
   introPlaylistGuess: { label: "Aus welcher Playlist ist das?", category: "intro", hint: "Alle raten nacheinander, aus welcher Playlist der Song stammt" },
   introFirst3: { label: "Meine ersten 3 Songs", category: "intro", hint: "Die vorbereiteten ersten 3 Songs jeder Playlist locker anhören" },
-  songChallenge: { label: "Song-Challenges", category: "challenge", hint: "Mehrgeräte-Modus: Prompts beantworten, Songs auswählen und Duelle abstimmen" }
+  storyPrompt: { label: "Song-Geschichten", category: "challenge", hint: "Wählt Songs aus, die etwas über euch erzählen. Kein Voting, keine Punkte." },
+  promptDuel: { label: "Song-Duell", category: "challenge", hint: "Zwei Songs treten gegeneinander an. Welcher passt besser zum Prompt?" }
 };
 FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit"].includes(modeId);
 
@@ -92,7 +93,7 @@ FMQ.app = {
     targetRounds: 5,
     ratingScoring: "classic",
     rankingSize: 5,
-    songChallengeType: "sharedPrompt"
+    songChallengeType: "storyPrompt"
   },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
@@ -164,8 +165,10 @@ FMQ.renderModeConfig = () => {
     area.innerHTML = `<div class="config-block"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   } else if (mode === "rankingList") {
     area.innerHTML = `<div class="config-block"><label><b>Ranking-Größe</b></label><select id="rankingSizeSetupSelect"><option value="5">Top 5 · 5 Runden</option><option value="10">Top 10 · 10 Runden</option></select></div><div class="muted">Top 5 spielt automatisch 5 Runden, Top 10 automatisch 10 Runden.</div>`;
-  } else if (mode === "songChallenge") {
-    area.innerHTML = `<div class="config-block"><label><b>Challenge-Typ</b></label><select id="songChallengeTypeSelect"><option value="sharedPrompt">Alle gleicher Prompt</option><option value="duelPrompt">Song-Duell / Quiplash</option></select></div><div class="muted">Nur Mehrgeräte: Spieler wählen Songs auf dem Handy aus ihren geladenen Playlists.</div>`;
+  } else if (mode === "storyPrompt") {
+    area.innerHTML = `<div class="muted"><b>Song-Geschichten:</b> Wählt Songs aus, die etwas über euch erzählen. Kein Voting, keine Punkte.</div>`;
+  } else if (mode === "promptDuel") {
+    area.innerHTML = `<div class="muted"><b>Song-Duell:</b> Zwei Songs treten gegeneinander an. Voting und Punkte sind aktiv.</div>`;
   } else {
     area.innerHTML = `<div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   }
@@ -186,10 +189,6 @@ FMQ.renderModeConfig = () => {
       if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").value = String(FMQ.app.config.rankingSize);
       FMQ.syncSetupForMode?.();
     };
-  }
-  if (FMQ.$("songChallengeTypeSelect")) {
-    FMQ.$("songChallengeTypeSelect").value = FMQ.app.config.songChallengeType || "sharedPrompt";
-    FMQ.$("songChallengeTypeSelect").onchange = () => { FMQ.app.config.songChallengeType = FMQ.$("songChallengeTypeSelect").value; };
   }
 };
 

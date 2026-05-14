@@ -43,6 +43,7 @@ FMQ.setDeviceMode = (mode) => {
   if (!FMQ.multiplayer.enabled && FMQ.app.config.category === "challenge") {
     FMQ.app.config.category = "self";
     FMQ.app.config.mode = "quick3";
+    FMQ.app.config.songChallengeType = "storyPrompt";
     if (FMQ.$("modeSelect")) FMQ.$("modeSelect").value = "quick3";
   }
 
