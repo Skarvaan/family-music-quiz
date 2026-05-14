@@ -84,11 +84,13 @@
 
     panel.innerHTML = `
       <div class="player-question-card song-select-card">
-        <div class="eyebrow">Song-Challenge</div>
-        <h2>${escapeHtml(prompt.title || "Wähle einen Song")}</h2>
-        <p>${escapeHtml(prompt.text || "Suche in deiner Playlist und wähle genau einen Song aus.")}</p>
-        <input id="songSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
-        <div class="muted">${tracks.length} Songs geladen · max. 300</div>
+        <div class="songSelectHeader">
+          <div class="eyebrow">Song-Challenge</div>
+          <h2>${escapeHtml(prompt.title || "Wähle einen Song")}</h2>
+          <p>${escapeHtml(prompt.text || "Suche in deiner Playlist und wähle genau einen Song aus.")}</p>
+          <input id="songSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
+          <div class="muted">${tracks.length} Songs geladen · max. 300</div>
+        </div>
         <div id="songSelectList" class="songSelectList"></div>
         <div class="songSubmitBar">
           <span id="songSelectedLabel" class="muted">Erst Song auswählen, dann abschicken.</span>
@@ -154,14 +156,16 @@
 
     panel.innerHTML = `
       <div class="player-question-card song-select-card multi-song-select-card">
-        <div class="eyebrow">Song-Duell</div>
-        <h2>${escapeHtml(prompt.title || "Wähle deine Songs")}</h2>
-        <p>${escapeHtml(prompt.text || "Wähle für jeden Prompt einen Song aus. Du kannst zwischen den Prompts wechseln und am Ende alles abschicken.")}</p>
-        <div class="duelPromptTabs">
-          ${assignments.map((a, idx) => `<button type="button" class="songPromptTab" data-duel-tab="${idx}">Prompt ${idx + 1}</button>`).join("")}
+        <div class="songSelectHeader">
+          <div class="eyebrow">Song-Duell</div>
+          <h2>${escapeHtml(prompt.title || "Wähle deine Songs")}</h2>
+          <p>${escapeHtml(prompt.text || "Wähle für jeden Prompt einen Song aus. Du kannst zwischen den Prompts wechseln und am Ende alles abschicken.")}</p>
+          <div class="duelPromptTabs">
+            ${assignments.map((a, idx) => `<button type="button" class="songPromptTab" data-duel-tab="${idx}">Prompt ${idx + 1}</button>`).join("")}
+          </div>
+          <div id="multiSongPromptTitle" class="phonePromptText"></div>
+          <input id="multiSongSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
         </div>
-        <div id="multiSongPromptTitle" class="phonePromptText"></div>
-        <input id="multiSongSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
         <div id="multiSongSelectList" class="songSelectList"></div>
         <div class="songSubmitBar">
           <span id="multiSongSelectedLabel" class="muted"></span>
@@ -214,9 +218,11 @@
 
     panel.innerHTML = `
       <div class="player-question-card song-select-card multi-duel-vote-card">
-        <div class="eyebrow">Song-Duell Voting</div>
-        <h2>${escapeHtml(prompt.title || "Stimme ab")}</h2>
-        <p>${escapeHtml(prompt.text || "Wähle pro Duell, welcher Song besser zum Prompt passt.")}</p>
+        <div class="songSelectHeader">
+          <div class="eyebrow">Song-Duell Voting</div>
+          <h2>${escapeHtml(prompt.title || "Stimme ab")}</h2>
+          <p>${escapeHtml(prompt.text || "Wähle pro Duell, welcher Song besser zum Prompt passt.")}</p>
+        </div>
         <div class="duelVoteList">
           ${duels.map((duel, idx) => `
             <section class="duelVoteCard">
@@ -305,20 +311,31 @@
 
   const submitAnswer = answer => {
     if (!state.player || !state.prompt) return;
+    const promptId = state.prompt.id;
+    state.submittingPromptId = promptId;
+    state.answeredPromptId = promptId;
+    setStatus("Antwort gesendet.");
+    renderPrompt();
+    renderController();
     socket.emit("player:submitAnswer", {
       roomCode: state.roomCode,
       playerId: state.player.id,
-      promptId: state.prompt.id,
+      promptId,
       answer
     }, res => {
       if (!res?.ok) {
-        state.submittingPromptId = null;
+        if (state.prompt?.id === promptId) {
+          state.answeredPromptId = null;
+          state.submittingPromptId = null;
+        }
         setStatus(res?.error || "Antwort konnte nicht gesendet werden.");
         renderPrompt();
         return;
       }
-      state.submittingPromptId = null;
-      state.answeredPromptId = state.prompt.id;
+      if (state.prompt?.id === promptId) {
+        state.submittingPromptId = null;
+        state.answeredPromptId = promptId;
+      }
       setStatus("Antwort gesendet.");
       renderPrompt();
       renderController();

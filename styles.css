@@ -659,3 +659,19 @@ body.joined .songSelectList,.duelVoteList{ min-height:120px; overflow-y:auto; -w
 .duelVoteCard .choiceBtn.selected{ border-color:#22d3ee; background:rgba(34,211,238,.2); }
 .duelSongs.anonymous b{ color:#fde68a; }
 body.joined .multi-duel-vote-card{ grid-template-rows:auto auto minmax(0,1fr) auto; }
+
+/* Keep playlist song-picking controls fixed while the list itself scrolls. */
+body.joined .song-select-card,
+body.joined .multi-song-select-card,
+body.joined .multi-duel-vote-card{ display:grid!important; grid-template-rows:auto minmax(0,1fr) auto!important; height:calc(100svh - 92px); max-height:calc(100svh - 92px); overflow:hidden!important; }
+.songSelectHeader{ display:grid; gap:7px; align-content:start; min-height:0; }
+.songSelectHeader h2{ margin:0; font-size:clamp(20px,6vw,34px); line-height:1.05; }
+.songSelectHeader p{ margin:0; line-height:1.25; }
+body.joined .songSelectList,
+body.joined .duelVoteList{ min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; padding:6px 4px 12px; }
+body.joined .songSelectList *,
+body.joined .duelVoteList *,
+body.joined .songPickBtn,
+body.joined .duelVoteCard .choiceBtn{ touch-action:pan-y; }
+body.joined .songSubmitBar{ position:relative; z-index:3; margin-top:0; padding-top:10px; }
+@media (max-width:700px){ body.joined .song-select-card,body.joined .multi-song-select-card,body.joined .multi-duel-vote-card{ height:calc(100svh - 86px); max-height:calc(100svh - 86px); } }
