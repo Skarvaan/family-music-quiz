@@ -264,6 +264,8 @@ io.on("connection", socket => {
       sentText: payload.sentText || "",
       kind: payload.kind || "",
       tracksByPlayer: payload.tracksByPlayer && typeof payload.tracksByPlayer === "object" ? payload.tracksByPlayer : null,
+      assignmentsByPlayer: payload.assignmentsByPlayer && typeof payload.assignmentsByPlayer === "object" ? payload.assignmentsByPlayer : null,
+      voteDuelsByPlayer: payload.voteDuelsByPlayer && typeof payload.voteDuelsByPlayer === "object" ? payload.voteDuelsByPlayer : null,
       meta: payload.meta && typeof payload.meta === "object" ? payload.meta : null,
       createdAt: Date.now()
     };

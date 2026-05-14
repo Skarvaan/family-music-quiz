@@ -8,7 +8,8 @@
     prompt: null,
     answeredPromptId: null,
     controllerId: null,
-    controllerActions: []
+    controllerActions: [],
+    submittingPromptId: null
   };
 
   $("roomCodeInput").value = state.roomCode;
@@ -26,6 +27,7 @@
     state.answeredPromptId = null;
     state.controllerId = null;
     state.controllerActions = [];
+    state.submittingPromptId = null;
     $("joinForm").hidden = false;
     $("playerStatus").hidden = false;
     $("joinedView").hidden = true;
@@ -64,7 +66,7 @@
 
     const updateSubmit = () => {
       const btn = panel.querySelector("#songSubmitBtn");
-      if (btn) btn.disabled = !selectedTrackId || state.answeredPromptId === prompt.id;
+      if (btn) btn.disabled = !selectedTrackId || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id;
       const label = panel.querySelector("#songSelectedLabel");
       const track = findTrack(tracks, selectedTrackId);
       if (label) label.innerHTML = track ? `<b>Ausgewählt:</b> ${escapeHtml(track.name)} · ${escapeHtml(track.artistName || "")}` : "Erst Song auswählen, dann abschicken.";
@@ -106,7 +108,8 @@
     input.oninput = () => renderList(input.value);
     panel.querySelector("#songSubmitBtn").onclick = () => {
       const track = findTrack(tracks, selectedTrackId);
-      if (!track || state.answeredPromptId === prompt.id) return;
+      if (!track || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
+      state.submittingPromptId = prompt.id;
       panel.querySelector("#songSubmitBtn").disabled = true;
       submitAnswer(track);
     };
@@ -124,7 +127,7 @@
 
     const updateSubmit = () => {
       const submit = panel.querySelector("#multiSongSubmitBtn");
-      if (submit) submit.disabled = !allSelected() || state.answeredPromptId === prompt.id;
+      if (submit) submit.disabled = !allSelected() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id;
       panel.querySelectorAll("[data-duel-tab]").forEach((btn, idx) => {
         const assignment = assignments[idx];
         btn.classList.toggle("selected", idx === activeIndex);
@@ -183,13 +186,64 @@
     const input = panel.querySelector("#multiSongSearchInput");
     input.oninput = () => renderActiveList(input.value);
     panel.querySelector("#multiSongSubmitBtn").onclick = () => {
-      if (!allSelected() || state.answeredPromptId === prompt.id) return;
+      if (!allSelected() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
+      state.submittingPromptId = prompt.id;
       const answer = {};
       assignments.forEach(a => { answer[a.duelId] = findTrack(tracks, selections[a.duelId]); });
       panel.querySelector("#multiSongSubmitBtn").disabled = true;
       submitAnswer(answer);
     };
     renderActiveList("");
+  };
+
+  const renderMultiDuelVotePrompt = (panel, prompt) => {
+    const duels = (prompt.voteDuelsByPlayer?.[state.player.id] || []).slice(0, 20);
+    const votes = Object.fromEntries(duels.map(d => [d.duelId, null]));
+    const allVoted = () => duels.length > 0 && duels.every(d => votes[d.duelId]);
+    const updateSubmit = () => {
+      const submit = panel.querySelector("#duelVoteSubmitBtn");
+      if (submit) submit.disabled = !allVoted() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id;
+      const done = duels.filter(d => votes[d.duelId]).length;
+      const label = panel.querySelector("#duelVoteSelectedLabel");
+      if (label) label.textContent = `${done}/${duels.length} Duelle abgestimmt. Danach abschicken.`;
+      panel.querySelectorAll("[data-duel-vote]").forEach(btn => {
+        const duelId = btn.getAttribute("data-duel-vote");
+        btn.classList.toggle("selected", votes[duelId] === btn.getAttribute("data-vote-choice"));
+      });
+    };
+
+    panel.innerHTML = `
+      <div class="player-question-card song-select-card multi-duel-vote-card">
+        <div class="eyebrow">Song-Duell Voting</div>
+        <h2>${escapeHtml(prompt.title || "Stimme ab")}</h2>
+        <p>${escapeHtml(prompt.text || "Wähle pro Duell, welcher Song besser zum Prompt passt.")}</p>
+        <div class="duelVoteList">
+          ${duels.map((duel, idx) => `
+            <section class="duelVoteCard">
+              <div class="pill">Duell ${idx + 1}</div>
+              <h3>${escapeHtml(duel.promptText || "Welcher Song passt besser?")}</h3>
+              <div class="player-answer-grid">
+                <button type="button" class="choiceBtn abChoiceBig" data-duel-vote="${escapeHtml(duel.duelId)}" data-vote-choice="A"><b>Song A</b><span>${escapeHtml(duel.songA?.name || "-")}<br>${escapeHtml(duel.songA?.artistName || "")}</span></button>
+                <button type="button" class="choiceBtn abChoiceBig" data-duel-vote="${escapeHtml(duel.duelId)}" data-vote-choice="B"><b>Song B</b><span>${escapeHtml(duel.songB?.name || "-")}<br>${escapeHtml(duel.songB?.artistName || "")}</span></button>
+              </div>
+            </section>
+          `).join("") || `<div class="player-wait-card">Warte bitte: Über deine eigenen Prompts stimmen die anderen ab.</div>`}
+        </div>
+        ${duels.length ? `<div class="songSubmitBar"><span id="duelVoteSelectedLabel" class="muted"></span><button id="duelVoteSubmitBtn" type="button" class="action-button primary" disabled>Abschicken</button></div>` : ""}
+      </div>
+    `;
+    panel.querySelectorAll("[data-duel-vote]").forEach(btn => btn.onclick = () => {
+      votes[btn.getAttribute("data-duel-vote")] = btn.getAttribute("data-vote-choice");
+      updateSubmit();
+    });
+    const submit = panel.querySelector("#duelVoteSubmitBtn");
+    if (submit) submit.onclick = () => {
+      if (!allVoted() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
+      state.submittingPromptId = prompt.id;
+      submit.disabled = true;
+      submitAnswer(votes);
+    };
+    updateSubmit();
   };
 
   const renderPrompt = () => {
@@ -224,6 +278,10 @@
       renderMultiSongSelectPrompt(panel, prompt);
       return;
     }
+    if (prompt.kind === "multiDuelVote") {
+      renderMultiDuelVotePrompt(panel, prompt);
+      return;
+    }
 
     const options = prompt.options?.length ? prompt.options : [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }];
     const inputHtml = prompt.kind === "checks"
@@ -254,10 +312,12 @@
       answer
     }, res => {
       if (!res?.ok) {
+        state.submittingPromptId = null;
         setStatus(res?.error || "Antwort konnte nicht gesendet werden.");
         renderPrompt();
         return;
       }
+      state.submittingPromptId = null;
       state.answeredPromptId = state.prompt.id;
       setStatus("Antwort gesendet.");
       renderPrompt();
@@ -353,12 +413,13 @@
       state.player = updated;
       $("activeToggle").checked = state.player.active !== false;
     }
-    renderPrompt();
+    if (!state.prompt || state.answeredPromptId === state.prompt.id) renderPrompt();
     renderController();
   });
   socket.on("player:prompt", prompt => {
     state.prompt = prompt;
     state.answeredPromptId = null;
+    state.submittingPromptId = null;
     setStatus("Neue Frage erhalten.");
     renderPrompt();
     renderController();
@@ -366,6 +427,7 @@
   socket.on("player:reveal", () => {
     state.prompt = null;
     state.answeredPromptId = null;
+    state.submittingPromptId = null;
     setStatus("Reveal läuft am Host.");
     renderPrompt();
     renderController();
@@ -376,6 +438,7 @@
   socket.on("player:resetRound", () => {
     state.prompt = null;
     state.answeredPromptId = null;
+    state.submittingPromptId = null;
     setStatus("Neue Runde wird vorbereitet.");
     renderPrompt();
     renderController();

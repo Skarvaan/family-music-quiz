@@ -643,3 +643,19 @@ body.joined .multi-song-select-card{ grid-template-rows:auto auto auto auto auto
 .challengeRevealCard .songRevealTitle{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:clamp(24px,4vw,46px); }
 .challengeRevealCard .songRevealArtist{ display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; font-size:clamp(18px,3vw,34px); }
 @media (max-width:700px){ .songSubmitBar{ flex-direction:column; align-items:stretch; } .songSubmitBar .action-button{ width:100%; } }
+
+/* Phone prompt reliability: keep the song picker in a real viewport-sized grid and let only lists scroll. */
+body.joined.player-body{ overflow:auto; align-items:start; }
+body.joined .player-card-mobile{ max-height:none; overflow:visible; }
+body.joined .joined-view{ min-height:calc(100svh - 36px); }
+body.joined .player-prompt-panel{ height:100%; min-height:0; overflow:visible; }
+body.joined .song-select-card{ height:100%; max-height:none; overflow:hidden!important; }
+body.joined .songSelectList,.duelVoteList{ min-height:120px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; }
+.multi-duel-vote-card{ display:grid!important; grid-template-rows:auto auto minmax(0,1fr) auto; min-height:0!important; }
+.duelVoteList,.duelVoteHostList{ display:grid; gap:10px; }
+.duelVoteCard,.duelVoteHostCard{ display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.08); }
+.duelVoteCard h3{ margin:0; font-size:18px; line-height:1.2; }
+.duelVoteCard .choiceBtn{ display:grid; gap:5px; text-align:left; }
+.duelVoteCard .choiceBtn.selected{ border-color:#22d3ee; background:rgba(34,211,238,.2); }
+.duelSongs.anonymous b{ color:#fde68a; }
+body.joined .multi-duel-vote-card{ grid-template-rows:auto auto minmax(0,1fr) auto; }
