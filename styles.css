@@ -628,3 +628,18 @@ body.joined .song-select-card{ display:grid!important; grid-template-rows:auto a
 .songPickBtn:active,.choiceBtn:active,.action-button:active{ filter:brightness(1.15); }
 .songPickBtn:disabled{ opacity:.6; }
 @media (max-width:700px){ body.joined .song-select-card{ max-height:calc(100svh - 120px); } }
+
+.songSubmitBar{ display:flex; gap:10px; align-items:center; justify-content:space-between; padding-top:8px; border-top:1px solid var(--line); background:rgba(15,23,42,.96); }
+.songSubmitBar .action-button{ min-width:140px; }
+.songPickBtn.selected{ border-color:#22d3ee; background:rgba(34,211,238,.22); box-shadow:0 0 0 2px rgba(34,211,238,.18) inset; }
+.duelPromptTabs{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.songPromptTab{ min-height:48px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.08); color:var(--fg); font-weight:950; }
+.songPromptTab.selected{ border-color:#fde68a; background:rgba(253,230,138,.16); }
+.songPromptTab.ok::after{ content:" ✓"; color:#86efac; }
+.phonePromptText{ padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.08); color:#fff; font-weight:900; line-height:1.2; }
+body.joined .song-select-card{ grid-template-rows:auto auto auto auto minmax(0,1fr) auto; }
+body.joined .multi-song-select-card{ grid-template-rows:auto auto auto auto auto minmax(0,1fr) auto; }
+.challengeRevealCard{ max-width:min(760px,100%); width:100%; }
+.challengeRevealCard .songRevealTitle{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:clamp(24px,4vw,46px); }
+.challengeRevealCard .songRevealArtist{ display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; font-size:clamp(18px,3vw,34px); }
+@media (max-width:700px){ .songSubmitBar{ flex-direction:column; align-items:stretch; } .songSubmitBar .action-button{ width:100%; } }

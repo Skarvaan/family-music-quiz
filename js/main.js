@@ -95,7 +95,7 @@ FMQ.ensureActiveTurnIndex = () => {
 
 FMQ.syncSetupForMode = () => {
   const selectedMode = FMQ.$("modeSelect")?.value || FMQ.app.config.mode;
-  const hideEndControls = FMQ.app.config.category === "intro" || selectedMode === "rankingList" || ["storyPrompt", "promptDuel"].includes(selectedMode);
+  const hideEndControls = FMQ.app.config.category === "intro" || selectedMode === "rankingList" || selectedMode === "storyPrompt";
   if (selectedMode === "rankingList") {
     const size = FMQ.app.config.rankingSize || parseInt(FMQ.$("rankingSizeSetupSelect")?.value || "5", 10) || 5;
     FMQ.app.config.endType = "rounds";
@@ -103,7 +103,14 @@ FMQ.syncSetupForMode = () => {
     if (FMQ.$("endTypeSelect")) FMQ.$("endTypeSelect").value = "rounds";
     if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").value = String(size);
   }
-  if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = hideEndControls ? "none" : "";
+  if (selectedMode === "promptDuel") {
+    FMQ.app.config.endType = "rounds";
+    if (FMQ.$("endTypeSelect")) FMQ.$("endTypeSelect").value = "rounds";
+    if (FMQ.$("targetPointsInput")) FMQ.$("targetPointsInput").style.display = "none";
+    if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").style.display = "";
+    if (FMQ.$("targetLabelText")) FMQ.$("targetLabelText").textContent = "Runden";
+  }
+  if (FMQ.$("endTypeRow")) FMQ.$("endTypeRow").style.display = (hideEndControls || selectedMode === "promptDuel") ? "none" : "";
   if (FMQ.$("endTargetRow")) FMQ.$("endTargetRow").style.display = hideEndControls ? "none" : "";
 };
 
@@ -225,6 +232,7 @@ FMQ.resetTurnUI = () => {
 
   const mode = FMQ.app.config.mode;
   if (mode === "introPlaylistGuess") FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
+  if (["storyPrompt", "promptDuel"].includes(mode)) FMQ.$("turnPlayerBanner").style.display = "none";
   FMQ.modes[mode].renderArea();
 
   if (mode === "quick3" || mode === "rankingList" || mode === "introPlaylistGuess" || mode === "introFirst3") {
@@ -399,7 +407,8 @@ FMQ.finishGame = (winnerPlayer, reason) => {
     .join("");
 };
 
-FMQ.onNext = () => {
+FMQ.onNext = async () => {
+  if (!FMQ.isSocialMode(FMQ.app.config.mode)) await FMQ.stopPlaybackNow();
   const roundBeforeNext = FMQ.app.state.round;
   FMQ.applyPendingPlayerActivity();
   if (FMQ.app.config.endType === "rounds" && FMQ.app.state.round > FMQ.app.config.targetRounds) {
@@ -465,9 +474,13 @@ FMQ.startGame = () => {
     FMQ.app.config.endType = "rounds";
     FMQ.app.config.targetRounds = FMQ.app.config.rankingSize || 5;
   }
-  if (["storyPrompt", "promptDuel"].includes(FMQ.app.config.mode)) {
+  if (FMQ.app.config.mode === "storyPrompt") {
     FMQ.app.config.endType = "rounds";
     FMQ.app.config.targetRounds = 1;
+    FMQ.app.config.songChallengeType = FMQ.app.config.mode;
+  } else if (FMQ.app.config.mode === "promptDuel") {
+    FMQ.app.config.endType = "rounds";
+    FMQ.app.config.targetRounds = Math.max(1, parseInt(FMQ.$("targetRoundsInput").value || "3", 10));
     FMQ.app.config.songChallengeType = FMQ.app.config.mode;
   }
   FMQ.resetSession();
@@ -732,7 +745,7 @@ FMQ.init = async () => {
   FMQ.$("playToggleBtn").onclick = () => FMQ.onTogglePlay().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("revealBtn").onclick = () => FMQ.onReveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
   if (FMQ.$("newTrackBtn")) FMQ.$("newTrackBtn").onclick = () => FMQ.onNewTrack().catch(e => FMQ.setGameDebug(e.stack || e.message));
-  FMQ.$("nextBtn").onclick = () => FMQ.onNext();
+  FMQ.$("nextBtn").onclick = () => FMQ.onNext().catch(e => FMQ.setGameDebug(e.stack || e.message));
   FMQ.$("quitBtn").onclick = () => FMQ.quitToMenu();
   FMQ.$("endBtn").onclick = () => FMQ.quitToMenu();
 

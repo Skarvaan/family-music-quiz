@@ -51,14 +51,24 @@
     return true;
   };
 
+  const findTrack = (tracks, trackId) => tracks.find(t => t.id === trackId) || null;
+  const trackButtonHtml = (track, selectedId) => `
+    <button type="button" class="songPickBtn ${track.id === selectedId ? "selected" : ""}" data-track-id="${escapeHtml(track.id)}">
+      <b>${escapeHtml(track.name)}</b><span>${escapeHtml(track.artistName || "")}${track.year ? ` · ${escapeHtml(track.year)}` : ""}</span>
+    </button>
+  `;
+
   const renderSongSelectPrompt = (panel, prompt) => {
     const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
-    const pickTrack = (trackId) => {
-      if (!trackId || state.answeredPromptId === prompt.id) return;
-      const track = tracks.find(t => t.id === trackId);
-      if (!track) return;
-      panel.querySelectorAll("[data-track-id]").forEach(btn => { btn.disabled = true; });
-      submitAnswer(track);
+    let selectedTrackId = null;
+
+    const updateSubmit = () => {
+      const btn = panel.querySelector("#songSubmitBtn");
+      if (btn) btn.disabled = !selectedTrackId || state.answeredPromptId === prompt.id;
+      const label = panel.querySelector("#songSelectedLabel");
+      const track = findTrack(tracks, selectedTrackId);
+      if (label) label.innerHTML = track ? `<b>Ausgewählt:</b> ${escapeHtml(track.name)} · ${escapeHtml(track.artistName || "")}` : "Erst Song auswählen, dann abschicken.";
+      panel.querySelectorAll("[data-track-id]").forEach(btn => btn.classList.toggle("selected", btn.getAttribute("data-track-id") === selectedTrackId));
     };
 
     const renderList = (query = "") => {
@@ -66,21 +76,22 @@
       const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
       const list = panel.querySelector("#songSelectList");
       if (!list) return;
-      list.innerHTML = filtered.map(t => `
-        <button type="button" class="songPickBtn" data-track-id="${escapeHtml(t.id)}">
-          <b>${escapeHtml(t.name)}</b><span>${escapeHtml(t.artistName || "")}${t.year ? ` · ${escapeHtml(t.year)}` : ""}</span>
-        </button>
-      `).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
+      list.innerHTML = filtered.map(t => trackButtonHtml(t, selectedTrackId)).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
+      updateSubmit();
     };
 
     panel.innerHTML = `
       <div class="player-question-card song-select-card">
         <div class="eyebrow">Song-Challenge</div>
         <h2>${escapeHtml(prompt.title || "Wähle einen Song")}</h2>
-        <p>${escapeHtml(prompt.text || "Suche in deiner Playlist und logge genau einen Song ein.")}</p>
+        <p>${escapeHtml(prompt.text || "Suche in deiner Playlist und wähle genau einen Song aus.")}</p>
         <input id="songSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
         <div class="muted">${tracks.length} Songs geladen · max. 300</div>
         <div id="songSelectList" class="songSelectList"></div>
+        <div class="songSubmitBar">
+          <span id="songSelectedLabel" class="muted">Erst Song auswählen, dann abschicken.</span>
+          <button id="songSubmitBtn" type="button" class="action-button primary" disabled>Abschicken</button>
+        </div>
       </div>
     `;
     const list = panel.querySelector("#songSelectList");
@@ -88,11 +99,97 @@
       const btn = event.target.closest?.("[data-track-id]");
       if (!btn) return;
       event.preventDefault();
-      pickTrack(btn.getAttribute("data-track-id"));
+      selectedTrackId = btn.getAttribute("data-track-id");
+      updateSubmit();
     });
     const input = panel.querySelector("#songSearchInput");
     input.oninput = () => renderList(input.value);
+    panel.querySelector("#songSubmitBtn").onclick = () => {
+      const track = findTrack(tracks, selectedTrackId);
+      if (!track || state.answeredPromptId === prompt.id) return;
+      panel.querySelector("#songSubmitBtn").disabled = true;
+      submitAnswer(track);
+    };
     renderList("");
+  };
+
+  const renderMultiSongSelectPrompt = (panel, prompt) => {
+    const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
+    const assignments = (prompt.assignmentsByPlayer?.[state.player.id] || []).slice(0, 4);
+    const selections = Object.fromEntries(assignments.map(a => [a.duelId, null]));
+    let activeIndex = 0;
+
+    const activeAssignment = () => assignments[Math.max(0, Math.min(assignments.length - 1, activeIndex))];
+    const allSelected = () => assignments.length > 0 && assignments.every(a => selections[a.duelId]);
+
+    const updateSubmit = () => {
+      const submit = panel.querySelector("#multiSongSubmitBtn");
+      if (submit) submit.disabled = !allSelected() || state.answeredPromptId === prompt.id;
+      panel.querySelectorAll("[data-duel-tab]").forEach((btn, idx) => {
+        const assignment = assignments[idx];
+        btn.classList.toggle("selected", idx === activeIndex);
+        btn.classList.toggle("ok", !!selections[assignment.duelId]);
+      });
+      const label = panel.querySelector("#multiSongSelectedLabel");
+      const done = assignments.filter(a => selections[a.duelId]).length;
+      if (label) label.textContent = `${done}/${assignments.length} Prompts ausgewählt. Erst danach abschicken.`;
+      const current = activeAssignment();
+      panel.querySelectorAll("[data-track-id]").forEach(btn => btn.classList.toggle("selected", current && btn.getAttribute("data-track-id") === selections[current.duelId]));
+    };
+
+    const renderActiveList = (query = "") => {
+      const assignment = activeAssignment();
+      const q = query.trim().toLowerCase();
+      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
+      const title = panel.querySelector("#multiSongPromptTitle");
+      if (title) title.textContent = assignment ? assignment.promptText : "Keine Prompts";
+      const list = panel.querySelector("#multiSongSelectList");
+      if (!list || !assignment) return;
+      list.innerHTML = filtered.map(t => trackButtonHtml(t, selections[assignment.duelId])).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
+      updateSubmit();
+    };
+
+    panel.innerHTML = `
+      <div class="player-question-card song-select-card multi-song-select-card">
+        <div class="eyebrow">Song-Duell</div>
+        <h2>${escapeHtml(prompt.title || "Wähle deine Songs")}</h2>
+        <p>${escapeHtml(prompt.text || "Wähle für jeden Prompt einen Song aus. Du kannst zwischen den Prompts wechseln und am Ende alles abschicken.")}</p>
+        <div class="duelPromptTabs">
+          ${assignments.map((a, idx) => `<button type="button" class="songPromptTab" data-duel-tab="${idx}">Prompt ${idx + 1}</button>`).join("")}
+        </div>
+        <div id="multiSongPromptTitle" class="phonePromptText"></div>
+        <input id="multiSongSearchInput" class="songSearchInput" placeholder="Song oder Artist suchen …" autocomplete="off">
+        <div id="multiSongSelectList" class="songSelectList"></div>
+        <div class="songSubmitBar">
+          <span id="multiSongSelectedLabel" class="muted"></span>
+          <button id="multiSongSubmitBtn" type="button" class="action-button primary" disabled>Abschicken</button>
+        </div>
+      </div>
+    `;
+    panel.querySelectorAll("[data-duel-tab]").forEach(btn => btn.onclick = () => {
+      activeIndex = parseInt(btn.getAttribute("data-duel-tab") || "0", 10) || 0;
+      const input = panel.querySelector("#multiSongSearchInput");
+      if (input) input.value = "";
+      renderActiveList("");
+    });
+    panel.querySelector("#multiSongSelectList").addEventListener("click", event => {
+      const btn = event.target.closest?.("[data-track-id]");
+      const assignment = activeAssignment();
+      if (!btn || !assignment) return;
+      event.preventDefault();
+      selections[assignment.duelId] = btn.getAttribute("data-track-id");
+      updateSubmit();
+    });
+    const input = panel.querySelector("#multiSongSearchInput");
+    input.oninput = () => renderActiveList(input.value);
+    panel.querySelector("#multiSongSubmitBtn").onclick = () => {
+      if (!allSelected() || state.answeredPromptId === prompt.id) return;
+      const answer = {};
+      assignments.forEach(a => { answer[a.duelId] = findTrack(tracks, selections[a.duelId]); });
+      panel.querySelector("#multiSongSubmitBtn").disabled = true;
+      submitAnswer(answer);
+    };
+    renderActiveList("");
   };
 
   const renderPrompt = () => {
@@ -121,6 +218,10 @@
 
     if (prompt.kind === "songSelect") {
       renderSongSelectPrompt(panel, prompt);
+      return;
+    }
+    if (prompt.kind === "multiSongSelect") {
+      renderMultiSongSelectPrompt(panel, prompt);
       return;
     }
 

@@ -168,7 +168,7 @@ FMQ.renderModeConfig = () => {
   } else if (mode === "storyPrompt") {
     area.innerHTML = `<div class="muted"><b>Song-Geschichten:</b> Wählt Songs aus, die etwas über euch erzählen. Kein Voting, keine Punkte.</div>`;
   } else if (mode === "promptDuel") {
-    area.innerHTML = `<div class="muted"><b>Song-Duell:</b> Zwei Songs treten gegeneinander an. Voting und Punkte sind aktiv.</div>`;
+    area.innerHTML = `<div class="muted"><b>Song-Duell:</b> Stelle links die Rundenzahl ein. Pro Runde bekommen alle zwei Prompts, danach wird abgestimmt und Punkte werden vergeben.</div>`;
   } else {
     area.innerHTML = `<div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
   }

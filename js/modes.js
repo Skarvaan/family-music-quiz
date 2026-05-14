@@ -1399,9 +1399,10 @@ FMQ.modes = {
         subtitle: st.promptText,
         heroName: "",
         panelClass: "theme-playlist",
-        bodyHtml: cur ? `<div class="challengeRevealCard"><div class="pill">${st.revealIndex + 1}/${submissions.length}</div><h3>${FMQ.escapeHtml(this.playerName(cur.playerId))}</h3><div class="songRevealTitle">${FMQ.escapeHtml(cur.track.name)}</div><div class="songRevealArtist">${FMQ.escapeHtml(cur.track.artistName)}</div></div><div class="row" style="justify-content:center;"><button id="challengePlayBtn" class="big primary">▶️ Song abspielen</button><button id="challengeNextBtn" class="big secondary">${st.revealIndex + 1 >= submissions.length ? "Challenge beenden" : "Nächster Song"}</button></div>` : `<div class="muted">Keine Songs eingeloggt.</div><button id="challengeDoneBtn" class="big primary">Zurück</button>`
+        bodyHtml: cur ? `<div class="challengeRevealCard"><div class="pill">${st.revealIndex + 1}/${submissions.length}</div><div class="muted">${FMQ.escapeHtml(this.playerName(cur.playerId))} hat diesen Song ausgewählt.</div><div class="songRevealTitle">${FMQ.escapeHtml(cur.track.name)}</div><div class="songRevealArtist">${FMQ.escapeHtml(cur.track.artistName)}</div></div><div class="quick3Controls" style="justify-content:center;"><select id="challengeStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="challengePlayBtn" class="big primary">▶️ Song abspielen</button><button id="challengeNextBtn" class="big secondary">${st.revealIndex + 1 >= submissions.length ? "Challenge beenden" : "Nächster Song"}</button></div>` : `<div class="muted">Keine Songs eingeloggt.</div><button id="challengeDoneBtn" class="big primary">Zurück</button>`
       });
-      if (FMQ.$("challengePlayBtn")) FMQ.$("challengePlayBtn").onclick = () => FMQ.playTrackUri(cur.track.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      if (FMQ.$("challengeStartModeSelect")) FMQ.bindPlayerStartModeSelect("challengeStartModeSelect");
+      if (FMQ.$("challengePlayBtn")) FMQ.$("challengePlayBtn").onclick = () => { const mode = FMQ.getBoundStartMode("challengeStartModeSelect"); const startMs = FMQ.getStoredStartMs(cur.track, `challenge:${cur.playerId}`, mode); FMQ.playTrackUri(cur.track.uri, { positionMs: startMs }).catch(e => FMQ.setGameDebug(e.stack || e.message)); };
       if (FMQ.$("challengeNextBtn")) FMQ.$("challengeNextBtn").onclick = async () => { try { await FMQ.stopPlaybackNow?.(); } catch {} if (st.revealIndex + 1 >= submissions.length) { FMQ.app.state.songChallenge = null; FMQ.resetMultiplayerRound?.(); } else st.revealIndex++; this.renderArea(); };
       if (FMQ.$("challengeDoneBtn")) FMQ.$("challengeDoneBtn").onclick = () => { FMQ.app.state.songChallenge = null; this.renderArea(); };
     },
@@ -1418,42 +1419,66 @@ FMQ.modes = {
       for (let i = 0; i < players.length; i++) add(players[i], players[(i + 1) % players.length]);
       return duels;
     },
-    startCurrentDuelPrompt(st) {
-      const duel = st.duels[st.currentDuelIndex];
-      if (!duel || duel.promptStarted) return;
-      duel.promptStarted = true;
-      const players = FMQ.app.players.filter(p => [duel.playerAId, duel.playerBId].includes(p.remoteId || p.id));
+    assignmentsByPlayer(duels = []) {
+      const out = {};
+      duels.forEach((duel) => {
+        const add = (playerId, side) => {
+          out[playerId] = out[playerId] || [];
+          out[playerId].push({ duelId: duel.duelId, side, promptText: duel.promptText });
+        };
+        add(duel.playerAId, "A");
+        add(duel.playerBId, "B");
+      });
+      return out;
+    },
+    startAllDuelPrompts(st) {
+      if (st.duelPromptStarted) return;
+      st.duelPromptStarted = true;
       FMQ.startMultiplayerPrompt?.({
         id: crypto.randomUUID(),
         type: "songChallengeDuelSubmit",
-        kind: "songSelect",
-        title: "Song-Duell",
-        text: duel.promptText,
-        tracksByPlayer: this.tracksByPlayer(players),
-        recipientIds: [duel.playerAId, duel.playerBId],
-        waitingText: "Das aktuelle Duell sucht Songs aus.",
-        sentText: "Song fürs Duell eingeloggt. Bitte warten …",
-        meta: { challengeMode: "promptDuel", duelId: duel.duelId }
+        kind: "multiSongSelect",
+        title: "Wähle deine zwei Duell-Songs",
+        text: "Wechsle zwischen deinen Prompts, wähle jeweils einen Song aus und schicke beide zusammen ab.",
+        tracksByPlayer: this.tracksByPlayer(FMQ.activePlayers()),
+        assignmentsByPlayer: this.assignmentsByPlayer(st.duels),
+        recipientIds: this.activeIds(),
+        waitingText: "Die Duell-Songs werden gerade ausgewählt.",
+        sentText: "Deine Duell-Songs sind eingeloggt. Bitte warten …",
+        meta: { challengeMode: "promptDuel" }
       });
+    },
+    finishDuelRound(st) {
+      FMQ.resetMultiplayerRound?.();
+      if (FMQ.app.state.round >= FMQ.app.config.targetRounds) {
+        FMQ.finishGame(FMQ.getWinnerByScore(), `${FMQ.app.config.targetRounds} Song-Duell-Runden sind gespielt.`);
+        return;
+      }
+      FMQ.app.state.round++;
+      FMQ.app.state.songChallenge = { mode: "promptDuel", phase: "start", submissions: {}, revealIndex: 0, duels: [], currentDuelIndex: 0 };
+      FMQ.renderHeader();
+      this.renderArea();
     },
     renderDuel(st) {
       if (st.phase === "start") {
-        FMQ.renderModeLikeQuick3({ heading: "Song-Duell", subtitle: "Jeder bekommt zwei Duell-Prompts. Pro Prompt haben genau zwei Personen dieselbe Aufgabe.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="challengeTypeGrid"><button id="startDuelChallengeBtn" class="big primary">Song-Duell starten</button></div>` });
-        FMQ.$("startDuelChallengeBtn").onclick = () => { st.duels = this.createDuels(); st.phase = "duelSelecting"; st.currentDuelIndex = 0; this.renderArea(); };
+        FMQ.renderModeLikeQuick3({ heading: "Song-Duell", subtitle: `Runde ${FMQ.app.state.round}/${FMQ.app.config.targetRounds}: Jeder bekommt zwei Prompts auf dem Handy, wählt Songs aus und danach wird Duell für Duell abgestimmt.`, heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="row" style="justify-content:center;"><button id="startDuelChallengeBtn" class="big primary">Runde starten</button></div>` });
+        FMQ.$("startDuelChallengeBtn").onclick = () => { st.duels = this.createDuels(); st.phase = "duelSelecting"; st.currentDuelIndex = 0; st.duelPromptStarted = false; this.renderArea(); };
         return;
       }
       if (st.phase === "duelSelecting") {
-        const duel = st.duels[st.currentDuelIndex];
-        this.startCurrentDuelPrompt(st);
-        const ready = !!(duel?.submissionA && duel?.submissionB);
-        const readyCount = [duel?.submissionA, duel?.submissionB].filter(Boolean).length;
-        FMQ.renderModeLikeQuick3({ heading: `Prompt ${st.currentDuelIndex + 1}/${st.duels.length}`, subtitle: duel?.promptText || "", heroName: "", panelClass: "theme-playlist", bodyHtml: duel ? `<div class="challengeProgress"><b>${readyCount}/2</b> bereit</div><div class="muted" style="text-align:center;">Frage bereit. Sobald beide Songs eingeloggt sind, geht es weiter.</div><div class="row" style="justify-content:center;"><button id="duelNextPromptBtn" class="big primary" ${ready ? "" : "disabled"}>${st.currentDuelIndex + 1 >= st.duels.length ? "Auswertung starten" : "Nächster Prompt"}</button></div>` : `<div class="bad">Zu wenige Spieler für Duelle.</div>` });
-        if (FMQ.$("duelNextPromptBtn")) FMQ.$("duelNextPromptBtn").onclick = () => { FMQ.resetMultiplayerRound?.(); if (st.currentDuelIndex + 1 >= st.duels.length) { st.phase = "duelReveal"; st.currentDuelIndex = 0; } else st.currentDuelIndex++; this.renderArea(); };
+        this.startAllDuelPrompts(st);
+        const readyDuels = (st.duels || []).filter(duel => duel.submissionA && duel.submissionB).length;
+        const readyPlayers = Object.keys(st.duelSubmissionsByPlayer || {}).length;
+        const totalPlayers = this.activeIds().length;
+        const allReady = st.duels.length > 0 && readyDuels >= st.duels.length;
+        FMQ.renderModeLikeQuick3({ heading: "Song-Duell Auswahl", subtitle: "Die Prompts sind auf den Handys. Der Host zeigt bewusst keine einzelnen Prompts, bis abgestimmt wird.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="challengeProgress"><b>${readyPlayers}/${totalPlayers}</b> Spieler fertig · <b>${readyDuels}/${st.duels.length}</b> Duelle bereit</div><div class="muted" style="text-align:center;">Jede Person kann beide Prompts direkt auf dem Handy auswählen und dann abschicken.</div><div class="row" style="justify-content:center;"><button id="duelStartRevealBtn" class="big primary" ${allReady ? "" : "disabled"}>Abstimmungen starten</button></div>` });
+        if (FMQ.$("duelStartRevealBtn")) FMQ.$("duelStartRevealBtn").onclick = () => { FMQ.resetMultiplayerRound?.(); st.phase = "duelReveal"; st.currentDuelIndex = 0; this.renderArea(); };
         return;
       }
       if (st.phase === "done") {
-        FMQ.renderModeLikeQuick3({ heading: "Song-Duell beendet", subtitle: "Punkte wurden vergeben.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<button id="challengeRestartBtn" class="big primary">Neue Song-Challenge</button>` });
-        FMQ.$("challengeRestartBtn").onclick = () => { FMQ.app.state.songChallenge = null; this.renderArea(); };
+        const finalRound = FMQ.app.state.round >= FMQ.app.config.targetRounds;
+        FMQ.renderModeLikeQuick3({ heading: "Song-Duell Runde beendet", subtitle: "Punkte wurden vergeben.", heroName: "", panelClass: "theme-playlist", bodyHtml: `<button id="challengeRestartBtn" class="big primary">${finalRound ? "Spiel beenden" : "Nächste Runde"}</button>` });
+        FMQ.$("challengeRestartBtn").onclick = () => this.finishDuelRound(st);
         return;
       }
       const duel = st.duels[st.currentDuelIndex];
@@ -1461,20 +1486,29 @@ FMQ.modes = {
       const voters = this.activeIds().filter(id => id !== duel.playerAId && id !== duel.playerBId);
       const voteIds = voters.length ? voters : this.activeIds();
       const voteDone = Object.keys(duel.votes || {}).length;
-      FMQ.renderModeLikeQuick3({ heading: `Duell ${st.currentDuelIndex + 1}/${st.duels.length}`, subtitle: duel.promptText, heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="duelSongs"><div><b>A · ${FMQ.escapeHtml(this.playerName(duel.playerAId))}</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "-")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionA?.artistName || "")}</span></div><div><b>B · ${FMQ.escapeHtml(this.playerName(duel.playerBId))}</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "-")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionB?.artistName || "")}</span></div></div><div class="row" style="justify-content:center;"><button id="duelPlayA" class="big">▶️ A</button><button id="duelPlayB" class="big">▶️ B</button><button id="duelStartVote" class="big primary" ${duel.voteStarted ? "disabled" : ""}>Voting starten</button><button id="duelResolve" class="big primary" ${(duel.voteStarted && voteDone >= voteIds.length) ? "" : "disabled"}>Ergebnis</button></div>${duel.voteStarted ? FMQ.modes.bestFit.answerStatusHtml(voteIds, duel.votes || {}) : ""}` });
-      FMQ.$("duelPlayA").onclick = () => FMQ.playTrackUri(duel.submissionA.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-      FMQ.$("duelPlayB").onclick = () => FMQ.playTrackUri(duel.submissionB.uri, { positionMs: 0 }).catch(e => FMQ.setGameDebug(e.stack || e.message));
-      FMQ.$("duelStartVote").onclick = () => { duel.voteStarted = true; FMQ.startMultiplayerPrompt?.({ id: crypto.randomUUID(), type: "songChallengeDuelVote", title: "Welcher Song passt besser?", text: duel.promptText, options: [{ value: "A", label: `A · ${this.playerName(duel.playerAId)}` }, { value: "B", label: `B · ${this.playerName(duel.playerBId)}` }], recipientIds: voteIds, waitingText: "Dieses Duell stimmt gerade ab.", sentText: "Stimme gespeichert. Bitte warten …", meta: { duelId: duel.duelId } }); this.renderArea(); };
+      FMQ.renderModeLikeQuick3({ heading: `Duell ${st.currentDuelIndex + 1}/${st.duels.length}`, subtitle: duel.promptText, heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="duelSongs"><div><b>A · ${FMQ.escapeHtml(this.playerName(duel.playerAId))}</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "-")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionA?.artistName || "")}</span></div><div><b>B · ${FMQ.escapeHtml(this.playerName(duel.playerBId))}</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "-")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionB?.artistName || "")}</span></div></div><div class="quick3Controls" style="justify-content:center;"><select id="duelStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="duelPlayA" class="big">▶️ A</button><button id="duelPlayB" class="big">▶️ B</button><button id="duelStartVote" class="big primary" ${duel.voteStarted ? "disabled" : ""}>Voting starten</button><button id="duelResolve" class="big primary" ${(duel.voteStarted && voteDone >= voteIds.length) ? "" : "disabled"}>Ergebnis</button></div>${duel.voteStarted ? FMQ.modes.bestFit.answerStatusHtml(voteIds, duel.votes || {}) : ""}` });
+      FMQ.bindPlayerStartModeSelect("duelStartModeSelect");
+      const playDuelTrack = (track, key) => { const mode = FMQ.getBoundStartMode("duelStartModeSelect"); const startMs = FMQ.getStoredStartMs(track, key, mode); return FMQ.playTrackUri(track.uri, { positionMs: startMs }); };
+      FMQ.$("duelPlayA").onclick = () => playDuelTrack(duel.submissionA, `duel:${duel.duelId}:A`).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("duelPlayB").onclick = () => playDuelTrack(duel.submissionB, `duel:${duel.duelId}:B`).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      FMQ.$("duelStartVote").onclick = () => { duel.voteStarted = true; FMQ.startMultiplayerPrompt?.({ id: crypto.randomUUID(), type: "songChallengeDuelVote", title: "Welcher Song passt besser?", text: `Prompt: ${duel.promptText}`, options: [{ value: "A", label: `A · ${this.playerName(duel.playerAId)}` }, { value: "B", label: `B · ${this.playerName(duel.playerBId)}` }], recipientIds: voteIds, waitingText: "Warte bitte: Über euren Prompt stimmen gerade die anderen ab.", sentText: "Stimme gespeichert. Bitte warten …", meta: { duelId: duel.duelId } }); this.renderArea(); };
       FMQ.$("duelResolve").onclick = async () => { await FMQ.stopPlaybackNow?.(); const a = Object.values(duel.votes || {}).filter(v => v === "A").length; const b = Object.values(duel.votes || {}).filter(v => v === "B").length; if (a >= b) FMQ.awardPoints(duel.playerAId, 1); if (b >= a) FMQ.awardPoints(duel.playerBId, 1); duel.winner = a === b ? "tie" : (a > b ? "A" : "B"); FMQ.resetMultiplayerRound?.(); if (st.currentDuelIndex + 1 >= st.duels.length) { st.phase = "done"; } else st.currentDuelIndex++; this.renderArea(); };
     },
     submitShared(playerId, track) { const st = this.ensureState(); FMQ.markTrackUsed?.(track); st.submissions[playerId] = track; this.renderArea(); },
-    submitDuel(playerId, track, meta = {}) {
+    submitDuel(playerId, answer, meta = {}) {
       const st = this.ensureState();
-      const duel = (st.duels || []).find(d => d.duelId === meta.duelId) || st.duels?.[st.currentDuelIndex];
-      if (!duel) return;
-      FMQ.markTrackUsed?.(track);
-      if (playerId === duel.playerAId) duel.submissionA = track;
-      if (playerId === duel.playerBId) duel.submissionB = track;
+      st.duelSubmissionsByPlayer = st.duelSubmissionsByPlayer || {};
+      const entries = answer && !answer.uri && typeof answer === "object"
+        ? Object.entries(answer)
+        : [[meta.duelId || st.duels?.[st.currentDuelIndex]?.duelId, answer]];
+      entries.forEach(([duelId, track]) => {
+        const duel = (st.duels || []).find(d => d.duelId === duelId);
+        if (!duel || !track) return;
+        FMQ.markTrackUsed?.(track);
+        if (playerId === duel.playerAId) duel.submissionA = track;
+        if (playerId === duel.playerBId) duel.submissionB = track;
+      });
+      st.duelSubmissionsByPlayer[playerId] = true;
       this.renderArea();
     },
     submitVote(playerId, vote, meta = {}) {
