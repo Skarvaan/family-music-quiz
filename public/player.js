@@ -66,6 +66,49 @@
     return filtered.slice(0, q ? 80 : 120);
   };
 
+  const eventPoint = event => {
+    const touch = event.changedTouches?.[0] || event.touches?.[0];
+    return touch ? { x: touch.clientX, y: touch.clientY } : { x: event.clientX || 0, y: event.clientY || 0 };
+  };
+  const movedTooFar = (start, event) => {
+    if (!start || event.type === "click") return false;
+    const p = eventPoint(event);
+    return Math.abs(p.x - start.x) > 14 || Math.abs(p.y - start.y) > 14;
+  };
+  const runReliableTap = (event, target, handler, start) => {
+    if (!target || target.disabled || movedTooFar(start, event)) return;
+    const now = Date.now();
+    if (target._lastReliableTapAt && now - target._lastReliableTapAt < 450) return;
+    target._lastReliableTapAt = now;
+    if (event.cancelable) event.preventDefault();
+    handler(event, target);
+  };
+  const bindTap = (target, handler) => {
+    if (!target) return;
+    let start = null;
+    const remember = event => { start = eventPoint(event); };
+    target.addEventListener("pointerdown", remember);
+    target.addEventListener("touchstart", remember, { passive: true });
+    target.addEventListener("pointerup", event => runReliableTap(event, target, handler, start));
+    target.addEventListener("touchend", event => runReliableTap(event, target, handler, start), { passive: false });
+    target.addEventListener("click", event => runReliableTap(event, target, handler, start));
+  };
+  const bindDelegatedTap = (container, selector, handler) => {
+    if (!container) return;
+    let start = null;
+    const remember = event => { start = eventPoint(event); };
+    const fire = event => {
+      const target = event.target.closest?.(selector);
+      if (!target || !container.contains(target)) return;
+      runReliableTap(event, target, handler, start);
+    };
+    container.addEventListener("pointerdown", remember);
+    container.addEventListener("touchstart", remember, { passive: true });
+    container.addEventListener("pointerup", fire);
+    container.addEventListener("touchend", fire, { passive: false });
+    container.addEventListener("click", fire);
+  };
+
   const renderSongSelectPrompt = (panel, prompt) => {
     const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
     let selectedTrackId = null;
@@ -104,22 +147,19 @@
       </div>
     `;
     const list = panel.querySelector("#songSelectList");
-    list.addEventListener("click", event => {
-      const btn = event.target.closest?.("[data-track-id]");
-      if (!btn) return;
-      event.preventDefault();
+    bindDelegatedTap(list, "[data-track-id]", (_event, btn) => {
       selectedTrackId = btn.getAttribute("data-track-id");
       updateSubmit();
     });
     const input = panel.querySelector("#songSearchInput");
     input.oninput = () => renderList(input.value);
-    panel.querySelector("#songSubmitBtn").onclick = () => {
+    bindTap(panel.querySelector("#songSubmitBtn"), () => {
       const track = findTrack(tracks, selectedTrackId);
       if (!track || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
       state.submittingPromptId = prompt.id;
       panel.querySelector("#songSubmitBtn").disabled = true;
       submitAnswer(track);
-    };
+    });
     renderList("");
   };
 
@@ -177,30 +217,28 @@
         </div>
       </div>
     `;
-    panel.querySelectorAll("[data-duel-tab]").forEach(btn => btn.onclick = () => {
+    panel.querySelectorAll("[data-duel-tab]").forEach(btn => bindTap(btn, () => {
       activeIndex = parseInt(btn.getAttribute("data-duel-tab") || "0", 10) || 0;
       const input = panel.querySelector("#multiSongSearchInput");
       if (input) input.value = "";
       renderActiveList("");
-    });
-    panel.querySelector("#multiSongSelectList").addEventListener("click", event => {
-      const btn = event.target.closest?.("[data-track-id]");
+    }));
+    bindDelegatedTap(panel.querySelector("#multiSongSelectList"), "[data-track-id]", (_event, btn) => {
       const assignment = activeAssignment();
-      if (!btn || !assignment) return;
-      event.preventDefault();
+      if (!assignment) return;
       selections[assignment.duelId] = btn.getAttribute("data-track-id");
       updateSubmit();
     });
     const input = panel.querySelector("#multiSongSearchInput");
     input.oninput = () => renderActiveList(input.value);
-    panel.querySelector("#multiSongSubmitBtn").onclick = () => {
+    bindTap(panel.querySelector("#multiSongSubmitBtn"), () => {
       if (!allSelected() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
       state.submittingPromptId = prompt.id;
       const answer = {};
       assignments.forEach(a => { answer[a.duelId] = findTrack(tracks, selections[a.duelId]); });
       panel.querySelector("#multiSongSubmitBtn").disabled = true;
       submitAnswer(answer);
-    };
+    });
     renderActiveList("");
   };
 
@@ -242,17 +280,17 @@
         ${duels.length ? `<div class="songSubmitBar"><span id="duelVoteSelectedLabel" class="muted"></span><button id="duelVoteSubmitBtn" type="button" class="action-button primary" disabled>Abschicken</button></div>` : ""}
       </div>
     `;
-    panel.querySelectorAll("[data-duel-vote]").forEach(btn => btn.onclick = () => {
+    panel.querySelectorAll("[data-duel-vote]").forEach(btn => bindTap(btn, () => {
       votes[btn.getAttribute("data-duel-vote")] = btn.getAttribute("data-vote-choice");
       updateSubmit();
-    });
+    }));
     const submit = panel.querySelector("#duelVoteSubmitBtn");
-    if (submit) submit.onclick = () => {
+    if (submit) bindTap(submit, () => {
       if (!allVoted() || state.answeredPromptId === prompt.id || state.submittingPromptId === prompt.id) return;
       state.submittingPromptId = prompt.id;
       submit.disabled = true;
       submitAnswer(votes);
-    };
+    });
     updateSubmit();
   };
 
@@ -272,15 +310,15 @@
         <button id="sendChoiceBtn" class="choiceBtn abChoiceBig" disabled>Einloggen</button>
       </div>
     `;
-    panel.querySelectorAll("[data-answer]").forEach(btn => btn.onclick = () => {
+    panel.querySelectorAll("[data-answer]").forEach(btn => bindTap(btn, () => {
       selected = btn.getAttribute("data-answer");
       update();
-    });
-    panel.querySelector("#sendChoiceBtn").onclick = () => {
+    }));
+    bindTap(panel.querySelector("#sendChoiceBtn"), () => {
       if (!selected || state.submittingPromptId === prompt.id) return;
       state.submittingPromptId = prompt.id;
       submitAnswer(selected);
-    };
+    });
     update();
   };
 
@@ -337,12 +375,12 @@
         ${inputHtml}
       </div>
     `;
-    panel.querySelectorAll("[data-answer]").forEach(btn => btn.onclick = () => submitAnswer(btn.getAttribute("data-answer")));
-    if ($("sendChecksBtn")) $("sendChecksBtn").onclick = () => {
+    panel.querySelectorAll("[data-answer]").forEach(btn => bindTap(btn, () => submitAnswer(btn.getAttribute("data-answer"))));
+    if ($("sendChecksBtn")) bindTap($("sendChecksBtn"), () => {
       const answer = {};
       panel.querySelectorAll("[data-check]").forEach(inp => { answer[inp.getAttribute("data-check")] = inp.checked; });
       submitAnswer(answer);
-    };
+    });
   };
 
   const submitAnswer = answer => {
@@ -461,16 +499,8 @@
       const selected = state.controlSelections.__lastButton === action.id;
       return `<button type="button" class="action-button primary ${selected ? "selected" : ""}" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`;
     }).join("");
-    const activate = (event, btn) => {
-      event.preventDefault();
-      const now = Date.now();
-      if (btn._lastControlAt && now - btn._lastControlAt < 350) return;
-      btn._lastControlAt = now;
-      sendControlAction(btn.getAttribute("data-control"));
-    };
     panel.querySelectorAll("[data-control]").forEach(btn => {
-      btn.addEventListener("click", event => activate(event, btn));
-      btn.addEventListener("touchend", event => activate(event, btn), { passive: false });
+      bindTap(btn, () => sendControlAction(btn.getAttribute("data-control")));
     });
   };
 

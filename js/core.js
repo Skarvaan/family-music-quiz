@@ -78,6 +78,8 @@ FMQ.storage = {
   set refreshToken(v) { v ? localStorage.setItem("spotify_refresh_token", v) : localStorage.removeItem("spotify_refresh_token"); },
   get scope() { return localStorage.getItem("spotify_scope") || ""; },
   set scope(v) { v ? localStorage.setItem("spotify_scope", v) : localStorage.removeItem("spotify_scope"); },
+  get expiresAt() { return parseInt(localStorage.getItem("spotify_expires_at") || "0", 10) || 0; },
+  set expiresAt(v) { v ? localStorage.setItem("spotify_expires_at", String(v)) : localStorage.removeItem("spotify_expires_at"); },
   get verifier() { return localStorage.getItem("pkce_verifier"); },
   set verifier(v) { v ? localStorage.setItem("pkce_verifier", v) : localStorage.removeItem("pkce_verifier"); }
 };
@@ -373,16 +375,43 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
   FMQ.renderMultiplayerPanel?.();
 };
 
+FMQ.setSpotifyConnectionStatus = (state, message = "") => {
+  const el = FMQ.$("connStatus");
+  if (!el) return;
+  const states = {
+    connected: { cls: "ok", icon: "✅", label: "Spotify verbunden" },
+    checking: { cls: "warn", icon: "⏳", label: "Spotify wird geprüft" },
+    reconnect: { cls: "bad", icon: "❌", label: "Spotify neu verbinden" }
+  };
+  const cfg = states[state] || states.reconnect;
+  el.innerHTML = `<span class="${cfg.cls}" title="${FMQ.escapeHtml(message || cfg.label)}" aria-label="${FMQ.escapeHtml(message || cfg.label)}">${cfg.icon}</span>`;
+};
+
 FMQ.refreshConnStatus = () => {
-  FMQ.$("connStatus").innerHTML = FMQ.storage.token ? `<span class="ok">✅</span>` : `<span class="bad">❌</span>`;
-  if (FMQ.storage.token && typeof FMQ.validateSpotifySession === "function") {
+  const hasSession = !!(FMQ.storage.token || FMQ.storage.refreshToken);
+  if (!hasSession) {
+    FMQ.setSpotifyConnectionStatus("reconnect", "Spotify nicht verbunden");
+  } else if (typeof FMQ.validateSpotifySession === "function") {
+    FMQ.setSpotifyConnectionStatus("checking", "Spotify-Verbindung wird geprüft …");
     FMQ.validateSpotifySession().then(valid => {
-      if (!valid) {
+      if (valid) {
+        FMQ.setSpotifyConnectionStatus("connected");
+      } else {
         FMQ.storage.token = null;
-        FMQ.$("connStatus").innerHTML = `<span class="bad">❌</span>`;
+        FMQ.storage.expiresAt = null;
+        FMQ.setSpotifyConnectionStatus("reconnect");
         if (FMQ.$("playlistStatus")) FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
       }
-    }).catch(() => {});
+      FMQ.checkReadyToStart();
+      if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
+    }).catch(() => {
+      FMQ.setSpotifyConnectionStatus("reconnect");
+      if (FMQ.$("playlistStatus")) FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
+      FMQ.checkReadyToStart();
+      if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
+    });
+  } else {
+    FMQ.setSpotifyConnectionStatus("checking", "Spotify-Verbindung wird geprüft …");
   }
   FMQ.checkReadyToStart();
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
