@@ -606,7 +606,14 @@ FMQ.renderSetupWizard = () => {
   }
 
   const loginBtn = FMQ.$("loginBtn");
-  if (loginBtn) loginBtn.textContent = FMQ.storage.token ? "Spotify verbunden" : "Spotify verbinden";
+  if (loginBtn) {
+    const spotifyState = FMQ.app.state.spotifyConnectionState;
+    loginBtn.textContent = spotifyState === "connected"
+      ? "Spotify verbunden"
+      : spotifyState === "checking"
+        ? "Spotify prüfen…"
+        : "Spotify verbinden";
+  }
   const startBtn = FMQ.$("setupNextBtn");
   if (startBtn) startBtn.textContent = FMQ.isMultiDevice?.() ? "Weiter zur Modusauswahl" : "Ein-Gerät-Modus starten";
 

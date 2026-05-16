@@ -47,6 +47,35 @@
     $("joinedName").textContent = state.player?.name || "";
   };
 
+  const rejoinCurrentPlayer = (reason = "Verbindung wiederherstellen …") => {
+    if (!state.player) {
+      setStatus("Raumcode und Namen eingeben.");
+      return;
+    }
+    setStatus(reason);
+    socket.emit("player:join", {
+      name: state.player.name,
+      roomCode: state.roomCode,
+      active: $("activeToggle")?.checked !== false
+    }, res => {
+      if (!res?.ok) {
+        showJoinView(res?.error || "Bitte dem Raum erneut beitreten.");
+        return;
+      }
+      state.player = res.player;
+      state.roomCode = res.roomCode;
+      state.prompt = res.prompt || state.prompt || null;
+      state.controllerId = res.controllerId || null;
+      state.controllerActions = Array.isArray(res.controllerActions) ? res.controllerActions : [];
+      $("roomCodeInput").value = state.roomCode;
+      showJoinedView();
+      $("activeToggle").checked = state.player.active !== false;
+      setStatus(`Du bist drin: ${state.player.name}`);
+      renderPrompt();
+      renderController();
+    });
+  };
+
   const isRecipient = prompt => {
     if (!state.player || !prompt) return false;
     if (prompt.recipientIds?.length) return prompt.recipientIds.includes(state.player.id);
@@ -504,7 +533,13 @@
     });
   };
 
-  socket.on("connect", () => setStatus(state.player ? `Du bist drin: ${state.player.name}` : "Raumcode und Namen eingeben."));
+  socket.on("connect", () => {
+    if (state.player) {
+      rejoinCurrentPlayer();
+      return;
+    }
+    setStatus("Raumcode und Namen eingeben.");
+  });
   socket.on("disconnect", () => setStatus("Verbindung getrennt. Versuche automatisch neu zu verbinden …"));
   socket.on("room:state", snapshot => {
     if (!state.player) {

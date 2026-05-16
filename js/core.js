@@ -384,6 +384,7 @@ FMQ.setSpotifyConnectionStatus = (state, message = "") => {
     reconnect: { cls: "bad", icon: "❌", label: "Spotify neu verbinden" }
   };
   const cfg = states[state] || states.reconnect;
+  FMQ.app.state.spotifyConnectionState = state;
   el.innerHTML = `<span class="${cfg.cls}" title="${FMQ.escapeHtml(message || cfg.label)}" aria-label="${FMQ.escapeHtml(message || cfg.label)}">${cfg.icon}</span>`;
 };
 
