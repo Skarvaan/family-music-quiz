@@ -136,20 +136,22 @@ FMQ.resetPlayedSongHistory = () => {
 };
 
 FMQ.activePlayers = () => FMQ.app.players.filter(p => p.active !== false);
+FMQ.playerHasMusic = (p) => p && p.spectator !== true && !!p.playlistId && (p.tracks?.length || 0) >= 5;
+FMQ.musicPlayers = () => FMQ.activePlayers().filter(FMQ.playerHasMusic);
 FMQ.currentPlayer = () => {
   const cur = FMQ.app.players[FMQ.app.state.turnIndex];
-  if (cur && cur.active !== false) return cur;
-  return FMQ.activePlayers()[0] || FMQ.app.players[0] || null;
+  if (cur && cur.active !== false && cur.spectator !== true) return cur;
+  return FMQ.musicPlayers()[0] || FMQ.activePlayers()[0] || FMQ.app.players[0] || null;
 };
-FMQ.getPlayerName = (id) => FMQ.app.players.find(p => p.id === id)?.name || "Unbekannt";
+FMQ.getPlayerName = (id) => FMQ.app.players.find(p => p.id === id || p.remoteId === id)?.name || "Unbekannt";
 FMQ.advanceTurn = () => {
   const players = FMQ.app.players;
-  const active = FMQ.activePlayers();
-  if (!active.length || !players.length) return;
+  const turnPlayers = FMQ.activePlayers().filter(p => p.spectator !== true);
+  if (!turnPlayers.length || !players.length) return;
   const startIndex = Math.max(0, Math.min(players.length - 1, FMQ.app.state.turnIndex || 0));
   for (let step = 1; step <= players.length; step++) {
     const idx = (startIndex + step) % players.length;
-    if (players[idx]?.active !== false) {
+    if (players[idx]?.active !== false && players[idx]?.spectator !== true) {
       FMQ.app.state.turnIndex = idx;
       if (idx <= startIndex) FMQ.app.state.round++;
       return;
@@ -227,7 +229,7 @@ FMQ.rebuildTrackUniverse = () => {
 };
 
 FMQ.checkReadyToStart = () => {
-  const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.every(p => p.name && p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax);
+  const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.some(FMQ.playerHasMusic) && FMQ.app.players.every(p => p.name && (p.spectator === true || (p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax)));
   if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
   return ok;
 };
@@ -264,16 +266,18 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
 
   for (let i = 0; i < n; i++) {
     const prev = old[i] || {};
-    const p = { id: prev.id || crypto.randomUUID(), remoteId: prev.remoteId, remoteConnected: prev.remoteConnected, name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: prev.score || 0, active: prev.active !== false, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
+    const p = { id: prev.id || crypto.randomUUID(), remoteId: prev.remoteId, remoteConnected: prev.remoteConnected, name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: prev.score || 0, active: prev.active !== false, spectator: prev.spectator === true, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
     FMQ.app.players.push(p);
     const row = document.createElement("div");
     row.className = "player-card";
-    const statusHtml = (p.tracks?.length || 0) >= 5
-      ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
-      : "noch nicht geladen";
+    const statusHtml = p.spectator === true
+      ? `<span class="ok">👀 Nur Mitraten · keine Musikquelle</span>`
+      : (p.tracks?.length || 0) >= 5
+        ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
+        : "noch nicht geladen";
     const remotePill = p.remoteId ? `<span class="pill ${p.remoteConnected ? "ok" : ""}">${p.remoteConnected ? "Handy online" : "Handy offline"}</span>` : `<span class="pill">Spieler ${i + 1}</span>`;
     const orderControls = `<div class="playerOrderControls" aria-label="Reihenfolge"><span class="orderBadge">#${i + 1}</span><button data-role="move-player" data-delta="-1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === 0 ? "disabled" : ""}>↑</button><button data-role="move-player" data-delta="1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === n - 1 ? "disabled" : ""}>↓</button></div>`;
-    row.innerHTML = `<div class="player-card-head">${remotePill}${orderControls}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
+    row.innerHTML = `<div class="player-card-head">${remotePill}${orderControls}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label class="spectatorSwitchRow"><input type="checkbox" data-role="spectator" data-pid="${p.id}" ${p.spectator ? "checked" : ""}> Nur Zuschauer/Mitrater (keine eigene Playlist)</label><label class="playlistConfigWrap" data-role="playlist-wrap" data-pid="${p.id}" ${p.spectator ? "hidden" : ""}>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
     wrap.appendChild(row);
   }
 
@@ -304,6 +308,19 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
     FMQ.checkReadyToStart();
   }));
 
+  FMQ.$("playersConfig").querySelectorAll('input[data-role="spectator"]').forEach(inp => inp.addEventListener("change", () => {
+    const p = FMQ.app.players.find(x => x.id === inp.dataset.pid);
+    if (!p) return;
+    p.spectator = inp.checked;
+    if (p.spectator) {
+      p.playlistId = "";
+      p.playlistName = "";
+      p.tracks = [];
+      p.spanMin = p.spanMax = null;
+    }
+    FMQ.buildPlayersConfig({ preserveCount: true });
+  }));
+
   FMQ.refreshPlaylistDropdowns();
   FMQ.$("playersConfig").querySelectorAll('select[data-role="playlist"]').forEach(sel => sel.addEventListener("change", async () => {
     const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
@@ -314,6 +331,15 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
     p.playlistName = FMQ.app.playlists.find(x => x.id === sel.value)?.name || "";
     if (previousPlaylistId !== p.playlistId) FMQ.resetPlayedSongHistory();
     const statusEl = FMQ.$("playersConfig").querySelector(`span[data-role="status"][data-pid="${sel.dataset.pid}"]`);
+
+    if (p.spectator === true) {
+      p.tracks = [];
+      p.spanMin = p.spanMax = null;
+      statusEl.innerHTML = `<span class="ok">👀 Nur Mitraten · keine Musikquelle</span>`;
+      FMQ.rebuildTrackUniverse();
+      FMQ.checkReadyToStart();
+      return;
+    }
 
     if (!p.playlistId) {
       p.tracks = [];
@@ -402,7 +428,7 @@ FMQ.drawFromDeck = (deck) => {
 
 FMQ.drawTrackForCurrentTurn = ({ risk = null, forceFromAny = false } = {}) => {
   const me = FMQ.currentPlayer();
-  const active = FMQ.activePlayers();
+  const active = FMQ.musicPlayers();
   if (!me || !active.length) return null;
   const drawFromPlayer = (p) => {
     const deck = FMQ.shuffle((p.tracks || []).map(t => t.id).filter(id => id && !FMQ.isTrackUsed(id)));

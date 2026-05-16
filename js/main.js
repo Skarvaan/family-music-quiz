@@ -88,7 +88,7 @@ FMQ.applyPendingPlayerActivity = ({ roundEnd = false, gameEnd = false } = {}) =>
 FMQ.ensureActiveTurnIndex = () => {
   const cur = FMQ.app.players[FMQ.app.state.turnIndex];
   if (cur && cur.active !== false) return;
-  const first = FMQ.activePlayers()[0];
+  const first = FMQ.activePlayers().find(p => p.spectator !== true) || FMQ.activePlayers()[0];
   if (!first) return;
   FMQ.app.state.turnIndex = Math.max(0, FMQ.app.players.findIndex(p => p.id === first.id));
 };
@@ -578,8 +578,12 @@ FMQ.setupCanProceed = () => {
   if (step === 4) {
     const playlistSelects = [...document.querySelectorAll('select[data-role="playlist"]')];
     const uiHasAllPlaylists = playlistSelects.length > 0 && playlistSelects.every(sel => !!sel.value);
-    const modelHasAllPlaylists = FMQ.app.players.length > 0 && FMQ.app.players.every(p => p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax);
-    return uiHasAllPlaylists && modelHasAllPlaylists;
+    const modelReady = FMQ.app.players.length > 0 && FMQ.app.players.some(FMQ.playerHasMusic) && FMQ.app.players.every(p => p.spectator === true || (p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax));
+    const uiReady = playlistSelects.every(sel => {
+      const player = FMQ.app.players.find(p => p.id === sel.dataset.pid);
+      return player?.spectator === true || !!sel.value;
+    });
+    return uiReady && modelReady;
   }
   return true;
 };
