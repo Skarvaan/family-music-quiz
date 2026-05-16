@@ -274,7 +274,7 @@ io.on("connection", socket => {
       return;
     }
     room.controllerActions = Array.isArray(payload.actions)
-      ? payload.actions.filter(action => action && action.id && action.label).slice(0, 8).map(action => ({
+      ? payload.actions.filter(action => action && action.id && action.label).slice(0, 18).map(action => ({
         id: String(action.id),
         label: String(action.label),
         options: Array.isArray(action.options)

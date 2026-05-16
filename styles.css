@@ -734,3 +734,11 @@ body.multi-device-active .quick3Panel{ width:min(980px,100%); padding:16px; }
 body.multi-device-active .quick3Panel h3{ font-size:clamp(24px,3vw,38px); margin-bottom:10px; }
 body.multi-device-active .duelVoteHostList{ max-height:none; overflow:visible; }
 @media (max-width:900px){ body.multi-device-active #screenGame.active .game-topbar{ grid-template-columns:1fr; } }
+
+.duelResultCelebration{ position:relative; overflow:hidden; border-color:rgba(253,230,138,.7); background:linear-gradient(135deg,rgba(120,53,15,.5),rgba(22,101,52,.28)); animation:celebratePop .42s ease both; }
+.confettiBurst{ font-size:clamp(42px,8vw,92px); line-height:1; filter:drop-shadow(0 12px 24px rgba(0,0,0,.35)); animation:confettiBounce .9s ease both; }
+.pointBadge{ display:inline-flex; margin-top:8px; padding:8px 12px; border-radius:999px; background:rgba(253,230,138,.95); color:#1f1300; font-weight:950; }
+.ratingRevealResult{ padding:18px; border:2px solid rgba(253,230,138,.55); border-radius:28px; background:rgba(120,53,15,.24); }
+.ratingTruthBadge{ margin:0 auto; display:grid; place-items:center; width:clamp(120px,18vw,190px); height:clamp(120px,18vw,190px); border-radius:999px; background:linear-gradient(135deg,#22c55e,#fde68a); color:#13210a; font-size:clamp(42px,7vw,78px); font-weight:950; box-shadow:0 18px 60px rgba(34,197,94,.25); }
+@keyframes celebratePop{ from{ transform:scale(.96); opacity:.65; } to{ transform:scale(1); opacity:1; } }
+@keyframes confettiBounce{ 0%{ transform:translateY(18px) scale(.75); opacity:0; } 55%{ transform:translateY(-6px) scale(1.08); opacity:1; } 100%{ transform:translateY(0) scale(1); opacity:1; } }

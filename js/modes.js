@@ -567,6 +567,9 @@ FMQ.modes = {
       if (FMQ.$("introGuessStopBtn")) FMQ.$("introGuessStopBtn").onclick = () => FMQ.stopPlaybackNow?.().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("introGuessRevealBtn").onclick = () => FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("introGuessNextBtn").onclick = () => FMQ.onNext();
+      if (FMQ.isMultiDevice?.() && (FMQ.app.state.currentTrack || FMQ.app.state.introPlaylistGuess.multiPromptStarted)) {
+        setTimeout(() => FMQ.modes.introPlaylistGuess.renderGuessUI(), 0);
+      }
     },
     renderGuessUI() {
       const c = FMQ.$("plGuessPanel");
@@ -796,6 +799,7 @@ FMQ.modes = {
             FMQ.modes.ratingGuess.submitMainAnswer(s.mainPlayerId, parseInt(btn.getAttribute("data-main-rate"), 10));
             FMQ.$("ratingRevealBtn").disabled = false;
             FMQ.renderMultiplayerPanel?.();
+            setTimeout(() => FMQ.$("ratingRevealBtn")?.click(), 0);
           });
           if (FMQ.$("ratingRevealBtn")) FMQ.$("ratingRevealBtn").onclick = async () => {
             await FMQ.stopPlaybackNow?.();
@@ -810,7 +814,7 @@ FMQ.modes = {
               lines.push(`<div><b>${FMQ.escapeHtml(p.name)}:</b> ${val || "-"} → <b>+${pts}</b></div>`);
             }
             const t = FMQ.app.state.currentTrack;
-            FMQ.renderModeLikeQuick3({ heading: `Auflösung: ${mainName}`, subtitle: "", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="socialRevealBig"><div><b>${FMQ.escapeHtml(t.name)}</b> · ${FMQ.escapeHtml(t.artists.join(", "))} · ${t.year}</div><div class="socialTruthLine">${mainName} sagte: <b>${truth}/10</b></div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>` });
+            FMQ.renderModeLikeQuick3({ heading: `Auflösung: ${mainName}`, subtitle: "", heroName: "", panelClass: "theme-playlist", bodyHtml: `<div class="socialRevealBig ratingRevealResult"><div class="ratingTruthBadge">${truth}/10</div><div><b>${FMQ.escapeHtml(t.name)}</b> · ${FMQ.escapeHtml(t.artists.join(", "))} · ${t.year}</div><div class="socialTruthLine">${mainName} sagte: <b>${truth}/10</b></div><div class="socialPointsBlock">${lines.join("")}</div></div><div class="row" style="justify-content:center;"><button id="socialDoneBtn" class="big primary">Nächster Zug</button></div>` });
             FMQ.app.state.social = null; FMQ.renderScoreTable(); FMQ.markFinalRoundIfNeeded(); FMQ.$("socialDoneBtn").onclick = () => FMQ.onNext();
           };
           return;
@@ -1649,7 +1653,15 @@ FMQ.modes = {
         const voteIds = this.voteIdsForDuel(duel);
         const complete = this.currentDuelVotesComplete(duel);
         const voteInfo = this.duelNeedsVote(duel) ? `${Object.keys(duel.votes || {}).length}/${voteIds.length} Stimmen` : "Kein Voting nötig · Notfall-Platzhalter";
-        const body = `<div class="duelHostFocus"><div class="pill">Duell ${(st.currentDuelIndex || 0) + 1}/${st.duels.length}</div><div class="challengeRevealPrompt compact"><div class="eyebrow">Prompt</div><div>${FMQ.escapeHtml(duel.promptText)}</div></div>${this.duelTransportHtml()}<div class="duelSongs anonymous"><div><b>Song A</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionA?.artistName || "Keine Antwort")}</span></div><div><b>Song B</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionB?.artistName || "Keine Antwort")}</span></div></div><div class="muted" style="text-align:center;">${voteInfo}</div>${FMQ.modes.bestFit.answerStatusHtml(voteIds, duel.votes || {})}<div class="row" style="justify-content:center;"><button id="duelResolveCurrentBtn" class="big primary" ${complete ? "" : "disabled"}>Reveal & Punkte für dieses Duell</button><button id="duelEmergencyResolveBtn" class="big secondary">Notfall-Reveal</button></div></div>`;
+        if (complete && st.autoResolveDuelId !== duel.duelId) {
+          st.autoResolveDuelId = duel.duelId;
+          setTimeout(async () => {
+            if (st.phase !== "duelVoting" || this.currentDuel(st)?.duelId !== duel.duelId || duel.winner) return;
+            await FMQ.stopPlaybackNow?.();
+            this.resolveCurrentDuel(st, duel);
+          }, 900);
+        }
+        const body = `<div class="duelHostFocus"><div class="pill">Duell ${(st.currentDuelIndex || 0) + 1}/${st.duels.length}</div><div class="challengeRevealPrompt compact"><div class="eyebrow">Prompt</div><div>${FMQ.escapeHtml(duel.promptText)}</div></div>${this.duelTransportHtml()}<div class="duelSongs anonymous"><div><b>Song A</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionA?.artistName || "Keine Antwort")}</span></div><div><b>Song B</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.submissionB?.artistName || "Keine Antwort")}</span></div></div><div class="muted" style="text-align:center;">${voteInfo}</div>${complete ? `<div class="autoRevealCountdown compact"><div class="muted">Alle Stimmen sind da</div><div class="countNum">🎉</div><div class="muted">Reveal startet automatisch …</div></div>` : FMQ.modes.bestFit.answerStatusHtml(voteIds, duel.votes || {})}<div class="row" style="justify-content:center;"><button id="duelResolveCurrentBtn" class="big primary" ${complete ? "" : "disabled"}>${complete ? "Sofort aufdecken" : "Reveal & Punkte für dieses Duell"}</button><button id="duelEmergencyResolveBtn" class="big secondary">Notfall-Reveal</button></div></div>`;
         FMQ.renderModeLikeQuick3({ heading: "Song-Duell Voting", subtitle: "Ein Prompt nach dem anderen: anhören, abstimmen, reveal, nächster Prompt.", heroName: "", panelClass: "theme-playlist", bodyHtml: body });
         this.bindDuelTransport(duel);
         if (FMQ.$("duelResolveCurrentBtn")) FMQ.$("duelResolveCurrentBtn").onclick = async () => { await FMQ.stopPlaybackNow?.(); this.resolveCurrentDuel(st, duel); };
@@ -1660,9 +1672,9 @@ FMQ.modes = {
         const duel = this.currentDuel(st);
         if (!duel) { st.phase = "done"; this.renderArea(); return; }
         const finalDuel = (st.currentDuelIndex || 0) + 1 >= (st.duels || []).length;
-        const row = `<div class="duelVoteHostCard"><div class="pill">Duell ${(st.currentDuelIndex || 0) + 1}${duel.autoResolved ? " · Notfall" : ""}</div><b>${FMQ.escapeHtml(duel.promptText)}</b><div class="duelSongs"><div><b>A · ${FMQ.escapeHtml(this.playerName(duel.playerAId))}</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.voteCountA || 0)} ${duel.autoResolved ? "Auto-Punkte" : "Stimmen"}</span></div><div><b>B · ${FMQ.escapeHtml(this.playerName(duel.playerBId))}</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "Hier hätte ein Song sein können!")}<br><span class="muted">${FMQ.escapeHtml(duel.voteCountB || 0)} ${duel.autoResolved ? "Auto-Punkte" : "Stimmen"}</span></div></div></div>`;
+        const row = `<div class="duelVoteHostCard duelResultCelebration"><div class="confettiBurst">🎉</div><div class="pill">Duell ${(st.currentDuelIndex || 0) + 1}${duel.autoResolved ? " · Notfall" : ""}</div><b>${FMQ.escapeHtml(duel.promptText)}</b><div class="duelSongs"><div><b>A · ${FMQ.escapeHtml(this.playerName(duel.playerAId))}</b><br>${FMQ.escapeHtml(duel.submissionA?.name || "Hier hätte ein Song sein können!")}<br><span class="pointBadge">${FMQ.escapeHtml(duel.voteCountA || 0)} ${duel.autoResolved ? "Auto-Punkte" : "Stimmen"}</span></div><div><b>B · ${FMQ.escapeHtml(this.playerName(duel.playerBId))}</b><br>${FMQ.escapeHtml(duel.submissionB?.name || "Hier hätte ein Song sein können!")}<br><span class="pointBadge">${FMQ.escapeHtml(duel.voteCountB || 0)} ${duel.autoResolved ? "Auto-Punkte" : "Stimmen"}</span></div></div></div>`;
         FMQ.renderModeLikeQuick3({ heading: "Song-Duell Reveal", subtitle: finalDuel ? "Alle Duelle dieser Runde sind aufgelöst." : "Danach kommt der nächste Prompt.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${row}<div class="row" style="justify-content:center;"><button id="duelNextPromptBtn" class="big primary">${finalDuel ? "Runde abschließen" : "Nächster Prompt"}</button></div>` });
-        FMQ.$("duelNextPromptBtn").onclick = () => { if (finalDuel) st.phase = "done"; else { st.currentDuelIndex++; st.phase = "duelVoting"; } this.renderArea(); };
+        FMQ.$("duelNextPromptBtn").onclick = () => { st.autoResolveDuelId = null; if (finalDuel) st.phase = "done"; else { st.currentDuelIndex++; st.phase = "duelVoting"; } this.renderArea(); };
         return;
       }
       if (st.phase === "done") {

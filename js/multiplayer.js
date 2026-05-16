@@ -309,7 +309,7 @@ FMQ.closeMultiplayerSession = () => {
 FMQ.setMultiplayerControllerActions = (actions = []) => {
   const normalized = actions
     .filter(action => action && action.id && action.label)
-    .slice(0, 8)
+    .slice(0, 18)
     .map(action => ({
       id: String(action.id),
       label: String(action.label),
@@ -368,7 +368,7 @@ FMQ.collectVisibleHostControls = (root = document) => {
     const label = (el.textContent || "Weiter").replace(/\s+/g, " ").trim();
     if (label) actions.push({ id, label });
   }
-  return actions.slice(0, 12);
+  return actions.slice(0, 18);
 };
 
 FMQ.refreshPhoneControls = () => {
@@ -453,6 +453,9 @@ FMQ.handleMultiplayerAnswer = (payload) => {
     FMQ.modes.quick3.submitAnswer(payload.playerId, payload.answer || {});
   } else if (payload.type === "introPlaylistGuess") {
     FMQ.modes.introPlaylistGuess.submitAnswer(payload.playerId, payload.answer);
+    FMQ.modes.introPlaylistGuess.renderGuessUI?.();
+    FMQ.renderMultiplayerPanel?.();
+    return;
   } else if (payload.type === "rankingList") {
     FMQ.modes.rankingList.submitAnswer(payload.playerId, { track: FMQ.app.state.currentTrack, rank: parseInt(payload.answer, 10) });
   } else if (payload.type === "songChallengeShared") {
@@ -463,6 +466,7 @@ FMQ.handleMultiplayerAnswer = (payload) => {
     FMQ.modes.songChallenge.submitVote(payload.playerId, payload.answer, FMQ.multiplayer.prompt?.meta || {});
   }
   if (FMQ.modes[mode]?.renderArea) FMQ.modes[mode].renderArea();
+  if (payload.type === "ratingGuessMain") setTimeout(() => FMQ.$("ratingRevealBtn")?.click(), 0);
 };
 
 FMQ.showMultiDeviceHint = (message) => {
