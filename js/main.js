@@ -148,6 +148,7 @@ FMQ.onNewTrack = async () => {
   FMQ.app.state.quick3.randomStartMs = null;
   FMQ.app.state.quick3.answers = {};
   FMQ.app.state.quick3.multiReveal = false;
+  FMQ.app.state.quick3.advanceAfterSelfCheck = false;
   if (mode === "introPlaylistGuess") FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
   if (mode === "rankingList") {
     FMQ.app.state.rankingList.answers = {};
@@ -212,6 +213,7 @@ FMQ.resetTurnUI = () => {
   FMQ.app.state.quick3.randomStartMs = null;
   FMQ.app.state.quick3.answers = {};
   FMQ.app.state.quick3.multiReveal = false;
+  FMQ.app.state.quick3.advanceAfterSelfCheck = false;
   if (FMQ.app.state.social?.autoAdvanceTimer) clearInterval(FMQ.app.state.social.autoAdvanceTimer);
 
   FMQ.$("turnPlayerBanner").style.display = "";

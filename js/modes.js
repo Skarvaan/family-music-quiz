@@ -293,6 +293,7 @@ FMQ.modes = {
                 <option value="random">Zufällig mittig</option>
               </select>
               <button id="quick3PlayBtnInline" class="big">▶️ Abspielen</button>
+              ${FMQ.isMultiDevice?.() ? `<button id="quick3StopBtnInline" class="big">⏸️ Stop</button>` : ""}
             </div>
             <div class="revealCenter">
               <button id="revealBtnInline" class="big">Reveal</button>
@@ -307,12 +308,17 @@ FMQ.modes = {
       };
       FMQ.bindPlayerStartModeSelect("quick3StartModeSelectInline");
       FMQ.$("quick3PlayBtnInline").onclick = () => FMQ.onQuick3Play(FMQ.getBoundStartMode("quick3StartModeSelectInline")).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      if (FMQ.$("quick3StopBtnInline")) FMQ.$("quick3StopBtnInline").onclick = () => FMQ.stopPlaybackNow?.().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("revealBtnInline").onclick = () => FMQ.$("revealBtn").click();
+      if (FMQ.isMultiDevice?.() && me) FMQ.setMultiplayerController?.(me.remoteId || me.id);
       if (FMQ.isMultiDevice?.() && FMQ.app.state.quick3.multiReveal) {
         const expectedIds = [FMQ.currentPlayer()?.id].filter(Boolean);
         const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(FMQ.app.state.quick3.answers || {}, id));
-        FMQ.$("modeArea").insertAdjacentHTML("beforeend", `${FMQ.modes.bestFit.answerStatusHtml(expectedIds, FMQ.app.state.quick3.answers)}${allDone ? FMQ.modes.bestFit.countdownHtml("Alle Selbstchecks sind da. Weiter in …") : ""}`);
-        if (allDone) FMQ.modes.bestFit.scheduleAutoAdvance("quick3Next", () => FMQ.onNext());
+        FMQ.$("modeArea").insertAdjacentHTML("beforeend", `${FMQ.modes.bestFit.answerStatusHtml(expectedIds, FMQ.app.state.quick3.answers)}`);
+        if (allDone && !FMQ.app.state.quick3.advanceAfterSelfCheck) {
+          FMQ.app.state.quick3.advanceAfterSelfCheck = true;
+          setTimeout(() => FMQ.onNext().catch(e => FMQ.setGameDebug(e.stack || e.message)), 0);
+        }
       }
     },
     getClipSeconds() { return FMQ.app.state.quick3.clipSeconds || 3; },
@@ -541,7 +547,7 @@ FMQ.modes = {
         subtitle: "Erst hören, dann tippt jeweils die gerade angezeigte Person.",
         heroName: "",
         panelClass: "theme-playlist",
-        bodyHtml: `<div class="quick3Controls" style="justify-content:center;"><select id="introGuessLenSelect"><option value="3">3 Sekunden</option><option value="5">5 Sekunden</option><option value="10">10 Sekunden</option><option value="full">Ganzer Song</option></select><select id="introGuessStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="introGuessPlayBtn" class="big">▶️ Abspielen</button></div><div id="plGuessPanel" style="margin-top:12px;"></div><div class="row" style="justify-content:center; margin-top:18px;"><button id="introGuessRevealBtn" class="big" disabled>Reveal</button><button id="introGuessNextBtn" class="big primary" disabled>Weiter</button></div>`
+        bodyHtml: `<div class="quick3Controls" style="justify-content:center;"><select id="introGuessLenSelect"><option value="3">3 Sekunden</option><option value="5">5 Sekunden</option><option value="10">10 Sekunden</option><option value="full">Ganzer Song</option></select><select id="introGuessStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="introGuessPlayBtn" class="big">▶️ Abspielen</button>${FMQ.isMultiDevice?.() ? `<button id="introGuessStopBtn" class="big">⏸️ Stop</button>` : ""}</div><div id="plGuessPanel" style="margin-top:12px;"></div><div class="row" style="justify-content:center; margin-top:18px;"><button id="introGuessRevealBtn" class="big" disabled>Reveal</button><button id="introGuessNextBtn" class="big primary" disabled>Weiter</button></div>`
       });
       FMQ.$("introGuessLenSelect").value = String(FMQ.app.state.quick3.clipSeconds);
       FMQ.$("introGuessLenSelect").onchange = () => {
@@ -551,6 +557,7 @@ FMQ.modes = {
       const afterPlay = () => { FMQ.modes.introPlaylistGuess.renderGuessUI(); };
       FMQ.bindPlayerStartModeSelect("introGuessStartModeSelect");
       FMQ.$("introGuessPlayBtn").onclick = () => FMQ.onQuick3Play(FMQ.getBoundStartMode("introGuessStartModeSelect")).then(afterPlay).catch(e => FMQ.setGameDebug(e.stack || e.message));
+      if (FMQ.$("introGuessStopBtn")) FMQ.$("introGuessStopBtn").onclick = () => FMQ.stopPlaybackNow?.().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("introGuessRevealBtn").onclick = () => FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("introGuessNextBtn").onclick = () => FMQ.onNext();
     },
@@ -573,8 +580,23 @@ FMQ.modes = {
           });
         }
         const allDone = responders.every(p => Object.prototype.hasOwnProperty.call(answered, p.id));
-        c.innerHTML = `${FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered)}${allDone ? FMQ.modes.bestFit.countdownHtml("Alle Tipps sind da. Reveal startet in …") : ""}`;
-        if (allDone) FMQ.modes.bestFit.scheduleAutoAdvance("introReveal", () => FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message)));
+        if (allDone) {
+          if (!FMQ.app.state.introPlaylistGuess.countdownStarted) {
+            FMQ.app.state.introPlaylistGuess.countdownStarted = true;
+            let n = 3;
+            c.innerHTML = `${FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered)}<div class="autoRevealCountdown"><div class="muted">Alle Tipps sind da.</div><div id="introAutoCountdown" class="countNum">3</div><div class="muted">Reveal startet automatisch …</div></div>`;
+            const tick = setInterval(() => {
+              n--;
+              if (FMQ.$("introAutoCountdown")) FMQ.$("introAutoCountdown").textContent = String(Math.max(0, n));
+              if (n <= 0) {
+                clearInterval(tick);
+                FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
+              }
+            }, 700);
+          }
+        } else {
+          c.innerHTML = FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered);
+        }
         return;
       }
       const responder = responders.find(p => !Object.prototype.hasOwnProperty.call(answered, p.id)) || null;
@@ -653,6 +675,7 @@ FMQ.modes = {
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "ratingGuess") FMQ.initSocialRound({ modeId: "ratingGuess", startPhase: "listen" });
       const s = FMQ.app.state.social;
       const mainName = FMQ.getPlayerName(s.mainPlayerId);
+      if (FMQ.isMultiDevice?.()) FMQ.setMultiplayerController?.(s.mainPlayerId);
       if (s.phase === "listen") {
         FMQ.renderModeLikeQuick3({
           heading: `Wie findet "${mainName}" diesen Song?`,
@@ -689,9 +712,14 @@ FMQ.modes = {
           }
           const answerMap = { ...s.answersByPlayer };
           const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(answerMap, id));
-          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}${allDone ? `<div class="row" style="justify-content:center;"><button id="ratingToMainBtn" class="big primary">${FMQ.escapeHtml(mainName)} gibt die echte Bewertung ab</button></div>` : ""}` });
+          if (allDone) {
+            s.phase = "mainAnswer";
+            FMQ.resetMultiplayerRound?.();
+            FMQ.modes.ratingGuess.renderArea();
+            return;
+          }
+          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}` });
           FMQ.modes.ratingGuess.bindTransport();
-          if (FMQ.$("ratingToMainBtn")) FMQ.$("ratingToMainBtn").onclick = () => { s.phase = "mainAnswer"; FMQ.resetMultiplayerRound?.(); FMQ.modes.ratingGuess.renderArea(); };
           return;
         }
         const pid = FMQ.getSocialResponderId();
@@ -854,9 +882,14 @@ FMQ.modes = {
           }
           const answerMap = { ...s.answersByPlayer };
           const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(answerMap, id));
-          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}${allDone ? `<div class="row" style="justify-content:center;"><button id="ratingToMainBtn" class="big primary">${FMQ.escapeHtml(mainName)} gibt die echte Bewertung ab</button></div>` : ""}` });
+          if (allDone) {
+            s.phase = "mainAnswer";
+            FMQ.resetMultiplayerRound?.();
+            FMQ.modes.ratingGuess.renderArea();
+            return;
+          }
+          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}` });
           FMQ.modes.ratingGuess.bindTransport();
-          if (FMQ.$("ratingToMainBtn")) FMQ.$("ratingToMainBtn").onclick = () => { s.phase = "mainAnswer"; FMQ.resetMultiplayerRound?.(); FMQ.modes.ratingGuess.renderArea(); };
           return;
         }
         const pid = FMQ.getSocialResponderId();
@@ -1171,6 +1204,7 @@ FMQ.modes = {
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "bestFit") FMQ.initSocialRound({ modeId: "bestFit", startPhase: "listen" });
       const s = FMQ.app.state.social;
       const mainName = FMQ.getPlayerName(s.mainPlayerId);
+      if (FMQ.isMultiDevice?.()) FMQ.setMultiplayerController?.(s.mainPlayerId);
       const trackA = FMQ.app.state.bestFitTracks?.a;
       const trackB = FMQ.app.state.bestFitTracks?.b;
       if (s.phase === "listen") {
@@ -1206,16 +1240,21 @@ FMQ.modes = {
           const answerMap = { ...s.answersByPlayer };
           const allDone = FMQ.modes.bestFit.allAnswered(expectedIds, answerMap);
           FMQ.modes.bestFit.clearAutoAdvance();
+          if (allDone) {
+            s.phase = "mainAnswer";
+            FMQ.resetMultiplayerRound?.();
+            FMQ.modes.bestFit.renderArea();
+            return;
+          }
           FMQ.renderModeLikeQuick3({
             heading: "Handy-Tipps laufen …",
             subtitle: `Was glaubst du? Welchen Song findet ${mainName} besser?`,
             heroName: "",
             panelClass: "theme-playlist",
-            bodyHtml: `<div class="bestFitStableArea">${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfToMainBtn" class="big primary" ${allDone ? "" : "disabled"}>${FMQ.escapeHtml(mainName)} löst auf</button></div></div>`
+            bodyHtml: `<div class="bestFitStableArea">${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button></div></div>`
           });
           FMQ.modes.bestFit.bindTransport(trackA, trackB);
           FMQ.$("bestFitNewSongsBtn").onclick = () => FMQ.modes.bestFit.newSongs().catch(e => FMQ.setGameDebug(e.stack || e.message));
-          FMQ.$("bfToMainBtn").onclick = () => { s.phase = "mainAnswer"; FMQ.resetMultiplayerRound?.(); FMQ.modes.bestFit.renderArea(); };
           FMQ.renderMultiplayerPanel?.();
           return;
         }
@@ -1250,17 +1289,13 @@ FMQ.modes = {
           FMQ.modes.bestFit.startMainPromptOnce();
           const expectedIds = FMQ.modes.bestFit.expectedMainIds();
           const hasMainAnswer = !!s.mainAnswer;
-          if (hasMainAnswer) {
-            FMQ.modes.bestFit.scheduleAutoAdvance("toReveal", () => FMQ.modes.bestFit.finishReveal());
-          } else {
-            FMQ.modes.bestFit.clearAutoAdvance();
-          }
+          FMQ.modes.bestFit.clearAutoAdvance();
           FMQ.renderModeLikeQuick3({
             heading: `${mainName}, was findest du besser?`,
             subtitle: "Erzähl gerne, warum – dann wähle deinen Favoriten.",
             heroName: "",
             panelClass: "theme-playlist",
-            bodyHtml: `<div class="bestFitStableArea">${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}${hasMainAnswer ? FMQ.modes.bestFit.countdownHtml("Antwort ist da. Reveal startet in …") : ""}${FMQ.modes.bestFit.choiceHtml("data-main-pick", true)}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfRevealBtn" class="big primary" ${hasMainAnswer ? "" : "disabled"}>Sofort Reveal</button></div></div>`
+            bodyHtml: `<div class="bestFitStableArea">${FMQ.modes.bestFit.transportHtml()}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}${FMQ.modes.bestFit.choiceHtml("data-main-pick", true)}<div class="row" style="justify-content:center;"><button id="bestFitNewSongsBtn" class="big secondary">🔄 Andere Songs ziehen</button><button id="bfRevealBtn" class="big primary" ${hasMainAnswer ? "" : "disabled"}>Sofort Reveal</button></div></div>`
           });
           FMQ.modes.bestFit.bindTransport(trackA, trackB);
           FMQ.$("bestFitNewSongsBtn").onclick = () => FMQ.modes.bestFit.newSongs().catch(e => FMQ.setGameDebug(e.stack || e.message));
@@ -1400,10 +1435,11 @@ FMQ.modes = {
         subtitle: st.promptText,
         heroName: "",
         panelClass: "theme-playlist",
-        bodyHtml: cur ? `<div class="challengeRevealCard"><div class="pill">${st.revealIndex + 1}/${submissions.length}</div><div class="muted">${FMQ.escapeHtml(this.playerName(cur.playerId))}</div>${hasTrack ? `<div class="songRevealTitle">${FMQ.escapeHtml(cur.track.name)}</div><div class="songRevealArtist">${FMQ.escapeHtml(cur.track.artistName)}</div>` : `<div class="songRevealTitle">Hier hätte ein Song sein können!</div><div class="songRevealArtist">Keine Antwort eingereicht.</div>`}</div><div class="quick3Controls" style="justify-content:center;">${hasTrack ? `<select id="challengeStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="challengePlayBtn" class="big primary">▶️ Song abspielen</button>` : ""}<button id="challengeNextBtn" class="big secondary">${st.revealIndex + 1 >= submissions.length ? "Challenge beenden" : "Nächster Song"}</button></div>` : `<div class="muted">Keine Spieler in dieser Runde.</div><button id="challengeDoneBtn" class="big primary">Zurück</button>`
+        bodyHtml: cur ? `<div class="challengeRevealCard"><div class="pill">${st.revealIndex + 1}/${submissions.length}</div><div class="muted">${FMQ.escapeHtml(this.playerName(cur.playerId))}</div>${hasTrack ? `<div class="songRevealTitle">${FMQ.escapeHtml(cur.track.name)}</div><div class="songRevealArtist">${FMQ.escapeHtml(cur.track.artistName)}</div>` : `<div class="songRevealTitle">Hier hätte ein Song sein können!</div><div class="songRevealArtist">Keine Antwort eingereicht.</div>`}</div><div class="quick3Controls" style="justify-content:center;">${hasTrack ? `<select id="challengeStartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select><button id="challengePlayBtn" class="big primary">▶️ Song abspielen</button><button id="challengeStopBtn" class="big">⏸️ Stop</button>` : ""}<button id="challengeNextBtn" class="big secondary">${st.revealIndex + 1 >= submissions.length ? "Challenge beenden" : "Nächster Song"}</button></div>` : `<div class="muted">Keine Spieler in dieser Runde.</div><button id="challengeDoneBtn" class="big primary">Zurück</button>`
       });
       if (FMQ.$("challengeStartModeSelect")) FMQ.bindPlayerStartModeSelect("challengeStartModeSelect");
       if (FMQ.$("challengePlayBtn")) FMQ.$("challengePlayBtn").onclick = () => { const mode = FMQ.getBoundStartMode("challengeStartModeSelect"); const startMs = FMQ.getStoredStartMs(cur.track, `challenge:${cur.playerId}`, mode); FMQ.playTrackUri(cur.track.uri, { positionMs: startMs }).catch(e => FMQ.setGameDebug(e.stack || e.message)); };
+      if (FMQ.$("challengeStopBtn")) FMQ.$("challengeStopBtn").onclick = () => FMQ.stopPlaybackNow?.().catch(e => FMQ.setGameDebug(e.stack || e.message));
       if (FMQ.$("challengeNextBtn")) FMQ.$("challengeNextBtn").onclick = async () => { try { await FMQ.stopPlaybackNow?.(); } catch {} if (st.revealIndex + 1 >= submissions.length) { FMQ.app.state.songChallenge = null; FMQ.resetMultiplayerRound?.(); } else st.revealIndex++; this.renderArea(); };
       if (FMQ.$("challengeDoneBtn")) FMQ.$("challengeDoneBtn").onclick = () => { FMQ.app.state.songChallenge = null; this.renderArea(); };
     },

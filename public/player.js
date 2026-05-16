@@ -252,6 +252,34 @@
     updateSubmit();
   };
 
+  const renderConfirmChoicePrompt = (panel, prompt, options) => {
+    let selected = null;
+    const update = () => {
+      panel.querySelectorAll("[data-answer]").forEach(btn => btn.classList.toggle("selected", btn.getAttribute("data-answer") === selected));
+      const send = panel.querySelector("#sendChoiceBtn");
+      if (send) send.disabled = !selected || state.submittingPromptId === prompt.id;
+    };
+    panel.innerHTML = `
+      <div class="player-question-card player-focus-card">
+        <div class="eyebrow">Jetzt antworten</div>
+        <h2>${escapeHtml(prompt.title || "Frage")}</h2>
+        <p>${escapeHtml(prompt.text || "Bitte wähle eine Antwort.")}</p>
+        <div class="player-answer-grid">${options.map(opt => `<button class="choiceBtn abChoiceBig" data-answer="${escapeHtml(opt.value)}">${escapeHtml(opt.label || opt.value)}</button>`).join("")}</div>
+        <button id="sendChoiceBtn" class="choiceBtn abChoiceBig" disabled>Einloggen</button>
+      </div>
+    `;
+    panel.querySelectorAll("[data-answer]").forEach(btn => btn.onclick = () => {
+      selected = btn.getAttribute("data-answer");
+      update();
+    });
+    panel.querySelector("#sendChoiceBtn").onclick = () => {
+      if (!selected || state.submittingPromptId === prompt.id) return;
+      state.submittingPromptId = prompt.id;
+      submitAnswer(selected);
+    };
+    update();
+  };
+
   const renderPrompt = () => {
     const panel = $("promptPanel");
     const prompt = state.prompt;
@@ -290,6 +318,10 @@
     }
 
     const options = prompt.options?.length ? prompt.options : [{ value: "A", label: "Song A" }, { value: "B", label: "Song B" }];
+    if (["bestFitVote", "bestFitAll", "bestFitMain"].includes(prompt.type)) {
+      renderConfirmChoicePrompt(panel, prompt, options);
+      return;
+    }
     const inputHtml = prompt.kind === "checks"
       ? `<div class="player-check-grid">${options.map(opt => `<label class="selfCheckItem"><input type="checkbox" data-check="${escapeHtml(opt.value)}"> ${escapeHtml(opt.label || opt.value)}</label>`).join("")}</div><button id="sendChecksBtn" class="choiceBtn abChoiceBig">Antwort senden</button>`
       : `<div class="player-answer-grid">${options.map(opt => `<button class="choiceBtn abChoiceBig" data-answer="${escapeHtml(opt.value)}">${escapeHtml(opt.label || opt.value)}</button>`).join("")}</div>`;

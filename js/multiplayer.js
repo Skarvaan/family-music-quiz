@@ -300,17 +300,31 @@ FMQ.setMultiplayerControllerActions = (actions = []) => {
 
 FMQ.collectVisibleHostControls = (root = document) => {
   if (!FMQ.isMultiDevice?.()) return [];
-  const ignoreIds = new Set([
-    "quick3PlayBtnInline", "rankingPlayBtn", "rankingStopBtn", "playAFromStartBtn", "playBFromStartBtn", "bestFitStopBtn",
-    "ratingPlayBtn", "ratingStopBtn", "bfPlayBtn", "bfStopBtn", "introGuessPlayBtn", "introGuessStopBtn"
-  ]);
   const preferredIds = [
-    "bestFitContinueBtn", "ratingListenNextBtn", "revealBtnInline", "revealBtn", "newTrackBtn", "bestFitNewSongsBtn", "bfToMainBtn", "bfRevealBtn",
-    "first3Play0_10", "first3Play0_20", "first3Play0_full", "first3Play1_10", "first3Play1_20", "first3Play1_full", "first3Play2_10", "first3Play2_20", "first3Play2_full", "iceStopBtn",
-    "rankingNextBtn", "introGuessRevealBtn", "introGuessNextBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
+    "quick3PlayBtnInline", "quick3StopBtnInline", "revealBtnInline", "ratingPlayResumeBtn", "ratingStopBtn", "ratingListenNextBtn", "ratingToMainBtn", "ratingRevealBtn",
+    "playAFromStartBtn", "playBFromStartBtn", "bestFitStopBtn", "bestFitContinueBtn", "bestFitNewSongsBtn", "bfToMainBtn", "bfRevealBtn",
+    "introGuessPlayBtn", "introGuessStopBtn", "introGuessRevealBtn", "introGuessNextBtn",
+    "challengePlayBtn", "challengeStopBtn", "challengeNextBtn",
+    "iceStopBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
+  ];
+  const selectIds = [
+    "quick3LenSelectInline", "quick3StartModeSelectInline", "ratingStartModeSelect", "bestFitClipSecondsSelect", "bestFitStartModeSelect",
+    "introGuessLenSelect", "introGuessStartModeSelect", "first3StartModeSelect", "challengeStartModeSelect"
   ];
   const actions = [];
-  const first3Buttons = [...root.querySelectorAll?.("[data-first3-play]") || []].filter(btn => !btn.disabled && btn.offsetParent !== null);
+  const visible = (el) => {
+    if (!el || el.disabled || el.offsetParent === null) return false;
+    const style = window.getComputedStyle(el);
+    return style.visibility !== "hidden" && style.display !== "none";
+  };
+  const labelForOption = (option) => (option.textContent || option.label || option.value || "Option").replace(/\s+/g, " ").trim();
+  for (const id of selectIds) {
+    const el = FMQ.$(id);
+    if (!visible(el)) continue;
+    const label = id.includes("Len") || id.includes("Clip") ? "Hörzeit" : "Startpunkt";
+    actions.push({ id: `selectGroup:${id}`, label, options: [...el.options].map(opt => ({ id: `select:${id}:${opt.value}`, label: labelForOption(opt) })) });
+  }
+  const first3Buttons = [...root.querySelectorAll?.("[data-first3-play]") || []].filter(visible);
   if (first3Buttons.length) {
     [0, 1, 2].forEach(idx => {
       const songButtons = first3Buttons.filter(btn => parseInt(btn.getAttribute("data-first3-play"), 10) === idx);
@@ -318,23 +332,18 @@ FMQ.collectVisibleHostControls = (root = document) => {
       actions.push({
         id: `first3Song${idx}`,
         label: `Song ${idx + 1}`,
-        options: songButtons.map(btn => ({
-          id: btn.id,
-          label: (btn.getAttribute("data-seconds") === "full" ? "Ganzer Song" : `${btn.getAttribute("data-seconds")} Sek.`)
-        }))
+        options: songButtons.map(btn => ({ id: btn.id, label: (btn.getAttribute("data-seconds") === "full" ? "Ganzer Song" : `${btn.getAttribute("data-seconds")} Sek.`) }))
       });
     });
   }
   for (const id of preferredIds) {
     const el = FMQ.$(id);
-    if (!el || ignoreIds.has(id) || el.disabled || el.offsetParent === null) continue;
+    if (!visible(el)) continue;
     if (actions.some(action => action.id === id || action.options?.some(option => option.id === id))) continue;
-    const style = window.getComputedStyle(el);
-    if (style.visibility === "hidden" || style.display === "none") continue;
     const label = (el.textContent || "Weiter").replace(/\s+/g, " ").trim();
     if (label) actions.push({ id, label });
   }
-  return actions.slice(0, 8);
+  return actions.slice(0, 12);
 };
 
 FMQ.refreshPhoneControls = () => {
@@ -355,6 +364,16 @@ FMQ.setMultiplayerController = (playerId) => {
 
 FMQ.handleRemoteControlAction = (action) => {
   if (!FMQ.isMultiDevice()) return;
+  if (typeof action === "string" && action.startsWith("select:")) {
+    const [, id, ...rest] = action.split(":");
+    const el = FMQ.$(id);
+    if (el) {
+      el.value = rest.join(":");
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      setTimeout(() => FMQ.refreshPhoneControls?.(), 0);
+    }
+    return;
+  }
   const el = action ? FMQ.$(action) : null;
   if (el && el.offsetParent !== null && !el.disabled) {
     el.click();
