@@ -49,6 +49,19 @@ function publicPlayer(player) {
   };
 }
 
+function resetRoomForNewSession({ keepHostSocketId = true, newCode = true } = {}) {
+  const hostSocketId = keepHostSocketId ? room.hostSocketId : null;
+  if (newCode) room.code = makeRoomCode();
+  room.hostSocketId = hostSocketId;
+  room.playersById = new Map();
+  room.playerIdByName = new Map();
+  room.prompt = null;
+  room.answers = new Map();
+  room.controllerId = null;
+  room.controllerActions = [];
+  room.open = false;
+}
+
 function roomSnapshot() {
   return {
     roomCode: room.code,
@@ -92,12 +105,17 @@ app.get("/qr.svg", async (req, res) => {
 });
 
 io.on("connection", socket => {
-  socket.on("host:createRoom", (_payload = {}, ack) => {
+  socket.on("host:createRoom", (payload = {}, ack) => {
+    if (payload.newSession || !room.open) {
+      resetRoomForNewSession({ keepHostSocketId: false, newCode: payload.newSession || !room.open });
+    }
     room.hostSocketId = socket.id;
     room.open = true;
     room.prompt = null;
     room.answers = new Map();
+    room.controllerId = null;
     room.controllerActions = [];
+    socket.data.isHost = true;
     socket.join(room.code);
     ack?.(roomSnapshot());
     emitRoomState();
@@ -151,18 +169,12 @@ io.on("connection", socket => {
       ack?.({ ok: false, error: "Nur der Host kann den Raum schließen." });
       return;
     }
-    room.open = false;
-    room.prompt = null;
-    room.answers = new Map();
-    room.controllerId = null;
-    room.controllerActions = [];
-    io.to(room.code).emit("player:roomClosed", { error: "Der Host hat den Mehrgeräte-Modus beendet." });
-    for (const player of room.playersById.values()) {
-      player.socketId = null;
-      player.lastSeenAt = Date.now();
-    }
+    const oldCode = room.code;
+    io.to(oldCode).emit("player:roomClosed", { error: "Der Host hat den Mehrgeräte-Modus beendet. Für eine neue Sitzung bitte mit neuem Code beitreten." });
+    resetRoomForNewSession({ keepHostSocketId: true, newCode: true });
+    socket.leave(oldCode);
+    ack?.({ ok: true, roomCode: room.code });
     emitRoomState();
-    ack?.({ ok: true });
   });
 
   socket.on("player:setActive", (payload = {}, ack) => {
@@ -298,12 +310,9 @@ io.on("connection", socket => {
 
   socket.on("disconnect", () => {
     if (room.hostSocketId === socket.id) {
-      room.hostSocketId = null;
-      room.open = false;
-      room.prompt = null;
-      room.controllerId = null;
-      room.controllerActions = [];
-      io.to(room.code).emit("player:roomClosed", { error: "Host-Verbindung getrennt. Raum geschlossen." });
+      const oldCode = room.code;
+      io.to(oldCode).emit("player:roomClosed", { error: "Host-Verbindung getrennt. Raum geschlossen." });
+      resetRoomForNewSession({ keepHostSocketId: false, newCode: true });
     }
     if (socket.data.playerId) {
       const player = room.playersById.get(socket.data.playerId);

@@ -234,7 +234,7 @@ FMQ.resetTurnUI = () => {
 
   const mode = FMQ.app.config.mode;
   if (mode === "introPlaylistGuess") FMQ.app.state.introPlaylistGuess = { answers: {}, responderIndex: 0 };
-  if (["storyPrompt", "promptDuel"].includes(mode)) FMQ.$("turnPlayerBanner").style.display = "none";
+  if (["storyPrompt", "promptDuel", "introPlaylistGuess"].includes(mode)) FMQ.$("turnPlayerBanner").style.display = "none";
   FMQ.modes[mode].renderArea();
 
   if (mode === "quick3" || mode === "rankingList" || mode === "introPlaylistGuess" || mode === "introFirst3") {

@@ -270,15 +270,38 @@ FMQ.bindMultiplayerSocket = (socket) => {
 };
 
 
-FMQ.closeMultiplayerRoom = () => {
-  if (FMQ.multiplayer.socket && FMQ.multiplayer.connected) {
-    FMQ.multiplayer.socket.emit("host:closeRoom", {});
-  }
-  FMQ.multiplayer.controllerId = null;
-  FMQ.multiplayer.controllerActions = [];
+FMQ.resetLocalMultiplayerSession = () => {
+  FMQ.multiplayer.roomCode = null;
+  FMQ.multiplayer.joinUrl = null;
+  FMQ.multiplayer.players = [];
   FMQ.multiplayer.prompt = null;
   FMQ.multiplayer.answeredPlayerIds = new Set();
+  FMQ.multiplayer.controllerId = null;
+  FMQ.multiplayer.controllerActions = [];
+  FMQ.app.players.forEach(p => { if (p.remoteId) p.remoteConnected = false; });
+};
+
+FMQ.closeMultiplayerRoom = ({ switchToSingle = false } = {}) => {
+  if (FMQ.multiplayer.socket && FMQ.multiplayer.connected) {
+    FMQ.multiplayer.socket.emit("host:closeRoom", {}, snapshot => {
+      if (snapshot?.roomCode) FMQ.multiplayer.roomCode = snapshot.roomCode;
+      FMQ.renderDeviceModePanel?.();
+      FMQ.renderMultiplayerPanel?.();
+    });
+  }
+  FMQ.resetLocalMultiplayerSession();
   FMQ.setMultiplayerControllerActions?.([]);
+  if (switchToSingle) {
+    FMQ.multiplayer.enabled = false;
+    FMQ.app.state.deviceMode = "single";
+  }
+};
+
+FMQ.closeMultiplayerSession = () => {
+  FMQ.closeMultiplayerRoom({ switchToSingle: true });
+  FMQ.showMultiDeviceHint?.("Sitzung geschlossen. Beim nächsten Öffnen wird ein neuer Raumcode erstellt.");
+  FMQ.renderDeviceModePanel?.();
+  FMQ.renderSetupWizard?.();
 };
 
 FMQ.setMultiplayerControllerActions = (actions = []) => {
@@ -461,6 +484,7 @@ FMQ.renderDeviceModePanel = () => {
       <button id="singleDeviceModeBtn" class="menu-card compact ${!active ? "active" : ""}"><span class="card-title">Modus: Ein Gerät</span><span class="card-subtitle">Jeder ist nacheinander dran.</span></button>
       <button id="multiDeviceModeBtn" class="menu-card compact ${active ? "active" : ""}"><span class="card-title">Modus: Eigene Geräte</span><span class="card-subtitle">Jeder ist am eigenen Gerät gleichzeitig dran.</span></button>
     </div>
+    ${active ? `<div class="row" style="justify-content:center;"><button id="closeMultiSessionBtn" type="button" class="action-button secondary">Sitzung schließen</button></div>` : ""}
     <div id="multiDeviceStatus" class="muted multiDeviceStatus">${active ? `Mehrgeräte-Modus aktiv · Raum ${FMQ.escapeHtml(room)}` : local ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich." : "Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen."}</div>
     ${active ? `
       <section class="multiLobbyCard">
@@ -489,6 +513,7 @@ FMQ.renderDeviceModePanel = () => {
     FMQ.showMultiDeviceHint("Ein-Gerät-Modus aktiv.");
   };
   FMQ.$("multiDeviceModeBtn").onclick = () => FMQ.enableMultiDeviceMode().catch(e => FMQ.showMultiDeviceHint(e.message));
+  if (FMQ.$("closeMultiSessionBtn")) FMQ.$("closeMultiSessionBtn").onclick = () => FMQ.closeMultiplayerSession();
 };
 
 FMQ.getMultiplayerExpectedIds = ({ includeMain = false } = {}) => {
@@ -555,7 +580,7 @@ FMQ.renderMultiplayerPanel = () => {
           return `<div class="multiRosterRow ${p.active === false ? "paused" : ""}"><span><b>${FMQ.escapeHtml(p.name)}</b><small>${p.remoteConnected ? "online" : "offline"} · ${p.active === false ? "pausiert" : "aktiv"}${answered ? " · geantwortet" : ""}</small></span><label><input type="checkbox" data-role="multi-active" data-pid="${FMQ.escapeHtml(id)}" ${p.active !== false ? "checked" : ""}> aktiv</label></div>`;
         }).join("") || `<div class="muted">Noch keine Handy-Spieler verbunden.</div>`}
       </div>
-      <details class="multiEmergency"><summary>Notfall</summary><div class="muted">Wenn jemand nicht mehr abstimmt: Person kurz pausieren und nicht weiter auf sie warten.</div><div class="row"><select data-role="skip-player"><option value="">Person auswählen …</option>${players.map(p => `<option value="${FMQ.escapeHtml(p.remoteId || p.id)}">${FMQ.escapeHtml(p.name)}</option>`).join("")}</select><button class="action-button secondary" data-role="skip-player-btn">Person überspringen</button></div></details>
+      <details class="multiEmergency"><summary>Notfall</summary><div class="muted">Wenn jemand nicht mehr abstimmt: Person kurz pausieren und nicht weiter auf sie warten.</div><div class="row"><select data-role="skip-player"><option value="">Person auswählen …</option>${players.map(p => `<option value="${FMQ.escapeHtml(p.remoteId || p.id)}">${FMQ.escapeHtml(p.name)}</option>`).join("")}</select><button class="action-button secondary" data-role="skip-player-btn">Person überspringen</button><button class="action-button secondary" data-role="close-session-btn">Sitzung schließen</button></div></details>
     </div>
   `;
   panels.forEach(panel => {
@@ -568,5 +593,6 @@ FMQ.renderMultiplayerPanel = () => {
       const select = btn.closest("details")?.querySelector('[data-role="skip-player"]');
       if (select?.value) FMQ.skipMultiplayerPlayer(select.value);
     });
+    panel.querySelectorAll('[data-role="close-session-btn"]').forEach(btn => btn.onclick = () => FMQ.closeMultiplayerSession());
   });
 };

@@ -585,18 +585,21 @@ FMQ.modes = {
         }
         const allDone = responders.every(p => Object.prototype.hasOwnProperty.call(answered, p.id));
         if (allDone) {
+          c.innerHTML = `${FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered)}<div class="autoRevealCountdown"><div class="muted">Alle Tipps sind da.</div><div id="introAutoCountdown" class="countNum">3</div><div class="muted">Reveal startet automatisch …</div><button id="introAutoRevealNowBtn" class="big primary">Sofort Reveal</button></div>`;
+          if (FMQ.$("introGuessRevealBtn")) FMQ.$("introGuessRevealBtn").disabled = false;
+          FMQ.$("introAutoRevealNowBtn").onclick = () => FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
           if (!FMQ.app.state.introPlaylistGuess.countdownStarted) {
             FMQ.app.state.introPlaylistGuess.countdownStarted = true;
             let n = 3;
-            c.innerHTML = `${FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered)}<div class="autoRevealCountdown"><div class="muted">Alle Tipps sind da.</div><div id="introAutoCountdown" class="countNum">3</div><div class="muted">Reveal startet automatisch …</div></div>`;
-            const tick = setInterval(() => {
+            FMQ.app.state.introPlaylistGuess.countdownTimer = setInterval(() => {
               n--;
               if (FMQ.$("introAutoCountdown")) FMQ.$("introAutoCountdown").textContent = String(Math.max(0, n));
               if (n <= 0) {
-                clearInterval(tick);
+                clearInterval(FMQ.app.state.introPlaylistGuess.countdownTimer);
+                FMQ.app.state.introPlaylistGuess.countdownTimer = null;
                 FMQ.modes.introPlaylistGuess.reveal().catch(e => FMQ.setGameDebug(e.stack || e.message));
               }
-            }, 700);
+            }, 1000);
           }
         } else {
           c.innerHTML = FMQ.modes.bestFit.answerStatusHtml(responders.map(p => p.id), answered);
@@ -627,6 +630,10 @@ FMQ.modes = {
       });
     },
     async reveal() {
+      if (FMQ.app.state.introPlaylistGuess.countdownTimer) {
+        clearInterval(FMQ.app.state.introPlaylistGuess.countdownTimer);
+        FMQ.app.state.introPlaylistGuess.countdownTimer = null;
+      }
       await FMQ.stopPlaybackNow?.();
       const sourceId = FMQ.app.state.currentSourcePlayerId;
       const validOwnerIds = FMQ.modes.introPlaylistGuess.matchingPlaylistOwnerIds(FMQ.app.state.currentTrack);
@@ -717,15 +724,14 @@ FMQ.modes = {
           const answerMap = { ...s.answersByPlayer };
           const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(answerMap, id));
           if (allDone) {
-            FMQ.modes.bestFit.scheduleAutoAdvance("ratingToMain", () => {
-              s.phase = "mainAnswer";
-              FMQ.resetMultiplayerRound?.();
-              FMQ.modes.ratingGuess.renderArea();
-            });
-          } else {
             FMQ.modes.bestFit.clearAutoAdvance();
+            s.phase = "mainAnswer";
+            FMQ.resetMultiplayerRound?.();
+            FMQ.modes.ratingGuess.renderArea();
+            return;
           }
-          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}${allDone ? FMQ.modes.bestFit.countdownHtml("Alle Tipps sind da. Weiter zur echten Bewertung in …") : ""}` });
+          FMQ.modes.bestFit.clearAutoAdvance();
+          FMQ.renderModeLikeQuick3({ heading: `Wie findet ${mainName} diesen Song?`, subtitle: "Alle außer der Person selbst tippen gleichzeitig am Handy.", heroName: "", panelClass: "theme-playlist", bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml(expectedIds, answerMap)}` });
           FMQ.modes.ratingGuess.bindTransport();
           return;
         }
@@ -772,14 +778,13 @@ FMQ.modes = {
             });
           }
           const hasMainAnswer = !!s.mainAnswer;
-          if (hasMainAnswer) FMQ.modes.bestFit.scheduleAutoAdvance("ratingReveal", () => FMQ.$("ratingRevealBtn")?.click());
-          else FMQ.modes.bestFit.clearAutoAdvance();
+          FMQ.modes.bestFit.clearAutoAdvance();
           FMQ.renderModeLikeQuick3({
             heading: `${mainName}, wie gut findest du den Song wirklich?`,
             subtitle: "Sag gern kurz dazu, warum du so bewertest.",
             heroName: "",
             panelClass: "theme-playlist",
-            bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml([s.mainPlayerId], s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}${hasMainAnswer ? `${FMQ.modes.bestFit.countdownHtml("Echte Bewertung ist da. Reveal in …")}<div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary">Sofort Reveal</button></div>` : ""}`
+            bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml([s.mainPlayerId], s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}${hasMainAnswer ? `<div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary">Reveal</button></div>` : `<div class="muted" style="text-align:center;">Warte auf ${FMQ.escapeHtml(mainName)}s Bewertung …</div>`}`
           });
           FMQ.modes.ratingGuess.bindTransport();
           if (FMQ.$("ratingRevealBtn")) FMQ.$("ratingRevealBtn").onclick = async () => {
@@ -1068,7 +1073,7 @@ FMQ.modes = {
         s.autoAdvanceLeft = null;
       }
     },
-    scheduleAutoAdvance(kind, callback, seconds = 3) {
+    scheduleAutoAdvance(kind, callback, seconds = 3, renderTick = null) {
       const s = FMQ.app.state.social;
       if (!s || s.autoAdvanceKind === kind) return;
       FMQ.modes.bestFit.clearAutoAdvance();
@@ -1084,8 +1089,8 @@ FMQ.modes = {
         if (s.autoAdvanceLeft <= 0) {
           FMQ.modes.bestFit.clearAutoAdvance();
           callback();
-        } else {
-          FMQ.modes.bestFit.renderArea();
+        } else if (typeof renderTick === "function") {
+          renderTick();
         }
       }, 1000);
     },
@@ -1252,7 +1257,7 @@ FMQ.modes = {
               s.phase = "mainAnswer";
               FMQ.resetMultiplayerRound?.();
               FMQ.modes.bestFit.renderArea();
-            });
+            }, 3, () => FMQ.modes.bestFit.renderArea());
           } else {
             FMQ.modes.bestFit.clearAutoAdvance();
           }
@@ -1299,7 +1304,7 @@ FMQ.modes = {
           FMQ.modes.bestFit.startMainPromptOnce();
           const expectedIds = FMQ.modes.bestFit.expectedMainIds();
           const hasMainAnswer = !!s.mainAnswer;
-          if (hasMainAnswer) FMQ.modes.bestFit.scheduleAutoAdvance("bestFitReveal", () => FMQ.modes.bestFit.finishReveal());
+          if (hasMainAnswer) FMQ.modes.bestFit.scheduleAutoAdvance("bestFitReveal", () => FMQ.modes.bestFit.finishReveal(), 3, () => FMQ.modes.bestFit.renderArea());
           else FMQ.modes.bestFit.clearAutoAdvance();
           FMQ.renderModeLikeQuick3({
             heading: `${mainName}, was findest du besser?`,
