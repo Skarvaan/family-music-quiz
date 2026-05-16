@@ -9,7 +9,8 @@
     answeredPromptId: null,
     controllerId: null,
     controllerActions: [],
-    submittingPromptId: null
+    submittingPromptId: null,
+    controlSelections: {}
   };
 
   $("roomCodeInput").value = state.roomCode;
@@ -414,8 +415,20 @@
     });
   });
 
+  const rememberControlSelection = (action) => {
+    if (!action) return;
+    if (String(action).startsWith("select:")) {
+      const [, id, ...rest] = String(action).split(":");
+      state.controlSelections[id] = rest.join(":");
+      return;
+    }
+    state.controlSelections.__lastButton = action;
+  };
+
   const sendControlAction = (action) => {
     if (!action || !state.player) return;
+    rememberControlSelection(action);
+    renderController();
     socket.emit("player:controlAction", { playerId: state.player.id, action }, res => {
       if (!res?.ok) {
         setStatus(res?.error || "Steuerung gerade nicht verfügbar.");
@@ -434,14 +447,28 @@
     panel.innerHTML = actions.map(action => {
       const options = Array.isArray(action.options) ? action.options : [];
       if (options.length) {
-        return `<div class="phoneControlGroup"><button type="button" class="action-button primary phoneControlMain" disabled>${escapeHtml(action.label)}</button><div class="phoneControlOptions">${options.map(opt => `<button type="button" class="action-button secondary" data-control="${escapeHtml(opt.id)}">${escapeHtml(opt.label)}</button>`).join("")}</div></div>`;
+        const selectedValue = state.controlSelections[String(action.id).replace(/^selectGroup:/, "")];
+        return `<div class="phoneControlGroup"><button type="button" class="action-button primary phoneControlMain" disabled>${escapeHtml(action.label)}</button><div class="phoneControlOptions">${options.map(opt => {
+          const optParts = String(opt.id).split(":");
+          const optValue = optParts.slice(2).join(":");
+          const selected = selectedValue && selectedValue === optValue;
+          return `<button type="button" class="action-button secondary ${selected ? "selected" : ""}" data-control="${escapeHtml(opt.id)}">${escapeHtml(opt.label)}</button>`;
+        }).join("")}</div></div>`;
       }
-      return `<button type="button" class="action-button primary" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`;
+      const selected = state.controlSelections.__lastButton === action.id;
+      return `<button type="button" class="action-button primary ${selected ? "selected" : ""}" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`;
     }).join("");
-    panel.querySelectorAll("[data-control]").forEach(btn => btn.addEventListener("click", event => {
+    const activate = (event, btn) => {
       event.preventDefault();
+      const now = Date.now();
+      if (btn._lastControlAt && now - btn._lastControlAt < 350) return;
+      btn._lastControlAt = now;
       sendControlAction(btn.getAttribute("data-control"));
-    }));
+    };
+    panel.querySelectorAll("[data-control]").forEach(btn => {
+      btn.addEventListener("click", event => activate(event, btn));
+      btn.addEventListener("touchend", event => activate(event, btn), { passive: false });
+    });
   };
 
   socket.on("connect", () => setStatus(state.player ? `Du bist drin: ${state.player.name}` : "Raumcode und Namen eingeben."));

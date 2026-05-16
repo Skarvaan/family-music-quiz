@@ -354,12 +354,29 @@ FMQ.refreshPhoneControls = () => {
   }, 0);
 };
 
+FMQ.toRemotePlayerId = (playerId) => {
+  if (!playerId) return null;
+  const player = FMQ.app.players.find(p => p.id === playerId || p.remoteId === playerId);
+  return player?.remoteId || player?.id || playerId;
+};
+
 FMQ.setMultiplayerController = (playerId) => {
-  FMQ.multiplayer.controllerId = playerId || null;
-  if (FMQ.multiplayer.socket) FMQ.multiplayer.socket.emit("host:setController", { playerId: FMQ.multiplayer.controllerId });
+  const nextControllerId = FMQ.toRemotePlayerId(playerId);
+  const changed = (FMQ.multiplayer.controllerId || null) !== (nextControllerId || null);
+  FMQ.multiplayer.controllerId = nextControllerId || null;
+  if (changed && FMQ.multiplayer.socket) FMQ.multiplayer.socket.emit("host:setController", { playerId: FMQ.multiplayer.controllerId });
   FMQ.refreshPhoneControls?.();
   FMQ.renderMultiplayerPanel?.();
   FMQ.renderDeviceModePanel?.();
+};
+
+FMQ.ensureMultiplayerController = (playerId) => {
+  const nextControllerId = FMQ.toRemotePlayerId(playerId);
+  if ((FMQ.multiplayer.controllerId || null) === (nextControllerId || null)) {
+    FMQ.refreshPhoneControls?.();
+    return;
+  }
+  FMQ.setMultiplayerController(nextControllerId);
 };
 
 FMQ.handleRemoteControlAction = (action) => {

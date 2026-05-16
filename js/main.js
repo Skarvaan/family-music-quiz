@@ -164,17 +164,10 @@ FMQ.onNewTrack = async () => {
 };
 FMQ.prepareTrackForTurn = async () => {
   const mode = FMQ.app.config.mode;
-  const draw = mode === "introPlaylistGuess"
-    ? FMQ.modes.introPlaylistGuess.drawUniqueTrack()
-    : FMQ.drawTrackForCurrentTurn({ risk: "safe" });
-
-  if (!draw?.track) throw new Error("Keine Songs mehr übrig.");
-  FMQ.app.state.currentTrack = draw.track;
-  FMQ.app.state.currentSourcePlayerId = draw.sourcePlayerId;
 
   if (mode === "bestFit") {
     const me = FMQ.currentPlayer();
-    const ownIds = FMQ.shuffle((me.tracks || []).map(t => t.id).filter(id => id && !FMQ.isTrackUsed(id)));
+    const ownIds = FMQ.shuffle((me?.tracks || []).map(t => t.id).filter(id => id && !FMQ.isTrackUsed(id)));
     if (ownIds.length < 2) throw new Error("Für Song A/B werden mindestens 2 ungenutzte Songs in der Haupt-Playlist benötigt.");
     const aId = ownIds.pop();
     const bId = ownIds.pop();
@@ -186,6 +179,13 @@ FMQ.prepareTrackForTurn = async () => {
     FMQ.markTrackUsed(FMQ.app.state.bestFitTracks.b);
     FMQ.app.state.currentTrack = FMQ.app.state.bestFitTracks.a;
     FMQ.app.state.currentSourcePlayerId = me.id;
+  } else {
+    const draw = mode === "introPlaylistGuess"
+      ? FMQ.modes.introPlaylistGuess.drawUniqueTrack()
+      : FMQ.drawTrackForCurrentTurn({ risk: "safe" });
+    if (!draw?.track) throw new Error("Keine Songs mehr übrig.");
+    FMQ.app.state.currentTrack = draw.track;
+    FMQ.app.state.currentSourcePlayerId = draw.sourcePlayerId;
   }
 
   if (mode === "introPlaylistGuess") FMQ.modes.introPlaylistGuess.renderGuessUI();
@@ -697,7 +697,7 @@ FMQ.init = async () => {
   if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
   if (FMQ.$("loadMyPlaylistsBtn")) FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(() => { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; });
   FMQ.$("buildPlayersBtn").onclick = () => FMQ.buildPlayersConfig();
-  FMQ.$("modeSelect").onchange = () => { FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.syncSetupForMode(); FMQ.renderSetupWizard(); };
+  FMQ.$("modeSelect").onchange = () => { FMQ.app.config.mode = FMQ.$("modeSelect").value; FMQ.renderModeHints(); FMQ.renderModeButtons(); FMQ.syncSetupForMode(); FMQ.renderSetupWizard(); };
   FMQ.$("targetPlusBtn").onclick = () => {
     const endType = FMQ.$("endTypeSelect").value;
     const fieldId = endType === "points" ? "targetPointsInput" : "targetRoundsInput";

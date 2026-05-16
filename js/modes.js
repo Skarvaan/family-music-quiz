@@ -310,7 +310,7 @@ FMQ.modes = {
       FMQ.$("quick3PlayBtnInline").onclick = () => FMQ.onQuick3Play(FMQ.getBoundStartMode("quick3StartModeSelectInline")).catch(e => FMQ.setGameDebug(e.stack || e.message));
       if (FMQ.$("quick3StopBtnInline")) FMQ.$("quick3StopBtnInline").onclick = () => FMQ.stopPlaybackNow?.().catch(e => FMQ.setGameDebug(e.stack || e.message));
       FMQ.$("revealBtnInline").onclick = () => FMQ.$("revealBtn").click();
-      if (FMQ.isMultiDevice?.() && me) FMQ.setMultiplayerController?.(me.remoteId || me.id);
+      if (FMQ.isMultiDevice?.() && me) FMQ.ensureMultiplayerController?.(me.remoteId || me.id);
       if (FMQ.isMultiDevice?.() && FMQ.app.state.quick3.multiReveal) {
         const expectedIds = [FMQ.currentPlayer()?.id].filter(Boolean);
         const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(FMQ.app.state.quick3.answers || {}, id));
@@ -519,14 +519,17 @@ FMQ.modes = {
     submitAnswer(playerId, answer) {
       FMQ.app.state.introPlaylistGuess.answers[playerId] = answer;
     },
-    drawUniqueTrack() {
-      const active = FMQ.activePlayers();
+    drawUniqueTrack({ allowReset = true } = {}) {
       const candidates = [];
-      for (const p of active) {
+      for (const p of FMQ.musicPlayers()) {
         for (const t of p.tracks || []) {
           if (!t?.id || FMQ.isTrackUsed(t)) continue;
           candidates.push({ track: t, sourcePlayerId: p.id });
         }
+      }
+      if (!candidates.length && allowReset && FMQ.musicPlayers().some(p => (p.tracks || []).length)) {
+        FMQ.resetPlayedSongHistory();
+        return this.drawUniqueTrack({ allowReset: false });
       }
       const draw = FMQ.shuffle(candidates)[0] || null;
       if (draw?.track?.id) FMQ.markTrackUsed(draw.track);
@@ -676,7 +679,7 @@ FMQ.modes = {
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "ratingGuess") FMQ.initSocialRound({ modeId: "ratingGuess", startPhase: "listen" });
       const s = FMQ.app.state.social;
       const mainName = FMQ.getPlayerName(s.mainPlayerId);
-      if (FMQ.isMultiDevice?.()) FMQ.setMultiplayerController?.(s.mainPlayerId);
+      if (FMQ.isMultiDevice?.()) FMQ.ensureMultiplayerController?.(s.mainPlayerId);
       if (s.phase === "listen") {
         FMQ.renderModeLikeQuick3({
           heading: `Wie findet "${mainName}" diesen Song?`,
@@ -998,7 +1001,7 @@ FMQ.modes = {
         panelClass: "theme-playlist",
         bodyHtml: `<div class="quick3Controls" style="justify-content:center; margin-bottom:12px;"><select id="first3StartModeSelect"><option value="start">Von Anfang an</option><option value="random">Zufällig mittig</option></select></div><div class="first3List">${top.map((t, i) => `<div class="first3Row"><div class="first3Meta"><span class="pill">${i + 1}) ${labels[i]}</span><span class="first3Descriptor">${descriptors[i]}</span></div><div class="abTransport"><button id="first3Play${i}_10" class="big" data-first3-play="${i}" data-seconds="10">▶️ ${labels[i]} · 10 Sek.</button><button id="first3Play${i}_20" class="big" data-first3-play="${i}" data-seconds="20">▶️ ${labels[i]} · 20 Sek.</button><button id="first3Play${i}_full" class="big" data-first3-play="${i}" data-seconds="full">▶️ ${labels[i]} · Ganzer Song</button></div></div>`).join("")}</div><div class="abTransport"><button id="iceStopBtn" class="big">⏸️ Stop</button></div><div class="muted" id="iceTrackInfo" style="text-align:center; margin-top:8px;">${top.length ? "Spiele Song 1, 2 oder 3 kurz an." : "Zu wenig Songs in der Playlist."}</div><div class="row" style="justify-content:center; margin-top:18px;"><button id="iceNextBtn" class="big primary">Weiter</button></div>`
       });
-      if (FMQ.isMultiDevice?.() && me) FMQ.setMultiplayerController?.(me.remoteId || me.id);
+      if (FMQ.isMultiDevice?.() && me) FMQ.ensureMultiplayerController?.(me.remoteId || me.id);
       FMQ.bindPlayerStartModeSelect("first3StartModeSelect");
       FMQ.$("modeArea").querySelectorAll("[data-first3-play]").forEach(btn => btn.onclick = () => {
         const idx = parseInt(btn.getAttribute("data-first3-play"), 10);
@@ -1209,7 +1212,7 @@ FMQ.modes = {
       if (!FMQ.app.state.social || FMQ.app.state.social.modeId !== "bestFit") FMQ.initSocialRound({ modeId: "bestFit", startPhase: "listen" });
       const s = FMQ.app.state.social;
       const mainName = FMQ.getPlayerName(s.mainPlayerId);
-      if (FMQ.isMultiDevice?.()) FMQ.setMultiplayerController?.(s.mainPlayerId);
+      if (FMQ.isMultiDevice?.()) FMQ.ensureMultiplayerController?.(s.mainPlayerId);
       const trackA = FMQ.app.state.bestFitTracks?.a;
       const trackB = FMQ.app.state.bestFitTracks?.b;
       if (s.phase === "listen") {
@@ -1439,6 +1442,7 @@ FMQ.modes = {
       const submissions = ids.map(id => ({ playerId: id, track: st.submissions[id] }));
       const cur = submissions[st.revealIndex] || null;
       const hasTrack = !!cur?.track;
+      if (FMQ.isMultiDevice?.() && cur?.playerId) FMQ.ensureMultiplayerController?.(cur.playerId);
       FMQ.renderModeLikeQuick3({
         heading: "Reveal",
         subtitle: st.promptText,

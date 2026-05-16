@@ -684,3 +684,19 @@ body.joined .songSelectList *,
 body.joined .duelVoteList *,
 body.joined .songPickBtn,
 body.joined .duelVoteCard .choiceBtn{ touch-action:manipulation; }
+
+/* Host/mobile control reliability fixes for long multi-device screens. */
+#screenGame{ overflow:auto; }
+.mode-panel{ -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.quick3Stage{ align-items:flex-start; }
+.quick3Panel{ max-height:none; }
+.first3List,.challengeRevealScroll{ max-height:none; overflow:visible; }
+.challengeRevealPrompt{ font-size:clamp(22px,3.4vw,42px); padding:14px; margin-bottom:10px; }
+.phoneControlOptions .action-button.selected,
+.player-control-panel .action-button.selected{ border:2px solid #fde68a; background:linear-gradient(135deg,rgba(253,230,138,.95),rgba(251,146,60,.9)); color:#1f1300; box-shadow:0 0 0 3px rgba(253,230,138,.18); }
+@media (max-height:760px){
+  .quick3Hero{ padding-bottom:8px; }
+  .quick3Panel{ padding:16px; }
+  .challengeRevealPrompt{ font-size:clamp(20px,3vw,34px); }
+  .challengeRevealCard .songRevealTitle{ font-size:clamp(22px,3.3vw,36px); }
+}
