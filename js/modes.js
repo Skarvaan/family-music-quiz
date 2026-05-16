@@ -18,6 +18,9 @@ FMQ.renderModeLikeQuick3 = ({ heading, subtitle, bodyHtml, panelClass = "", hero
     </div>
   `;
   if (typeof FMQ.applyAccessibilityLabels === "function") FMQ.applyAccessibilityLabels();
+  if (FMQ.isMultiDevice?.() && FMQ.$("screenGame")?.classList.contains("active")) {
+    setTimeout(() => FMQ.$("modeArea")?.scrollIntoView({ block: "start", behavior: "smooth" }), 0);
+  }
   FMQ.refreshPhoneControls?.();
 };
 
@@ -784,9 +787,16 @@ FMQ.modes = {
             subtitle: "Sag gern kurz dazu, warum du so bewertest.",
             heroName: "",
             panelClass: "theme-playlist",
-            bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml([s.mainPlayerId], s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}${hasMainAnswer ? `<div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary">Reveal</button></div>` : `<div class="muted" style="text-align:center;">Warte auf ${FMQ.escapeHtml(mainName)}s Bewertung …</div>`}`
+            bodyHtml: `${FMQ.modes.ratingGuess.transportHtml("guess")}${FMQ.modes.bestFit.answerStatusHtml([s.mainPlayerId], s.mainAnswer ? { [s.mainPlayerId]: s.mainAnswer } : {})}<div class="choiceGrid hostFallbackVoteGrid">${[1,2,3,4,5,6,7,8,9,10].map(v=>`<button class="choiceBtn socialScaleBtn ${String(s.mainAnswer || "") === String(v) ? "selected" : ""}" data-main-rate="${v}">${v}</button>`).join("")}</div><div class="muted" style="text-align:center;">${hasMainAnswer ? "Bewertung ist gespeichert. Reveal kann gestartet werden." : `Owner kann am Handy oder hier am Host-Gerät bewerten.`}</div><div class="row" style="justify-content:center;"><button id="ratingRevealBtn" class="big primary" ${hasMainAnswer ? "" : "disabled"}>Reveal</button></div>`
           });
           FMQ.modes.ratingGuess.bindTransport();
+          FMQ.$("modeArea").querySelectorAll("[data-main-rate]").forEach(btn => btn.onclick = () => {
+            FMQ.$("modeArea").querySelectorAll("[data-main-rate]").forEach(x => x.classList.remove("selected"));
+            btn.classList.add("selected");
+            FMQ.modes.ratingGuess.submitMainAnswer(s.mainPlayerId, parseInt(btn.getAttribute("data-main-rate"), 10));
+            FMQ.$("ratingRevealBtn").disabled = false;
+            FMQ.renderMultiplayerPanel?.();
+          });
           if (FMQ.$("ratingRevealBtn")) FMQ.$("ratingRevealBtn").onclick = async () => {
             await FMQ.stopPlaybackNow?.();
             const truth = Math.max(1, Math.min(10, parseInt(String(s.mainAnswer || "0"), 10)));

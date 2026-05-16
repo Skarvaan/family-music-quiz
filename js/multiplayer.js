@@ -40,6 +40,7 @@ FMQ.setDeviceMode = (mode) => {
   const wasMulti = FMQ.multiplayer.enabled === true;
   FMQ.app.state.deviceMode = nextMode;
   FMQ.multiplayer.enabled = nextMode === "multi";
+  document.body.classList.toggle("multi-device-active", FMQ.multiplayer.enabled);
   if (!FMQ.multiplayer.enabled && FMQ.app.config.category === "challenge") {
     FMQ.app.config.category = "self";
     FMQ.app.config.mode = "quick3";
@@ -294,6 +295,7 @@ FMQ.closeMultiplayerRoom = ({ switchToSingle = false } = {}) => {
   if (switchToSingle) {
     FMQ.multiplayer.enabled = false;
     FMQ.app.state.deviceMode = "single";
+    document.body.classList.remove("multi-device-active");
   }
 };
 
@@ -327,12 +329,12 @@ FMQ.collectVisibleHostControls = (root = document) => {
     "quick3PlayBtnInline", "quick3StopBtnInline", "revealBtnInline", "ratingPlayResumeBtn", "ratingStopBtn", "ratingListenNextBtn", "ratingToMainBtn", "ratingRevealBtn",
     "playAFromStartBtn", "playBFromStartBtn", "bestFitStopBtn", "bestFitContinueBtn", "bestFitNewSongsBtn", "bfToMainBtn", "bfRevealBtn",
     "introGuessPlayBtn", "introGuessStopBtn", "introGuessRevealBtn", "introGuessNextBtn",
-    "challengePlayBtn", "challengeStopBtn", "challengeNextBtn",
+    "challengePlayBtn", "challengeStopBtn", "challengeNextBtn", "duelPlayABtn", "duelPlayBBtn", "duelStopBtn", "duelResolveCurrentBtn", "duelNextPromptBtn",
     "iceStopBtn", "iceNextBtn", "socialDoneBtn", "nextBtn", "setupContinueBtn"
   ];
   const selectIds = [
     "quick3LenSelectInline", "quick3StartModeSelectInline", "ratingStartModeSelect", "bestFitClipSecondsSelect", "bestFitStartModeSelect",
-    "introGuessLenSelect", "introGuessStartModeSelect", "first3StartModeSelect", "challengeStartModeSelect"
+    "introGuessLenSelect", "introGuessStartModeSelect", "first3StartModeSelect", "challengeStartModeSelect", "duelStartModeSelect"
   ];
   const actions = [];
   const visible = (el) => {

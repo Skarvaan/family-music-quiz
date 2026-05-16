@@ -716,3 +716,21 @@ body.joined .songPickBtn{ min-height:46px; padding:9px 10px; }
 .challengeRevealPrompt.compact{ font-size:clamp(20px,3vw,36px); padding:12px; }
 .duelHostTransport{ margin:0 auto; }
 @media (max-width:700px){ body.joined .song-select-card,body.joined .multi-song-select-card{ height:calc(100svh - 58px)!important; max-height:calc(100svh - 58px)!important; } }
+
+/* Host must always stay fully usable in multi-device mode: scroll the whole game screen and compact chrome. */
+body.multi-device-active #screenGame{ overflow-y:auto!important; overflow-x:hidden; scroll-behavior:smooth; }
+body.multi-device-active #screenGame.active .game-stage{ min-height:auto; grid-template-rows:auto auto minmax(0,auto) auto auto; align-content:start; }
+body.multi-device-active #screenGame.active .game-main{ min-height:0; overflow:visible; }
+body.multi-device-active #screenGame.active .mode-panel{ overflow:visible; max-height:none; padding:12px; }
+body.multi-device-active #screenGame.active .game-topbar{ gap:8px; }
+body.multi-device-active #screenGame.active .game-meta,
+body.multi-device-active #screenGame.active .current-player-card,
+body.multi-device-active #screenGame.active .score-bar{ padding:8px 10px; border-radius:16px; }
+body.multi-device-active #screenGame.active .game-mode-label{ font-size:16px; }
+body.multi-device-active #screenGame.active .turn-player-name{ font-size:clamp(22px,3vw,38px); }
+body.multi-device-active #screenGame.active .used-counter{ min-width:60px; min-height:54px; border-radius:14px; }
+body.multi-device-active #screenGame.active .used-counter span{ font-size:22px; }
+body.multi-device-active .quick3Panel{ width:min(980px,100%); padding:16px; }
+body.multi-device-active .quick3Panel h3{ font-size:clamp(24px,3vw,38px); margin-bottom:10px; }
+body.multi-device-active .duelVoteHostList{ max-height:none; overflow:visible; }
+@media (max-width:900px){ body.multi-device-active #screenGame.active .game-topbar{ grid-template-columns:1fr; } }
