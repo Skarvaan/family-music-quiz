@@ -60,6 +60,11 @@
       <b>${escapeHtml(track.name)}</b><span>${escapeHtml(track.artistName || "")}${track.year ? ` · ${escapeHtml(track.year)}` : ""}</span>
     </button>
   `;
+  const visibleTracks = (tracks, query = "") => {
+    const q = query.trim().toLowerCase();
+    const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
+    return filtered.slice(0, q ? 80 : 120);
+  };
 
   const renderSongSelectPrompt = (panel, prompt) => {
     const tracks = (prompt.tracksByPlayer?.[state.player.id] || []).slice(0, 300);
@@ -75,8 +80,7 @@
     };
 
     const renderList = (query = "") => {
-      const q = query.trim().toLowerCase();
-      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
+      const filtered = visibleTracks(tracks, query);
       const list = panel.querySelector("#songSelectList");
       if (!list) return;
       list.innerHTML = filtered.map(t => trackButtonHtml(t, selectedTrackId)).join("") || `<div class="muted">Keine Treffer. Suche kürzer oder nach Artist.</div>`;
@@ -145,8 +149,7 @@
 
     const renderActiveList = (query = "") => {
       const assignment = activeAssignment();
-      const q = query.trim().toLowerCase();
-      const filtered = tracks.filter(t => !q || `${t.name} ${t.artistName || ""}`.toLowerCase().includes(q));
+      const filtered = visibleTracks(tracks, query);
       const title = panel.querySelector("#multiSongPromptTitle");
       if (title) title.textContent = assignment ? assignment.promptText : "Keine Prompts";
       const list = panel.querySelector("#multiSongSelectList");
@@ -156,11 +159,11 @@
     };
 
     panel.innerHTML = `
-      <div class="player-question-card song-select-card multi-song-select-card">
+      <div class="player-question-card song-select-card multi-song-select-card compactChallengeSelect">
         <div class="songSelectHeader">
           <div class="eyebrow">Song-Duell</div>
           <h2>${escapeHtml(prompt.title || "Wähle deine Songs")}</h2>
-          <p>${escapeHtml(prompt.text || "Wähle für jeden Prompt einen Song aus. Du kannst zwischen den Prompts wechseln und am Ende alles abschicken.")}</p>
+          <p class="compactHelp">${escapeHtml(prompt.text || "Prompt wählen, Song suchen, abschicken.")}</p>
           <div class="duelPromptTabs">
             ${assignments.map((a, idx) => `<button type="button" class="songPromptTab" data-duel-tab="${idx}">Prompt ${idx + 1}</button>`).join("")}
           </div>

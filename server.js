@@ -62,11 +62,38 @@ function resetRoomForNewSession({ keepHostSocketId = true, newCode = true } = {}
   room.open = false;
 }
 
+function slimPrompt(prompt) {
+  if (!prompt) return null;
+  return {
+    id: prompt.id,
+    type: prompt.type,
+    title: prompt.title,
+    text: prompt.text,
+    kind: prompt.kind,
+    createdAt: prompt.createdAt
+  };
+}
+
+function promptForPlayer(playerId) {
+  if (!room.prompt) return null;
+  const prompt = { ...room.prompt };
+  if (prompt.tracksByPlayer) prompt.tracksByPlayer = { [playerId]: prompt.tracksByPlayer[playerId] || [] };
+  if (prompt.assignmentsByPlayer) prompt.assignmentsByPlayer = { [playerId]: prompt.assignmentsByPlayer[playerId] || [] };
+  if (prompt.voteDuelsByPlayer) prompt.voteDuelsByPlayer = { [playerId]: prompt.voteDuelsByPlayer[playerId] || [] };
+  return prompt;
+}
+
+function emitPromptToPlayers() {
+  for (const player of room.playersById.values()) {
+    if (player.socketId) io.to(player.socketId).emit("player:prompt", promptForPlayer(player.id));
+  }
+}
+
 function roomSnapshot() {
   return {
     roomCode: room.code,
     players: [...room.playersById.values()].map(publicPlayer),
-    prompt: room.prompt,
+    prompt: slimPrompt(room.prompt),
     answeredPlayerIds: [...room.answers.keys()],
     hostUrls: getHostUrls(),
     controllerId: room.controllerId,
@@ -160,7 +187,7 @@ io.on("connection", socket => {
     socket.data.playerId = player.id;
     socket.data.roomCode = room.code;
     socket.join(room.code);
-    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: room.prompt, controllerId: room.controllerId, controllerActions: room.controllerActions });
+    ack?.({ ok: true, roomCode: room.code, player: publicPlayer(player), prompt: promptForPlayer(player.id), controllerId: room.controllerId, controllerActions: room.controllerActions });
     emitRoomState();
   });
 
@@ -282,9 +309,9 @@ io.on("connection", socket => {
       createdAt: Date.now()
     };
     room.answers = new Map();
-    io.to(room.code).emit("player:prompt", room.prompt);
+    emitPromptToPlayers();
     emitRoomState();
-    ack?.({ ok: true, prompt: room.prompt });
+    ack?.({ ok: true, prompt: slimPrompt(room.prompt) });
   });
 
   socket.on("host:reveal", (payload = {}, ack) => {
