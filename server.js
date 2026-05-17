@@ -7,6 +7,7 @@ const QRCode = require("qrcode");
 const { Server } = require("socket.io");
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const ROOM_CODE_LENGTH = 6;
 const ROOM_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -113,7 +114,8 @@ function resolveRoomCode(inputCode) {
 }
 
 function getHostUrls() {
-  return [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, ...getLanAddresses()];
+  const urls = [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, ...getLanAddresses()];
+  return [...new Set(urls)];
 }
 
 app.use("/family-music-quiz", express.static(ROOT));
@@ -360,15 +362,16 @@ function getLanAddresses() {
     .map(net => `http://${net.address}:${PORT}`);
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log("Family Music Quiz local multi-device server läuft.");
+  console.log(`Server lauscht auf: ${HOST}:${PORT}`);
   console.log(`Host lokal: http://localhost:${PORT}`);
   const lan = getLanAddresses();
   if (lan.length) {
     console.log("Im selben WLAN diese Adresse auf Handys verwenden:");
     lan.forEach(url => console.log(`  ${url}/player`));
   } else {
-    console.log("Hinweis: Für Handys bitte die lokale WLAN-IP dieses Rechners verwenden, z.B. http://<wlan-ip>:3000/player");
+    console.log(`Hinweis: Für Handys bitte die lokale WLAN-IP dieses Rechners verwenden, z.B. http://<wlan-ip>:${PORT}/player`);
   }
   console.log(`Raumcode: ${room.code}`);
 });

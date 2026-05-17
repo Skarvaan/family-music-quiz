@@ -18,7 +18,8 @@ FMQ.multiplayer = {
   pendingScript: null
 };
 
-FMQ.isLocalMultiServer = () => ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname) || window.location.port === "3000";
+FMQ.isLoopbackHost = (host = window.location.hostname) => ["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"].includes(String(host || "").toLowerCase());
+FMQ.isLocalMultiServer = () => FMQ.isLoopbackHost() || window.location.port === "3000";
 FMQ.isMultiDevice = () => FMQ.multiplayer.enabled === true;
 FMQ.normalizedPlayerName = (name) => String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
 
@@ -185,8 +186,11 @@ FMQ.buildJoinUrl = () => FMQ.playerUrlWithRoom(window.location.origin);
 
 FMQ.getPhoneJoinUrl = () => {
   const current = window.location.origin;
+  if (!FMQ.isLoopbackHost()) return FMQ.playerUrlWithRoom(current);
   const urls = FMQ.multiplayer.hostUrls || [];
-  const lan = urls.find(url => !url.includes("localhost") && !url.includes("127.0.0.1"));
+  const lan = urls.find(url => {
+    try { return !FMQ.isLoopbackHost(new URL(url).hostname); } catch { return false; }
+  });
   return FMQ.playerUrlWithRoom(lan || current);
 };
 
