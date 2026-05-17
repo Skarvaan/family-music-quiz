@@ -7,7 +7,11 @@ const QRCode = require("qrcode");
 const { Server } = require("socket.io");
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "0.0.0.0";
+// Bind to every IPv4 interface by default so the app is reachable via
+// localhost/127.0.0.1 and via the laptop's LAN IP. Use BIND_HOST only if
+// you intentionally want to restrict the interface. Do not use HOST here:
+// some shells/tools set HOST=localhost, which would silently break LAN play.
+const BIND_HOST = process.env.BIND_HOST || "0.0.0.0";
 const ROOT = __dirname;
 const ROOM_CODE_LENGTH = 6;
 const ROOM_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -358,14 +362,15 @@ function getLanAddresses() {
   return Object.values(os.networkInterfaces())
     .flat()
     .filter(Boolean)
-    .filter(net => net.family === "IPv4" && !net.internal)
+    .filter(net => (net.family === "IPv4" || net.family === 4) && !net.internal)
     .map(net => `http://${net.address}:${PORT}`);
 }
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, BIND_HOST, () => {
   console.log("Family Music Quiz local multi-device server läuft.");
-  console.log(`Server lauscht auf: ${HOST}:${PORT}`);
+  console.log(`Server lauscht auf: ${BIND_HOST}:${PORT} (LAN/IP Zugriff aktiv)`);
   console.log(`Host lokal: http://localhost:${PORT}`);
+  console.log(`Host lokal: http://127.0.0.1:${PORT}`);
   const lan = getLanAddresses();
   if (lan.length) {
     console.log("Im selben WLAN diese Adresse auf Handys verwenden:");
@@ -374,4 +379,14 @@ server.listen(PORT, HOST, () => {
     console.log(`Hinweis: Für Handys bitte die lokale WLAN-IP dieses Rechners verwenden, z.B. http://<wlan-ip>:${PORT}/player`);
   }
   console.log(`Raumcode: ${room.code}`);
+});
+
+server.on("error", err => {
+  console.error("Server konnte nicht gestartet werden:", err.message);
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} ist bereits belegt. Bitte anderen PORT setzen oder den laufenden Prozess beenden.`);
+  }
+  if (err.code === "EACCES") {
+    console.error(`Keine Berechtigung für ${BIND_HOST}:${PORT}. Bitte anderen PORT wählen oder Rechte prüfen.`);
+  }
 });
