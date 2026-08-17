@@ -5,12 +5,13 @@
   "description": "Family Music Quiz mit lokalem Mehrgeräte-Modus für Handys und Tablets.",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/structure.test.js && node tests/styles.test.js && node tests/prompts.test.js && node tests/single-device.test.js && node tests/server-room.test.js",
+    "test": "node tests/structure.test.js && node tests/styles.test.js && node tests/boot.test.js && node tests/prompts.test.js && node tests/single-device.test.js && node tests/server-room.test.js",
     "test:structure": "node tests/structure.test.js",
     "test:styles": "node tests/styles.test.js",
     "test:prompts": "node tests/prompts.test.js",
     "test:single": "node tests/single-device.test.js",
-    "test:server": "node tests/server-room.test.js"
+    "test:server": "node tests/server-room.test.js",
+    "test:boot": "node tests/boot.test.js"
   },
   "dependencies": {
     "express": "^4.19.2",

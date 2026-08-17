@@ -80,6 +80,28 @@ const allesJs = vorhanden.map(lies).join("\n");
 check("Nicht erreichbare Modi sind entfernt",
   !allesJs.includes("speedGuess") && !allesJs.includes("knowledgeGuess"));
 
+// --- Genau ein Einstiegspunkt ---
+const mainJs = lies("js/main.js");
+const initAufrufe = (mainJs.match(/FMQ\.init\(\)/g) || []).length;
+check("Genau ein init-Aufruf in main.js", initAufrufe === 1, initAufrufe + " gefunden");
+check("init ist gegen Doppelstart abgesichert", mainJs.includes("FMQ.app.initialized"));
+
+const alleQuellen = vorhanden.map(lies);
+const listenerGesamt = alleQuellen.join("\n").match(/DOMContentLoaded/g) || [];
+check("Nur ein DOMContentLoaded-Listener im Projekt", listenerGesamt.length === 1,
+  listenerGesamt.length + " gefunden");
+
+// --- Keine Funktion doppelt definiert ---
+const definitionen = {};
+vorhanden.forEach((p, i) => {
+  for (const m of alleQuellen[i].matchAll(/^FMQ\.([A-Za-z0-9_]+)\s*=/gm)) {
+    (definitionen[m[1]] ||= []).push(p);
+  }
+});
+const mehrfach = Object.entries(definitionen).filter(([, orte]) => orte.length > 1);
+check("Keine Funktion in zwei Dateien definiert", mehrfach.length === 0,
+  mehrfach.map(([n, o]) => `${n} in ${o.join(" und ")}`).join(", "));
+
 const alleOk = results.every(Boolean);
 console.log("\n" + (alleOk ? "ALLE PRÜFUNGEN BESTANDEN" : "ES GIBT FEHLSCHLÄGE"));
 process.exit(alleOk ? 0 : 1);

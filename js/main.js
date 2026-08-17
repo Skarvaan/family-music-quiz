@@ -123,10 +123,10 @@ FMQ.init = async () => {
   }
 };
 
+// Genau ein Einstiegspunkt. Ein zweiter Aufruf würde alle Ereignisse
+// doppelt binden und die Spielerliste nach der Eingabe neu aufbauen.
 document.addEventListener("DOMContentLoaded", () => {
-  FMQ.init();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  FMQ.init();
+  if (FMQ.app.initialized) return;
+  FMQ.app.initialized = true;
+  FMQ.init().catch(e => FMQ.setDebug(e.stack || e.message));
 });
