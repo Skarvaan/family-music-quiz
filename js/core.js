@@ -5,6 +5,9 @@ var FMQ = window.FMQ;
 // =========================================================
 // APP-METADATEN / MODUS-KATALOG
 // =========================================================
+
+/* Gemeinsame Grundlagen: Konstanten, kleine Helfer, Zustandsobjekt. */
+
 FMQ.MODE_INFO = {
   quick3: { label: "Songausschnitt raten", category: "self", hint: "Ausschnitt oder ganzer Song raten" },
   rankingList: { label: "Ranking Liste", category: "self", hint: "Baue dein Top-5- oder Top-10-Ranking Song für Song" },
@@ -15,15 +18,18 @@ FMQ.MODE_INFO = {
   storyPrompt: { label: "Song-Geschichten", category: "challenge", hint: "Wählt Songs aus, die etwas über euch erzählen. Kein Voting, keine Punkte." },
   promptDuel: { label: "Song-Duell", category: "challenge", hint: "Zwei Songs treten gegeneinander an. Welcher passt besser zum Prompt?" }
 };
+
 FMQ.isSocialMode = (modeId) => ["ratingGuess", "bestFit"].includes(modeId);
 
 FMQ.SPOTIFY_CLIENT_ID = "1567cc8cfec14ea2b8562efca5dd7e08";
+
 FMQ.REDIRECT_URI = (() => {
   const p = window.location.pathname;
   if (p.endsWith("/")) return window.location.origin + p;
   if (p.endsWith(".html")) return window.location.origin + p.replace(/[^/]+$/, "");
   return window.location.origin + p + "/";
 })();
+
 FMQ.SPOTIFY_SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
@@ -32,10 +38,15 @@ FMQ.SPOTIFY_SCOPES = [
 ].join(" ");
 
 FMQ.$ = (id) => document.getElementById(id);
+
 FMQ.escapeHtml = (s) => String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
 FMQ.showScreen = (id) => document.querySelectorAll(".screen").forEach(el => el.classList.toggle("active", el.id === id));
+
 FMQ.setDebug = (text) => { const el = FMQ.$("debug"); if (el) el.textContent = text || ""; };
+
 FMQ.setGameDebug = (text) => { const el = FMQ.$("debugGame"); if (el) el.textContent = text || ""; };
+
 FMQ.shuffle = (arr) => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -44,6 +55,7 @@ FMQ.shuffle = (arr) => {
   }
   return a;
 };
+
 FMQ.normalizeTitle = (s) => String(s || "")
   .toLowerCase()
   .replace(/\([^)]*(remaster|remastered|live|version|edit|mix|mono|stereo)[^)]*\)/gi, " ")
@@ -53,11 +65,13 @@ FMQ.normalizeTitle = (s) => String(s || "")
   .replace(/[^a-z0-9äöüß]+/gi, " ")
   .replace(/\s+/g, " ")
   .trim();
+
 FMQ.normalizeArtist = (artists) => String(Array.isArray(artists) ? (artists[0] || "") : (artists || ""))
   .toLowerCase()
   .replace(/[^a-z0-9äöüß]+/gi, " ")
   .replace(/\s+/g, " ")
   .trim();
+
 FMQ.trackIdentityKey = (track) => `${track.normalizedTitle || FMQ.normalizeTitle(track.name)}::${track.normalizedArtist || FMQ.normalizeArtist(track.artists || track.artistName)}`;
 
 FMQ.yearFromReleaseDate = (d) => {
@@ -65,6 +79,7 @@ FMQ.yearFromReleaseDate = (d) => {
   const cy = new Date().getFullYear();
   return Number.isFinite(y) && y >= 1900 && y <= cy ? y : null;
 };
+
 FMQ.calcYearStats = (years) => {
   const ys = years.filter(Number.isFinite).sort((a, b) => a - b);
   if (!ys.length) return { min: null, max: null };
@@ -95,7 +110,9 @@ FMQ.app = {
     targetRounds: 5,
     ratingScoring: "classic",
     rankingSize: 5,
-    songChallengeType: "storyPrompt"
+    songChallengeType: "storyPrompt",
+    // Welche Prompts dürfen kommen: "family" | "mixed" | "all"
+    promptTone: "mixed"
   },
   state: {
     round: 1, turnIndex: 0, currentTrack: null, currentSourcePlayerId: null, isPlaying: false, playTimer: null,
@@ -111,311 +128,6 @@ FMQ.app = {
     songChallenge: null,
     setupStep: 1
   }
-};
-
-
-FMQ.isTrackUsed = (trackOrId) => {
-  const track = typeof trackOrId === "string" ? FMQ.app.trackMap.get(trackOrId) : trackOrId;
-  const id = typeof trackOrId === "string" ? trackOrId : track?.id;
-  if (id && FMQ.app.usedTrackIds.has(id)) return true;
-  if (!track) return false;
-  const key = FMQ.trackIdentityKey(track);
-  return !!key && FMQ.app.usedTrackKeys.has(key);
-};
-
-FMQ.markTrackUsed = (trackOrId) => {
-  const track = typeof trackOrId === "string" ? FMQ.app.trackMap.get(trackOrId) : trackOrId;
-  const id = typeof trackOrId === "string" ? trackOrId : track?.id;
-  if (id) FMQ.app.usedTrackIds.add(id);
-  if (track) FMQ.app.usedTrackKeys.add(FMQ.trackIdentityKey(track));
-  return track || null;
-};
-
-FMQ.resetPlayedSongHistory = () => {
-  FMQ.app.usedTrackIds = new Set();
-  FMQ.app.usedTrackKeys = new Set();
-  FMQ.app.globalDeck = FMQ.shuffle([...FMQ.app.trackMap.keys()]);
-};
-
-FMQ.activePlayers = () => FMQ.app.players.filter(p => p.active !== false);
-FMQ.playerHasMusic = (p) => p && p.spectator !== true && !!p.playlistId && (p.tracks?.length || 0) >= 5;
-FMQ.musicPlayers = () => FMQ.activePlayers().filter(FMQ.playerHasMusic);
-FMQ.currentPlayer = () => {
-  const cur = FMQ.app.players[FMQ.app.state.turnIndex];
-  if (cur && cur.active !== false && cur.spectator !== true) return cur;
-  return FMQ.musicPlayers()[0] || FMQ.activePlayers()[0] || FMQ.app.players[0] || null;
-};
-FMQ.getPlayerName = (id) => FMQ.app.players.find(p => p.id === id || p.remoteId === id)?.name || "Unbekannt";
-FMQ.advanceTurn = () => {
-  const players = FMQ.app.players;
-  const turnPlayers = FMQ.activePlayers().filter(p => p.spectator !== true);
-  if (!turnPlayers.length || !players.length) return;
-  const startIndex = Math.max(0, Math.min(players.length - 1, FMQ.app.state.turnIndex || 0));
-  for (let step = 1; step <= players.length; step++) {
-    const idx = (startIndex + step) % players.length;
-    if (players[idx]?.active !== false && players[idx]?.spectator !== true) {
-      FMQ.app.state.turnIndex = idx;
-      if (idx <= startIndex) FMQ.app.state.round++;
-      return;
-    }
-  }
-};
-
-FMQ.renderModeConfig = () => {
-  const mode = FMQ.$("modeSelect").value;
-  const area = FMQ.$("modeConfigArea");
-  area.style.display = "";
-  if (mode === "ratingGuess") {
-    area.innerHTML = `<div class="config-block"><label><b>Punktelogik</b></label><select id="ratingScoringSelect"><option value="classic">Klassisch (3/2/1/0)</option><option value="light">Light (2/1/0)</option></select></div><div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
-  } else if (mode === "rankingList") {
-    area.innerHTML = `<div class="config-block"><label><b>Ranking-Größe</b></label><select id="rankingSizeSetupSelect"><option value="5">Top 5 · 5 Runden</option><option value="10">Top 10 · 10 Runden</option></select></div><div class="muted">Top 5 spielt automatisch 5 Runden, Top 10 automatisch 10 Runden.</div>`;
-  } else if (mode === "storyPrompt") {
-    area.innerHTML = `<div class="muted"><b>Song-Geschichten:</b> Wählt Songs aus, die etwas über euch erzählen. Kein Voting, keine Punkte.</div>`;
-  } else if (mode === "promptDuel") {
-    area.innerHTML = `<div class="muted"><b>Song-Duell:</b> Stelle links die Rundenzahl ein. Pro Runde bekommen alle zwei Prompts, danach wird abgestimmt und Punkte werden vergeben.</div>`;
-  } else {
-    area.innerHTML = `<div class="muted">Party-Option: Reihum (übersichtlicher für Anfänger).</div>`;
-  }
-  const partySelect = FMQ.$("partySelect");
-  if (partySelect) {
-    partySelect.value = FMQ.app.config.party;
-    partySelect.onchange = () => FMQ.app.config.party = partySelect.value;
-  }
-  if (FMQ.$("ratingScoringSelect")) {
-    FMQ.$("ratingScoringSelect").value = FMQ.app.config.ratingScoring || "classic";
-    FMQ.$("ratingScoringSelect").onchange = () => FMQ.app.config.ratingScoring = FMQ.$("ratingScoringSelect").value;
-  }
-  if (FMQ.$("rankingSizeSetupSelect")) {
-    FMQ.$("rankingSizeSetupSelect").value = String(FMQ.app.config.rankingSize || 5);
-    FMQ.$("rankingSizeSetupSelect").onchange = () => {
-      FMQ.app.config.rankingSize = parseInt(FMQ.$("rankingSizeSetupSelect").value, 10);
-      FMQ.app.config.targetRounds = FMQ.app.config.rankingSize;
-      if (FMQ.$("targetRoundsInput")) FMQ.$("targetRoundsInput").value = String(FMQ.app.config.rankingSize);
-      FMQ.syncSetupForMode?.();
-    };
-  }
-};
-
-FMQ.renderModeHints = () => {
-  const mode = FMQ.$("modeSelect").value;
-  FMQ.$("modeHint").textContent = FMQ.MODE_INFO[mode]?.hint || "";
-  FMQ.renderModeConfig();
-};
-
-FMQ.refreshPlaylistDropdowns = () => {
-  FMQ.$("playersConfig")?.querySelectorAll('select[data-role="playlist"]').forEach(sel => {
-    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
-    const cur = p?.playlistId || "";
-    sel.innerHTML = ['<option value="">(Playlist wählen…)</option>', ...FMQ.app.playlists.map(pl => {
-      const cnt = typeof pl.tracks?.total === "number" ? pl.tracks.total : "?";
-      const maxLen = 38;
-      const shortName = pl.name.length > maxLen ? `${pl.name.slice(0, maxLen - 1)}…` : pl.name;
-      return `<option value="${FMQ.escapeHtml(pl.id)}" ${pl.id === cur ? "selected" : ""} title="${FMQ.escapeHtml(pl.name)}">${FMQ.escapeHtml(shortName)} (${cnt})</option>`;
-    })].join("");
-  });
-};
-
-FMQ.rebuildTrackUniverse = () => {
-  FMQ.app.trackMap = new Map();
-  for (const p of FMQ.app.players) {
-    for (const t of (p.tracks || [])) {
-      if (!t?.id) continue;
-      if (!FMQ.app.trackMap.has(t.id)) FMQ.app.trackMap.set(t.id, { ...t, owners: [p.id] });
-      else {
-        const ex = FMQ.app.trackMap.get(t.id);
-        if (!ex.owners.includes(p.id)) ex.owners.push(p.id);
-      }
-    }
-  }
-  FMQ.app.globalDeck = [];
-};
-
-FMQ.checkReadyToStart = () => {
-  const ok = !!FMQ.storage.token && FMQ.app.players.length >= 1 && FMQ.app.players.some(FMQ.playerHasMusic) && FMQ.app.players.every(p => p.name && (p.spectator === true || (p.playlistId && (p.tracks?.length || 0) >= 5 && p.spanMin && p.spanMax)));
-  if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
-  return ok;
-};
-
-FMQ.getEndTargetText = () => FMQ.app.config.endType === "points"
-  ? `${FMQ.app.config.targetPoints} Punkte`
-  : `${FMQ.app.config.targetRounds} Runden`;
-
-FMQ.getWinnerByScore = () => [...FMQ.app.players].sort((a, b) => b.score - a.score)[0] || null;
-
-FMQ.movePlayerConfig = (playerId, delta) => {
-  const players = FMQ.app.players || [];
-  const index = players.findIndex(p => p.id === playerId || p.remoteId === playerId);
-  const nextIndex = index + delta;
-  if (index < 0 || nextIndex < 0 || nextIndex >= players.length) return;
-  const [player] = players.splice(index, 1);
-  players.splice(nextIndex, 0, player);
-  FMQ.buildPlayersConfig({ preserveCount: true });
-};
-
-FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
-  const input = FMQ.$("playerCountInput");
-  const minPlayers = FMQ.isMultiDevice?.() ? 0 : 1;
-  const old = FMQ.app.players;
-  const requested = preserveCount ? old.length : parseInt(input.value || String(minPlayers || 1), 10);
-  const n = Math.max(minPlayers, Math.min(15, Number.isFinite(requested) ? requested : minPlayers));
-  input.min = String(minPlayers);
-  input.value = String(n);
-  if (old.length && !preserveCount && old.length !== n) FMQ.resetPlayedSongHistory();
-
-  FMQ.app.players = [];
-  const wrap = document.createElement("div");
-  wrap.className = "player-grid";
-
-  for (let i = 0; i < n; i++) {
-    const prev = old[i] || {};
-    const p = { id: prev.id || crypto.randomUUID(), remoteId: prev.remoteId, remoteConnected: prev.remoteConnected, name: prev.name || (i === 0 ? "Spieler 1" : `Spieler ${i + 1}`), playlistId: prev.playlistId || "", playlistName: prev.playlistName || "", tracks: prev.tracks || [], spanMin: prev.spanMin || null, spanMax: prev.spanMax || null, score: prev.score || 0, active: prev.active !== false, spectator: prev.spectator === true, pendingActive: typeof prev.pendingActive === "boolean" ? prev.pendingActive : undefined };
-    FMQ.app.players.push(p);
-    const row = document.createElement("div");
-    row.className = "player-card";
-    const statusHtml = p.spectator === true
-      ? `<span class="ok">👀 Nur Mitraten · keine Musikquelle</span>`
-      : (p.tracks?.length || 0) >= 5
-        ? `<span class="ok">✅ ${p.tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`
-        : "noch nicht geladen";
-    const remotePill = p.remoteId ? `<span class="pill ${p.remoteConnected ? "ok" : ""}">${p.remoteConnected ? "Handy online" : "Handy offline"}</span>` : `<span class="pill">Spieler ${i + 1}</span>`;
-    const orderControls = `<div class="playerOrderControls" aria-label="Reihenfolge"><span class="orderBadge">#${i + 1}</span><button data-role="move-player" data-delta="-1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === 0 ? "disabled" : ""}>↑</button><button data-role="move-player" data-delta="1" data-pid="${p.id}" type="button" class="miniOrderBtn" ${i === n - 1 ? "disabled" : ""}>↓</button></div>`;
-    row.innerHTML = `<div class="player-card-head">${remotePill}${orderControls}<button data-role="clear-name" data-pid="${p.id}" class="clearNameBtn" type="button" aria-label="Name leeren">✕</button></div><label>Name<input data-role="name" data-pid="${p.id}" value="${FMQ.escapeHtml(p.name)}"></label><label class="spectatorSwitchRow"><input type="checkbox" data-role="spectator" data-pid="${p.id}" ${p.spectator ? "checked" : ""}> Nur Zuschauer/Mitrater (keine eigene Playlist)</label><label class="playlistConfigWrap" data-role="playlist-wrap" data-pid="${p.id}" ${p.spectator ? "hidden" : ""}>Playlist<select data-role="playlist" data-pid="${p.id}" class="playerPlaylistSelect"><option value="">(Playlist wählen…)</option></select></label><span class="player-status muted" data-role="status" data-pid="${p.id}">${statusHtml}</span>`;
-    wrap.appendChild(row);
-  }
-
-  if (!n && FMQ.isMultiDevice?.()) {
-    wrap.innerHTML = `<div class="muted multiEmptyPlayers">Noch keine Handy-Spieler verbunden. Handys öffnen /player, geben den Raumcode ein und nutzen bei Rejoin exakt denselben Namen.</div>`;
-  }
-
-  FMQ.$("playersConfig").innerHTML = "";
-  FMQ.$("playersConfig").appendChild(wrap);
-
-  FMQ.$("playersConfig").querySelectorAll('input[data-role="name"]').forEach(inp => inp.addEventListener("input", () => {
-    const p = FMQ.app.players.find(x => x.id === inp.dataset.pid);
-    if (p) p.name = inp.value.trim() || "Spieler";
-    FMQ.checkReadyToStart();
-  }));
-  FMQ.$("playersConfig").querySelectorAll('button[data-role="move-player"]').forEach(btn => btn.addEventListener("click", () => {
-    FMQ.movePlayerConfig(btn.getAttribute("data-pid"), parseInt(btn.getAttribute("data-delta"), 10));
-  }));
-
-  FMQ.$("playersConfig").querySelectorAll('button[data-role="clear-name"]').forEach(btn => btn.addEventListener("click", () => {
-    const pid = btn.getAttribute("data-pid");
-    const inp = FMQ.$("playersConfig").querySelector(`input[data-role="name"][data-pid="${pid}"]`);
-    const p = FMQ.app.players.find(x => x.id === pid);
-    if (!inp || !p) return;
-    inp.value = "";
-    p.name = "Spieler";
-    inp.focus();
-    FMQ.checkReadyToStart();
-  }));
-
-  FMQ.$("playersConfig").querySelectorAll('input[data-role="spectator"]').forEach(inp => inp.addEventListener("change", () => {
-    const p = FMQ.app.players.find(x => x.id === inp.dataset.pid);
-    if (!p) return;
-    p.spectator = inp.checked;
-    if (p.spectator) {
-      p.playlistId = "";
-      p.playlistName = "";
-      p.tracks = [];
-      p.spanMin = p.spanMax = null;
-    }
-    FMQ.buildPlayersConfig({ preserveCount: true });
-  }));
-
-  FMQ.refreshPlaylistDropdowns();
-  FMQ.$("playersConfig").querySelectorAll('select[data-role="playlist"]').forEach(sel => sel.addEventListener("change", async () => {
-    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
-    if (!p) return;
-
-    const previousPlaylistId = p.playlistId || "";
-    p.playlistId = sel.value;
-    p.playlistName = FMQ.app.playlists.find(x => x.id === sel.value)?.name || "";
-    if (previousPlaylistId !== p.playlistId) FMQ.resetPlayedSongHistory();
-    const statusEl = FMQ.$("playersConfig").querySelector(`span[data-role="status"][data-pid="${sel.dataset.pid}"]`);
-
-    if (p.spectator === true) {
-      p.tracks = [];
-      p.spanMin = p.spanMax = null;
-      statusEl.innerHTML = `<span class="ok">👀 Nur Mitraten · keine Musikquelle</span>`;
-      FMQ.rebuildTrackUniverse();
-      FMQ.checkReadyToStart();
-      return;
-    }
-
-    if (!p.playlistId) {
-      p.tracks = [];
-      p.spanMin = p.spanMax = null;
-      statusEl.textContent = "noch nicht geladen";
-      FMQ.rebuildTrackUniverse();
-      FMQ.checkReadyToStart();
-      return;
-    }
-
-    statusEl.textContent = "lade Tracks…";
-    try {
-      const tracks = await FMQ.loadAllTracksForPlaylist(p.playlistId);
-      p.tracks = tracks;
-      const s = FMQ.calcYearStats(tracks.map(t => t.year));
-      p.spanMin = s.min;
-      p.spanMax = s.max;
-      statusEl.innerHTML = `<span class="ok">✅ ${tracks.length} Tracks</span> <span class="muted">(Spanne ${p.spanMin ?? "?"}–${p.spanMax ?? "?"})</span>`;
-    } catch (e) {
-      statusEl.innerHTML = `<span class="bad">❌ ${FMQ.escapeHtml(e.message)}</span>`;
-      p.tracks = [];
-      p.spanMin = p.spanMax = null;
-    }
-
-    FMQ.rebuildTrackUniverse();
-    FMQ.checkReadyToStart();
-  }));
-
-  FMQ.rebuildTrackUniverse();
-  FMQ.checkReadyToStart();
-  FMQ.renderMultiplayerPanel?.();
-};
-
-FMQ.setSpotifyConnectionStatus = (state, message = "") => {
-  const el = FMQ.$("connStatus");
-  if (!el) return;
-  const states = {
-    connected: { cls: "ok", icon: "✅", label: "Spotify verbunden" },
-    checking: { cls: "warn", icon: "⏳", label: "Spotify wird geprüft" },
-    reconnect: { cls: "bad", icon: "❌", label: "Spotify neu verbinden" }
-  };
-  const cfg = states[state] || states.reconnect;
-  FMQ.app.state.spotifyConnectionState = state;
-  el.innerHTML = `<span class="${cfg.cls}" title="${FMQ.escapeHtml(message || cfg.label)}" aria-label="${FMQ.escapeHtml(message || cfg.label)}">${cfg.icon}</span>`;
-};
-
-FMQ.refreshConnStatus = () => {
-  const hasSession = !!(FMQ.storage.token || FMQ.storage.refreshToken);
-  if (!hasSession) {
-    FMQ.setSpotifyConnectionStatus("reconnect", "Spotify nicht verbunden");
-  } else if (typeof FMQ.validateSpotifySession === "function") {
-    FMQ.setSpotifyConnectionStatus("checking", "Spotify-Verbindung wird geprüft …");
-    FMQ.validateSpotifySession().then(valid => {
-      if (valid) {
-        FMQ.setSpotifyConnectionStatus("connected");
-      } else {
-        FMQ.storage.token = null;
-        FMQ.storage.expiresAt = null;
-        FMQ.setSpotifyConnectionStatus("reconnect");
-        if (FMQ.$("playlistStatus")) FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
-      }
-      FMQ.checkReadyToStart();
-      if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
-    }).catch(() => {
-      FMQ.setSpotifyConnectionStatus("reconnect");
-      if (FMQ.$("playlistStatus")) FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
-      FMQ.checkReadyToStart();
-      if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
-    });
-  } else {
-    FMQ.setSpotifyConnectionStatus("checking", "Spotify-Verbindung wird geprüft …");
-  }
-  FMQ.checkReadyToStart();
-  if (typeof FMQ.renderSetupWizard === "function") FMQ.renderSetupWizard();
 };
 
 FMQ.resetSession = () => {
@@ -444,75 +156,3 @@ FMQ.resetSession = () => {
     p.score = 0;
   });
 };
-
-FMQ.drawFromDeck = (deck) => {
-  while (deck.length) {
-    const id = deck.pop();
-    if (!id || FMQ.isTrackUsed(id)) continue;
-    const track = FMQ.app.trackMap.get(id) || null;
-    if (track) FMQ.markTrackUsed(track);
-    return track;
-  }
-  return null;
-};
-
-FMQ.drawTrackForCurrentTurn = ({ risk = null, forceFromAny = false } = {}) => {
-  const me = FMQ.currentPlayer();
-  const active = FMQ.musicPlayers();
-  if (!me || !active.length) return null;
-  const drawFromPlayer = (p) => {
-    const deck = FMQ.shuffle((p.tracks || []).map(t => t.id).filter(id => id && !FMQ.isTrackUsed(id)));
-    while (deck.length) {
-      const id = deck.pop();
-      const track = FMQ.app.trackMap.get(id);
-      if (track) {
-        FMQ.markTrackUsed(track);
-        return { track, sourcePlayerId: p.id };
-      }
-    }
-    return null;
-  };
-
-  if (forceFromAny) {
-    const activeIds = new Set(active.map(p => p.id));
-    const candidateIds = [...FMQ.app.trackMap.entries()]
-      .filter(([, t]) => (t.owners || []).some(id => activeIds.has(id)))
-      .map(([id]) => id)
-      .filter(id => !FMQ.isTrackUsed(id));
-    const track = FMQ.drawFromDeck(FMQ.shuffle(candidateIds));
-    if (!track) return null;
-    const owners = (track.owners || []).filter(id => activeIds.has(id));
-    return { track, sourcePlayerId: owners[Math.floor(Math.random() * owners.length)] || me.id };
-  }
-
-  if (risk === "wagnis" && active.length >= 2) {
-    const src = FMQ.shuffle(active.filter(p => p.id !== me.id))[0];
-    const res = src && drawFromPlayer(src);
-    if (res) return res;
-  }
-
-  return drawFromPlayer(me) || FMQ.drawTrackForCurrentTurn({ forceFromAny: true });
-};
-
-FMQ.awardPoints = (pid, delta) => {
-  const p = FMQ.app.players.find(x => x.id === pid);
-  if (p) p.score += delta;
-};
-
-FMQ.renderScoreTable = () => {
-  FMQ.$("scoreTable").innerHTML = FMQ.app.players
-    .map(p => `<div class="scoreCard"><div class="name">${FMQ.escapeHtml(p.name)}</div><div class="pts">${FMQ.app.config.endType === "points" ? `${p.score} / ${FMQ.app.config.targetPoints}` : `${p.score} Punkte`}</div><div class="span">Spanne: ${p.spanMin && p.spanMax ? `${p.spanMin}–${p.spanMax}` : "–"}</div></div>`)
-    .join("");
-};
-
-FMQ.renderHeader = () => {
-  const me = FMQ.currentPlayer();
-  if (!me) return;
-  FMQ.$("gameModeLabel").textContent = FMQ.modes[FMQ.app.config.mode]?.label || FMQ.app.config.mode;
-  FMQ.$("gameModeSub").textContent = FMQ.app.config.party === "allguess" ? "Alle raten" : "Reihum";
-  FMQ.$("roundLabel").textContent = `Runde ${FMQ.app.state.round}`;
-  FMQ.$("turnPlayerName").textContent = me.name;
-  FMQ.$("turnInfo").textContent = `Spanne: ${(me.spanMin && me.spanMax) ? `${me.spanMin}–${me.spanMax}` : "?"}`;
-  FMQ.$("globalUsedLabel").textContent = String(FMQ.app.usedTrackIds.size);
-};
-

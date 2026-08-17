@@ -3,11 +3,14 @@
 <head>
   <!-- Hinweis: Diese Datei enthält nur Struktur/Markup. Logik liegt in /js/*. -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0b1026" />
+  <meta name="description" content="Playlist-Partyspiel für Sofa, Küche und große Runden." />
   <title>Family Music Quiz</title>
   <link rel="stylesheet" href="/family-music-quiz/styles.css" />
 </head>
 <body>
+<a class="skip-link" href="#modeArea">Direkt zum Spielbereich</a>
 <div class="app-shell">
   <section id="screenSetup" class="screen active" aria-label="Setup">
     <div class="setup-stage">
@@ -42,22 +45,22 @@
           <h2>Worauf habt ihr Lust?</h2>
         </div>
         <div class="menu-grid" id="playStyleButtons">
-          <button class="menu-card" data-category="self">
+          <button type="button" class="menu-card" data-category="self">
             <span class="card-icon">🎧</span>
             <span class="card-title">Ich & meine Playlist</span>
             <span class="card-subtitle">Songs erkennen und persönliche Top-Listen bauen.</span>
           </button>
-          <button class="menu-card" data-category="social">
+          <button type="button" class="menu-card" data-category="social">
             <span class="card-icon">💬</span>
             <span class="card-title">Wer kennt meinen Geschmack?</span>
             <span class="card-subtitle">Bewertungen und Entscheidungen der anderen einschätzen.</span>
           </button>
-          <button class="menu-card" data-category="intro">
+          <button type="button" class="menu-card" data-category="intro">
             <span class="card-icon">🤝</span>
             <span class="card-title">Kennenlernen</span>
             <span class="card-subtitle">Playlists entdecken und locker ins Gespräch kommen.</span>
           </button>
-          <button class="menu-card multiOnlyCategory" data-category="challenge">
+          <button type="button" class="menu-card multiOnlyCategory" data-category="challenge">
             <span class="card-icon">⚡</span>
             <span class="card-title">Song-Challenges</span>
             <span class="card-subtitle">Nur Mehrgeräte: Prompts, Songauswahl und Duelle auf den Handys.</span>
@@ -250,10 +253,29 @@
 </div>
 
 <script src="/family-music-quiz/js/core.js" defer></script>
+<script src="/family-music-quiz/js/players.js" defer></script>
+<script src="/family-music-quiz/js/scoring.js" defer></script>
+<script src="/family-music-quiz/js/modeConfig.js" defer></script>
 <script src="/family-music-quiz/js/spotify.js" defer></script>
 <script src="/family-music-quiz/js/multiplayer.js" defer></script>
+<script src="/family-music-quiz/js/remotePlayers.js" defer></script>
+<script src="/family-music-quiz/js/phoneControls.js" defer></script>
+<script src="/family-music-quiz/js/multiplayerRound.js" defer></script>
+<script src="/family-music-quiz/js/lobby.js" defer></script>
 <script src="/family-music-quiz/data/songPrompts.js" defer></script>
-<script src="/family-music-quiz/js/modes.js" defer></script>
+<script src="/family-music-quiz/js/modes/shared.js" defer></script>
+<script src="/family-music-quiz/js/modes/guessSong.js" defer></script>
+<script src="/family-music-quiz/js/modes/quick3.js" defer></script>
+<script src="/family-music-quiz/js/modes/rankingList.js" defer></script>
+<script src="/family-music-quiz/js/modes/introPlaylistGuess.js" defer></script>
+<script src="/family-music-quiz/js/modes/introFirst3.js" defer></script>
+<script src="/family-music-quiz/js/modes/ratingGuess.js" defer></script>
+<script src="/family-music-quiz/js/modes/bestFit.js" defer></script>
+<script src="/family-music-quiz/js/modes/songChallenge.js" defer></script>
+<script src="/family-music-quiz/js/setup.js" defer></script>
+<script src="/family-music-quiz/js/pausePanel.js" defer></script>
+<script src="/family-music-quiz/js/turn.js" defer></script>
+<script src="/family-music-quiz/js/roundFlow.js" defer></script>
 <script src="/family-music-quiz/js/main.js" defer></script>
 </body>
 </html>

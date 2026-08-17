@@ -2,38 +2,88 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Family Music Quiz · Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1026" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Family Music Quiz · Mitspielen</title>
   <link rel="stylesheet" href="/family-music-quiz/styles.css" />
 </head>
 <body class="player-body">
+  <a class="skip-link" href="#promptPanel">Direkt zur Frage</a>
+
+  <!-- Verbindungsleiste: immer sichtbar, verschiebt nichts -->
+  <div id="connBar" class="conn-bar" role="status" aria-live="polite" data-state="connecting">
+    <span class="conn-dot" aria-hidden="true"></span>
+    <span id="connBarText">Verbinde …</span>
+  </div>
+
   <main class="player-shell">
     <section class="player-card-mobile">
-      <div class="eyebrow player-brand">Family Music Quiz</div>
-      <h1 class="player-title">Family Music Quiz</h1>
+      <header class="player-head">
+        <p class="eyebrow player-brand">Family Music Quiz</p>
+        <h1 class="player-title">Mitspielen</h1>
+      </header>
 
-      <form id="joinForm" class="player-form">
-        <label>Raumcode
-          <input id="roomCodeInput" maxlength="6" autocomplete="off" autocapitalize="none" placeholder="z.B. abc123" />
+      <form id="joinForm" class="player-form" novalidate>
+        <label for="playerNameInput">Dein Name
+          <input id="playerNameInput" name="name" autocomplete="given-name" autocapitalize="words"
+                 enterkeyhint="go" maxlength="24" placeholder="z. B. Anna" required />
         </label>
-        <label>Dein Name
-          <input id="playerNameInput" autocomplete="name" placeholder="z.B. Anna" required />
+        <label for="roomCodeInput">Raumcode
+          <input id="roomCodeInput" name="room" maxlength="6" autocomplete="off" autocapitalize="none"
+                 autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="go" placeholder="z. B. abc123" />
+          <span class="field-hint">Steht auf dem großen Bildschirm. Groß- und Kleinschreibung egal.</span>
         </label>
         <button class="action-button primary" type="submit">Beitreten</button>
       </form>
 
-      <section id="playerStatus" class="player-status-panel muted">Raumcode und Namen eingeben.</section>
+      <p id="playerStatus" class="player-status-panel muted" role="status" aria-live="polite">Name eingeben und beitreten.</p>
 
       <section id="joinedView" class="joined-view" hidden>
-        <div id="joinedName" class="joined-name"></div>
-        <section id="promptPanel" class="player-prompt-panel"></section>
-        <section id="controlPanel" class="player-control-panel" hidden></section>
-        <section id="activePanel" class="player-active-panel">
-          <label class="playerSwitchRow"><span>Ich spiele aktiv mit</span><input id="activeToggle" type="checkbox" checked></label>
-        </section>
+        <div class="joined-topline">
+          <span id="joinedName" class="joined-name"></span>
+          <button id="menuToggleBtn" type="button" class="icon-button" aria-expanded="false" aria-controls="playerMenu">
+            <span aria-hidden="true">☰</span><span class="visually-hidden">Einstellungen öffnen</span>
+          </button>
+        </div>
+
+        <!-- Die Frage. Feste Mindesthöhe, damit nach dem Absenden
+             nichts nach oben springt und ein Folge-Tap ins Leere geht. -->
+        <section id="promptPanel" class="player-prompt-panel" aria-live="polite" tabindex="-1"></section>
+
+        <section id="controlPanel" class="player-control-panel" hidden aria-label="Fernsteuerung"></section>
+
+        <!-- Alles, was aus Versehen geklickt werden kann, liegt hier
+             hinter einem Menü statt direkt unter der Antwort. -->
+        <div id="playerMenu" class="player-menu" hidden>
+          <div class="player-menu-inner">
+            <h2>Einstellungen</h2>
+            <label class="playerSwitchRow">
+              <span>Ich spiele aktiv mit</span>
+              <input id="activeToggle" type="checkbox" checked>
+            </label>
+            <p class="muted">Ausschalten heißt: du wirst übersprungen, bis du wieder einschaltest.</p>
+            <label class="playerSwitchRow">
+              <span>Größere Schrift</span>
+              <input id="bigTextToggle" type="checkbox">
+            </label>
+            <label class="playerSwitchRow">
+              <span>Weniger Animationen</span>
+              <input id="calmToggle" type="checkbox">
+            </label>
+            <div class="player-menu-actions">
+              <button id="menuCloseBtn" type="button" class="action-button primary">Fertig</button>
+              <button id="leaveRoomBtn" type="button" class="action-button secondary">Raum verlassen</button>
+            </div>
+          </div>
+        </div>
       </section>
     </section>
   </main>
+
+  <!-- Kurzer Tap-Schutz direkt nach dem Absenden -->
+  <div id="tapShield" class="tap-shield" hidden aria-hidden="true"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/public/player.js"></script>
 </body>
