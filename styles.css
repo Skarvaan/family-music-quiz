@@ -333,12 +333,26 @@ select option{ color:#1B1130; background:#FBF3E7; }
 label{ display:block; font-weight:700; }
 .field-hint{ display:block; margin-top:4px; font-size:14px; font-weight:500; color:var(--muted); }
 
-.stepper{ display:flex; align-items:center; gap:8px; }
-.stepper input{ text-align:center; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:800; }
+/* Zahlenfeld mit Minus und Plus.
+   Wichtig: das Feld erbt width:100% von der globalen Formularregel.
+   Ohne flex:1 1 0 und min-width:0 kann es in dieser Zeile nicht
+   schrumpfen und drängt den Plus-Knopf aus der Karte hinaus. */
+.stepper{ display:flex; align-items:center; gap:8px; width:100%; }
+.stepper input{
+  flex:1 1 0;
+  width:auto;
+  min-width:0;
+  text-align:center;
+  font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums;
+  font-weight:800;
+}
 .stepper button{
   flex:0 0 auto;
   width:56px;
+  min-width:56px;
   min-height:52px;
+  padding:0;
   border:2px solid var(--line-strong);
   border-radius:var(--r-sm);
   background:var(--ink-3);
