@@ -17,7 +17,24 @@ FMQ.sha256Base64Url = async (verifier) => {
   return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 };
 
+/**
+ * Spotify erlaubt als Rückleitungsadresse nur https oder die
+ * Loopback-IP 127.0.0.1 (seit April 2025, "localhost" ist verboten).
+ * Öffnet jemand die Seite über eine WLAN-Adresse wie
+ * http://192.168.178.20:3000, lehnt Spotify den Login ab.
+ * Lieber vorher klar sagen, was los ist.
+ */
+FMQ.canUseSpotifyLoginHere = () => {
+  const host = window.location.hostname;
+  const loopback = host === "127.0.0.1" || host === "[::1]" || host === "::1";
+  return window.location.protocol === "https:" || loopback;
+};
+
 FMQ.loginSpotify = async () => {
+  if (!FMQ.canUseSpotifyLoginHere()) {
+    FMQ.$("playlistStatus").textContent = "Spotify-Login geht hier nicht: Spotify verlangt https (z. B. GitHub Pages) oder am Laptop http://127.0.0.1:3000. Über eine WLAN-Adresse wie 192.168… lehnt Spotify ab.";
+    return;
+  }
   const verifier = FMQ.randomVerifier();
   FMQ.storage.verifier = verifier;
   const challenge = await FMQ.sha256Base64Url(verifier);
@@ -176,18 +193,56 @@ FMQ.pausePlayback = async () => {
 // =========================================================
 // PLAYLISTS / TRACK-LADEN
 // =========================================================
+/*
+ * Seit Februar/März 2026 (Spotify "Development Mode"-Umstellung)
+ * liefert Spotify die Songs einer Playlist NUR noch, wenn der
+ * eingeloggte Host sie selbst besitzt oder an ihr mitarbeitet.
+ * Eine Playlist, der man nur folgt (z. B. die von Oma), lässt
+ * sich zwar anzeigen, aber nicht mehr auslesen.
+ *
+ * Darum:
+ * - alle Seiten von /me/playlists laden (früher nur die ersten 50)
+ * - jede Playlist markieren: fmqReadable = eigene oder gemeinsame
+ * - fremde Playlists im Auswahlmenü sichtbar, aber gesperrt
+ */
 FMQ.loadMyPlaylists = async () => {
   if (!FMQ.storage.token) {
     FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     return;
   }
   FMQ.$("playlistStatus").textContent = "Lade Playlists…";
-  const data = await FMQ.apiFetch("https://api.spotify.com/v1/me/playlists?limit=50").catch(() => {
+  const fail = () => {
     FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!";
     throw new Error("Bitte neu verbinden!");
+  };
+
+  // Eigene Spotify-ID, um "meine" von "fremden" Playlists zu trennen.
+  // Schlägt das fehl, lieber alles freigeben als alles sperren.
+  const me = await FMQ.apiFetch("https://api.spotify.com/v1/me", { timeoutMs: 8000 }).catch(() => null);
+  const myId = me?.id || null;
+
+  const all = [];
+  let url = "https://api.spotify.com/v1/me/playlists?limit=50";
+  // Höchstens 10 Seiten (500 Playlists), damit nichts endlos läuft.
+  for (let page = 0; url && page < 10; page++) {
+    const data = await FMQ.apiFetch(url).catch(fail);
+    all.push(...(data?.items || []).filter(Boolean));
+    url = data?.next || null;
+  }
+
+  all.forEach(pl => {
+    pl.fmqReadable = !myId || pl.owner?.id === myId || pl.collaborative === true;
+    // Feld hieß früher tracks.total, seit 2026 items.total.
+    pl.fmqTotal = typeof pl.items?.total === "number" ? pl.items.total
+      : typeof pl.tracks?.total === "number" ? pl.tracks.total : null;
   });
-  FMQ.app.playlists = data.items || [];
-  FMQ.$("playlistStatus").textContent = `${FMQ.app.playlists.length} Playlists geladen`;
+  // Nutzbare Playlists zuerst, innerhalb davon Reihenfolge wie bei Spotify.
+  FMQ.app.playlists = [...all.filter(pl => pl.fmqReadable), ...all.filter(pl => !pl.fmqReadable)];
+
+  const locked = all.filter(pl => !pl.fmqReadable).length;
+  FMQ.$("playlistStatus").textContent = locked
+    ? `${all.length - locked} Playlists nutzbar · ${locked} fremde gesperrt (Spotify gibt seit 2026 nur eigene oder gemeinsame Playlists frei)`
+    : `${all.length} Playlists geladen`;
   FMQ.refreshPlaylistDropdowns();
 };
 
@@ -200,7 +255,13 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
     const data = await FMQ.apiFetch(
       `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items?limit=100&offset=${offset}&market=from_token&fields=total,items(item(type,id,uri,name,duration_ms,artists(name),album(release_date)))`,
       { timeoutMs: 15000 }
-    );
+    ).catch(e => {
+      // 403/404 heißt seit 2026 fast immer: fremde Playlist.
+      if (/\((403|404)\)/.test(e.message)) {
+        throw new Error("Spotify gibt diese Playlist nicht frei. Es gehen nur eigene oder gemeinsame Playlists. Tipp: Playlist in den eigenen Account kopieren oder als gemeinsame Playlist anlegen.");
+      }
+      throw e;
+    });
     total = data.total ?? 0;
     const items = data.items || [];
 

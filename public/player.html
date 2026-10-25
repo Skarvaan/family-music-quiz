@@ -84,7 +84,13 @@
   <!-- Kurzer Tap-Schutz direkt nach dem Absenden -->
   <div id="tapShield" class="tap-shield" hidden aria-hidden="true"></div>
 
+  <!-- WebRTC-Leitung zum iPad (läuft ohne Laptop, z. B. auf GitHub Pages) -->
+  <script src="/family-music-quiz/vendor/peerjs.min.js"></script>
+  <script src="/family-music-quiz/js/net/wire.js"></script>
+  <script src="/family-music-quiz/public/peerSocket.js"></script>
+  <!-- Nur beim Laptop-Server vorhanden. Auf GitHub Pages gibt es hier
+       einen harmlosen 404, player.js nimmt dann automatisch WebRTC. -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/public/player.js"></script>
+  <script src="/family-music-quiz/public/player.js"></script>
 </body>
 </html>

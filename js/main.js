@@ -123,6 +123,14 @@ FMQ.init = async () => {
   }
 };
 
+// Spotify verbietet seit April 2025 "localhost" als Redirect-URI,
+// erlaubt aber http://127.0.0.1. Wer die alte Adresse aus dem
+// Lesezeichen öffnet, wird still auf die erlaubte umgeleitet.
+// (Nicht in den Tests: dort heißt der Browser "jsdom".)
+if (window.location.hostname === "localhost" && !/jsdom/i.test(navigator.userAgent)) {
+  window.location.replace(window.location.href.replace("//localhost", "//127.0.0.1"));
+}
+
 // Genau ein Einstiegspunkt. Ein zweiter Aufruf würde alle Ereignisse
 // doppelt binden und die Spielerliste nach der Eingabe neu aufbauen.
 document.addEventListener("DOMContentLoaded", () => {

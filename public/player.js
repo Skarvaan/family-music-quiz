@@ -19,6 +19,14 @@
 
    4. Rejoin läuft über ein Token im localStorage statt über
       exakte Namensgleichheit.
+
+   5. Zwei Leitungsarten:
+      - Laptop-Server (npm start): Socket.IO wie bisher.
+      - Ohne Laptop: WebRTC direkt zum iPad (peerSocket.js).
+      Erkannt wird das automatisch: Liefert der Server die
+      Socket.IO-Bibliothek, gibt es einen Laptop-Server. Sonst
+      (z. B. auf GitHub Pages) läuft alles über WebRTC.
+      Mit ?net=peer in der Adresse lässt sich WebRTC erzwingen.
    ========================================================= */
 
 (() => {
@@ -35,7 +43,12 @@
     del(key) { try { localStorage.removeItem(key); } catch {} }
   };
 
-  const socket = io({ reconnectionDelay: 500, reconnectionDelayMax: 3000, timeout: 8000 });
+  // Leitungsart wählen (siehe Kopfkommentar, Punkt 5).
+  const netParam = new URLSearchParams(location.search).get("net");
+  const usePeer = netParam === "peer" || typeof window.io !== "function";
+  const socket = usePeer
+    ? window.FMQNet.createPeerSocket()
+    : io({ reconnectionDelay: 500, reconnectionDelayMax: 3000, timeout: 8000 });
 
   const state = {
     player: null,
@@ -570,9 +583,18 @@
 
   const joinRoom = ({ name, roomCode, silent = false }) => {
     if (!silent) setConn("connecting", "Trete bei …");
+    // WebRTC: erst mit dem Raumcode weiß das Handy, welches iPad
+    // es anrufen soll. Bei Socket.IO gibt es setRoom nicht.
+    socket.setRoom?.(roomCode);
     socket.emit("player:join", { name, roomCode, playerToken: state.playerToken, active: $("activeToggle")?.checked !== false }, res => {
       if (!res?.ok) {
         if (res?.code === "WRONG_ROOM") store.del("fmq_room_code");
+        // Kurz weg oder iPad nicht erreichbar: eingeloggt bleiben und
+        // weiter versuchen, statt den Spieler zur Startmaske zu werfen.
+        if (silent && ["DISCONNECTED", "TIMEOUT", "NO_HOST"].includes(res?.code)) {
+          setConn("warn", res?.error || "Verbindung wird wieder aufgebaut …");
+          return;
+        }
         showJoinView(res?.error || "Beitritt hat nicht geklappt.");
         setConn("warn", res?.error || "Beitritt hat nicht geklappt.");
         return;
@@ -700,7 +722,7 @@
     setStatus("Name eingeben und beitreten.");
   });
 
-  socket.on("connect_error", () => setConn("offline", "Kein Kontakt zum Server. Gleiches WLAN?"));
+  socket.on("connect_error", err => setConn("offline", err?.fmqMessage || "Kein Kontakt zum Server. Gleiches WLAN?"));
   socket.on("disconnect", () => setConn("offline", "Verbindung weg. Ich versuche es weiter …"));
 
   socket.on("room:state", snapshot => {
@@ -772,5 +794,15 @@
   $("roomCodeInput").value = state.roomCode;
   const savedName = store.get("fmq_player_name");
   if (savedName) $("playerNameInput").value = savedName;
-  setConn("connecting", "Verbinde …");
+  if (usePeer && state.roomCode) {
+    // Code aus dem QR-Code: sofort anrufen. Der "connect"-Handler
+    // oben tritt dann automatisch wieder bei, falls das Handy den
+    // Raum schon kennt.
+    setConn("connecting", "Verbinde mit dem großen Bildschirm …");
+    socket.setRoom(state.roomCode);
+  } else if (usePeer) {
+    setConn("offline", "Raumcode eingeben");
+  } else {
+    setConn("connecting", "Verbinde …");
+  }
 })();

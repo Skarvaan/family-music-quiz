@@ -16,7 +16,7 @@
     <div class="setup-stage">
       <div class="setupStep start-screen active" data-setup-step="1">
         <div class="hero-panel">
-          <div class="eyebrow">Spotify Premium Host · Single oder Local Multi Device</div>
+          <div class="eyebrow">Spotify Premium Host · Ein Gerät oder Handys als Controller</div>
           <h1 class="hero-title">Family Music Quiz</h1>
           <p class="hero-subtitle">Das Playlist-Partyspiel für Sofa, Küche und große Runden.</p>
           <div id="deviceModePanel" class="deviceModePanel"></div>
@@ -252,11 +252,18 @@
   </div>
 </div>
 
+<!-- Fremdbibliotheken, lokal mitgeliefert (siehe vendor/README.md) -->
+<script src="/family-music-quiz/vendor/peerjs.min.js" defer></script>
+<script src="/family-music-quiz/vendor/qrcode.js" defer></script>
 <script src="/family-music-quiz/js/core.js" defer></script>
 <script src="/family-music-quiz/js/players.js" defer></script>
 <script src="/family-music-quiz/js/scoring.js" defer></script>
 <script src="/family-music-quiz/js/modeConfig.js" defer></script>
 <script src="/family-music-quiz/js/spotify.js" defer></script>
+<script src="/family-music-quiz/js/net/roomEvents.js" defer></script>
+<script src="/family-music-quiz/js/net/roomHub.js" defer></script>
+<script src="/family-music-quiz/js/net/wire.js" defer></script>
+<script src="/family-music-quiz/js/net/peerHost.js" defer></script>
 <script src="/family-music-quiz/js/multiplayer.js" defer></script>
 <script src="/family-music-quiz/js/remotePlayers.js" defer></script>
 <script src="/family-music-quiz/js/phoneControls.js" defer></script>

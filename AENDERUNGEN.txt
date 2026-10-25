@@ -1,0 +1,36 @@
+Family Music Quiz · Update "iPad als Server"
+============================================
+
+Diese Dateien ins Repo kopieren (Ordnerstruktur ist erhalten):
+
+GEÄNDERT
+  README.md
+  index.html
+  package.json
+  server.js
+  js/lobby.js
+  js/main.js
+  js/multiplayer.js
+  js/players.js
+  js/spotify.js
+  public/player.html
+  public/player.js
+
+NEU
+  js/net/roomEvents.js
+  js/net/roomHub.js
+  js/net/wire.js
+  js/net/peerHost.js
+  public/peerSocket.js
+  tests/peer-e2e.test.js
+  vendor/peerjs.min.js
+  vendor/qrcode.js
+  vendor/README.md
+
+LÖSCHEN
+  js/modes.js   (alte Sammeldatei, wurde nirgends mehr geladen,
+                 ließ aber 5 Tests fehlschlagen)
+
+Danach einmal "npm install" (neue Dev-Abhängigkeiten für Tests).
+Spotify Developer Dashboard: Redirect-URI http://127.0.0.1:3000/
+ergänzen (localhost ist bei Spotify nicht mehr erlaubt).
