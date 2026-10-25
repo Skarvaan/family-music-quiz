@@ -28,6 +28,14 @@
             <span id="connStatus" class="pill" aria-live="polite"></span>
             <span id="playlistStatus" aria-live="polite"></span>
           </div>
+          <!-- Wo soll die Musik laufen? z. B. Galaxy S22 statt iPad -->
+          <div class="row row--center">
+            <label for="deviceSelect"><b>Abspielgerät</b></label>
+            <select id="deviceSelect"><option value="">Automatisch (aktives Gerät)</option></select>
+            <button id="deviceRefreshBtn" type="button" class="action-button secondary">Geräte suchen</button>
+          </div>
+          <div id="deviceStatus" class="muted" aria-live="polite"></div>
+          <div id="spotifyAlertStart" class="pill bad" role="alert" hidden></div>
           <details class="debug-panel">
             <summary>Debug / Einstellungen</summary>
             <div class="debug-content">
@@ -197,6 +205,8 @@
         <button id="quitBtn" class="action-button secondary" aria-label="Spiel beenden">Beenden</button>
       </footer>
       <div class="turn-flow-hint muted" id="turnFlowHint"></div>
+      <!-- Wiedergabe-Fehler sichtbar statt nur im Debug-Feld -->
+      <div id="spotifyAlertGame" class="pill bad" role="alert" hidden></div>
 
       <div id="revealBox" class="reveal-panel" style="display:none;">
         <div id="revealText"></div>
@@ -260,6 +270,7 @@
 <script src="/family-music-quiz/js/scoring.js" defer></script>
 <script src="/family-music-quiz/js/modeConfig.js" defer></script>
 <script src="/family-music-quiz/js/spotify.js" defer></script>
+<script src="/family-music-quiz/js/spotifyPlayback.js" defer></script>
 <script src="/family-music-quiz/js/net/roomEvents.js" defer></script>
 <script src="/family-music-quiz/js/net/roomHub.js" defer></script>
 <script src="/family-music-quiz/js/net/wire.js" defer></script>

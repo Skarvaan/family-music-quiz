@@ -1,0 +1,19 @@
+Family Music Quiz · Update 3 (Spotify-Steuerung repariert)
+==========================================================
+
+Ins Repo kopieren und pushen:
+
+GEÄNDERT
+  index.html              Abspielgerät-Auswahl + sichtbare Fehlermeldung
+  js/main.js              Geräteauswahl verdrahtet
+  js/spotify.js           Wiedergabe ausgelagert (s. u.)
+  package.json            Testbefehl ergänzt
+  tests/single-device.test.js   neue Datei in der Ladeliste
+
+NEU
+  js/spotifyPlayback.js   Play/Pause/Gerätewahl, robust bei Gerätewechsel
+  tests/spotify-playback.test.js
+
+Danach auf dem iPad: Seite neu laden (notfalls privater Tab),
+Spotify-App auf dem Abspielgerät öffnen, kurz einen Song anspielen,
+"Geräte suchen" tippen und das Gerät auswählen.

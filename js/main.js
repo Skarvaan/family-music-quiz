@@ -70,6 +70,12 @@ FMQ.init = async () => {
       FMQ.onNext();
     }, 220);
   };
+  // Abspielgerät wählen
+  FMQ.$("deviceRefreshBtn").onclick = () => FMQ.refreshDevicePicker();
+  FMQ.$("deviceSelect").onchange = () => {
+    FMQ.setPreferredDeviceId(FMQ.$("deviceSelect").value);
+    FMQ.$("deviceStatus").textContent = FMQ.$("deviceSelect").value ? "Gespeichert. Musik läuft ab jetzt dort." : "Automatisch: das gerade aktive Spotify-Gerät.";
+  };
   FMQ.$("loginBtn").onclick = () => FMQ.loginSpotify().catch(() => FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!");
   if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
   if (FMQ.$("loadMyPlaylistsBtn")) FMQ.$("loadMyPlaylistsBtn").onclick = () => FMQ.loadMyPlaylists().catch(() => { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; });
@@ -130,6 +136,8 @@ FMQ.init = async () => {
   if (FMQ.storage.token && !FMQ.app.playlists.length) {
     try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; }
   }
+  // Geräteliste einmal beim Start füllen (falls verbunden).
+  if (FMQ.storage.token) FMQ.refreshDevicePicker().catch(() => {});
 };
 
 // Spotify verbietet seit April 2025 "localhost" als Redirect-URI,
