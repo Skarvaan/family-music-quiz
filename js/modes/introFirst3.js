@@ -10,13 +10,8 @@ FMQ.modes.introFirst3 = {
     if (!track) return;
     const startMs = FMQ.getStoredStartMs(track, `first3:${track.id}`, mode);
     await FMQ.playTrackUri(track.uri, { positionMs: startMs });
-    clearTimeout(FMQ.app.state.playTimer);
-    FMQ.app.state.playTimer = null;
-    if (seconds !== "full") {
-      FMQ.app.state.playTimer = setTimeout(() => {
-        FMQ.pausePlayback().catch(() => {});
-      }, seconds * 1000);
-    }
+    // Stoppuhr erst ab echtem Spielbeginn (siehe spotifyPlayback.js)
+    FMQ.startClipTimer(track.uri, startMs, seconds);
   },
   renderArea() {
     FMQ.$("modeAreaTitle").textContent = "Meine ersten 3 Songs";

@@ -1028,6 +1028,12 @@ label{ display:block; font-weight:700; }
    overflow:hidden zusammen mit fester Höhe, dadurch lag der
    Abschicken-Button unerreichbar unter der Kante.
    ========================================================= */
+/* Die Schallplatten-Rillen (body::before) liegen fix über dem ganzen
+   Bildschirm, mit Maske. Handys müssen das bei jedem Scrollen neu
+   malen, auf älteren Geräten ruckelt es dann spürbar. Auf dem großen
+   Bildschirm bleiben sie, auf dem Handy entfallen sie. */
+body.player-body::before{ display:none; }
+
 .player-body{
   display:block;
   overflow-y:auto;

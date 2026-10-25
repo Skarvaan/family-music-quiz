@@ -2,7 +2,7 @@
   "name": "family-music-quiz",
   "version": "2.0.0",
   "private": true,
-  "description": "Family Music Quiz mit lokalem Mehrgeräte-Modus für Handys und Tablets.",
+  "description": "Family Music Quiz: Handys als Controller, Host auf iPad (WebRTC, ohne Laptop) oder lokalem Server.",
   "scripts": {
     "start": "node server.js",
     "test": "node tests/structure.test.js && node tests/styles.test.js && node tests/boot.test.js && node tests/prompts.test.js && node tests/single-device.test.js && node tests/server-room.test.js",
@@ -11,7 +11,9 @@
     "test:prompts": "node tests/prompts.test.js",
     "test:single": "node tests/single-device.test.js",
     "test:server": "node tests/server-room.test.js",
-    "test:boot": "node tests/boot.test.js"
+    "test:boot": "node tests/boot.test.js",
+    "test:peer": "node tests/peer-e2e.test.js && node tests/peer-quick3.test.js && node tests/peer-setup.test.js && node tests/spotify-playback.test.js",
+    "vendor": "node -e \"const fs=require('fs');fs.mkdirSync('vendor',{recursive:true});fs.copyFileSync('node_modules/peerjs/dist/peerjs.min.js','vendor/peerjs.min.js');fs.copyFileSync('node_modules/qrcode-generator/qrcode.js','vendor/qrcode.js');console.log('vendor/ aktualisiert')\""
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -20,6 +22,9 @@
   },
   "devDependencies": {
     "jsdom": "^24.1.0",
+    "peer": "^1.0.2",
+    "peerjs": "^1.5.5",
+    "qrcode-generator": "^1.5.2",
     "socket.io-client": "^4.7.5"
   },
   "engines": {

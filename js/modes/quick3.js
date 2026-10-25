@@ -9,7 +9,10 @@ FMQ.modes.quick3 = {
   supportsAllGuess: false,
   submitAnswer(playerId, answer) {
     FMQ.app.state.quick3.answers[playerId] = answer;
-    return FMQ.modes.guessSong.submitAnswer(playerId, answer);
+    const result = FMQ.modes.guessSong.submitAnswer(playerId, answer);
+    // Für die Anzeige in der Auflösung merken (Mehrgeräte-Modus).
+    FMQ.app.state.quick3.lastPoints = result.points;
+    return result;
   },
   renderArea() {
     const me = FMQ.currentPlayer();
@@ -55,9 +58,22 @@ FMQ.modes.quick3 = {
       const expectedIds = [FMQ.currentPlayer()?.id].filter(Boolean);
       const allDone = expectedIds.every(id => Object.prototype.hasOwnProperty.call(FMQ.app.state.quick3.answers || {}, id));
       FMQ.$("modeArea").insertAdjacentHTML("beforeend", `${FMQ.modes.bestFit.answerStatusHtml(expectedIds, FMQ.app.state.quick3.answers)}`);
+      // Nach dem Reveal sind Abspielen und Reveal erledigt.
+      ["quick3PlayBtnInline", "revealBtnInline", "quick3LenSelectInline", "quick3StartModeSelectInline"].forEach(id => { if (FMQ.$(id)) FMQ.$(id).disabled = true; });
       if (allDone && !FMQ.app.state.quick3.advanceAfterSelfCheck) {
+        // Früher ging es hier sofort zum nächsten Zug. Dadurch war die
+        // Auflösung weg, bevor jemand sie lesen konnte. Jetzt bleibt sie
+        // stehen, zeigt die Punkte, und es geht mit "Weiter" weiter
+        // (am iPad oder per Handy-Steuerung).
         FMQ.app.state.quick3.advanceAfterSelfCheck = true;
-        setTimeout(() => FMQ.onNext().catch(e => FMQ.setGameDebug(e.stack || e.message)), 0);
+        FMQ.app.state.selfCheckPending = false;
+        const pts = FMQ.app.state.quick3.lastPoints ?? 0;
+        const status = FMQ.$("quick3PtsStatus");
+        if (status) status.innerHTML = `<span class="ok">${FMQ.escapeHtml(me?.name || "")}: +${pts} Punkt${pts === 1 ? "" : "e"}</span>`;
+        if (FMQ.$("quick3ConfirmBtn")) { FMQ.$("quick3ConfirmBtn").disabled = false; FMQ.$("quick3ConfirmBtn").textContent = "Weiter"; }
+        FMQ.$("nextBtn").disabled = false;
+        FMQ.renderScoreTable();
+        FMQ.refreshPhoneControls?.();
       }
     }
   },
@@ -72,34 +88,36 @@ FMQ.modes.quick3 = {
   },
   async playStored(track, startMs) {
     await FMQ.playTrackUri(track.uri, { positionMs: startMs });
-    clearTimeout(FMQ.app.state.playTimer);
-    FMQ.app.state.playTimer = null;
-    const clipSeconds = this.getClipSeconds();
-    if (clipSeconds !== "full") {
-      FMQ.app.state.playTimer = setTimeout(async () => {
-        try { await FMQ.pausePlayback(); } catch {}
-        FMQ.app.state.isPlaying = false;
-      }, clipSeconds * 1000);
-    }
+    // Stoppuhr erst ab echtem Spielbeginn (siehe spotifyPlayback.js)
+    FMQ.startClipTimer(track.uri, startMs, this.getClipSeconds());
     FMQ.app.state.isPlaying = true;
   },
   onReveal() {
     if (FMQ.isMultiDevice?.()) {
-      FMQ.app.state.selfCheckPending = false;
+      // Mehrgeräte: Die Auflösung erscheint groß am iPad (Overlay),
+      // der Selbst-Check läuft am Handy der Person, die dran ist.
+      // Alle anderen Handys sehen die Lösung ebenfalls.
+      // Früher wurde hier skipReveal zurückgegeben, dadurch stand
+      // der Titel nirgends.
+      const t = FMQ.app.state.currentTrack;
+      const me = FMQ.currentPlayer();
+      const songLine = t ? `${t.name} – ${(t.artists || []).join(", ")} (${t.year})` : "";
+      FMQ.app.state.selfCheckPending = true;
       FMQ.app.state.quick3.multiReveal = true;
+      FMQ.app.state.quick3.lastPoints = null;
       FMQ.startMultiplayerPrompt?.({
         id: crypto.randomUUID(),
         type: "quick3SelfCheck",
         kind: "checks",
-        title: "Was hattest du richtig?",
-        text: "Markiere alles, was du erkannt hast.",
+        title: "Auflösung",
+        text: `Es war: ${songLine}. Was hattest du richtig?`,
         options: [{ value: "title", label: "Titel" }, { value: "artist", label: "Interpret" }, { value: "year", label: "Jahr" }],
-        waitingText: "Warte auf die Auswahl aller anderen Personen!",
-        sentText: "Selbstcheck gespeichert. Bitte warten …",
-        recipientIds: [FMQ.currentPlayer()?.id].filter(Boolean)
+        waitingText: `Es war: ${songLine}. ${me?.name || "Die Person am Zug"} trägt gerade ein, was richtig war.`,
+        sentText: `Gespeichert. Es war: ${songLine}`,
+        recipientIds: [me?.id].filter(Boolean)
       });
       setTimeout(() => FMQ.modes.quick3.renderArea(), 0);
-      return { skipReveal: true, disableReveal: true };
+      return { headline: "Auflösung", detail: "", remoteSelfCheck: true, waitingFor: me?.name || "" };
     }
     FMQ.app.state.selfCheckPending = true;
     return { headline: "Auflösung", detail: "Selbst-Check notwendig" };

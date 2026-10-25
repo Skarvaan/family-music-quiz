@@ -44,6 +44,15 @@ FMQ.init = async () => {
 
   FMQ.$("quick3HelpCloseBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("quick3ConfirmBtn").onclick = () => {
+    // Mehrgeräte: Punkte kamen schon vom Handy (oder bewusst keine).
+    // Hier nur weiterschalten.
+    if (FMQ.isMultiDevice?.() && FMQ.app.state.quick3.multiReveal) {
+      FMQ.app.state.selfCheckPending = false;
+      FMQ.$("quick3RevealOverlay").classList.remove("show");
+      FMQ.$("nextBtn").disabled = false;
+      FMQ.onNext();
+      return;
+    }
     const me = FMQ.currentPlayer();
     const result = FMQ.modes.quick3.submitAnswer(me.id, {
       title: FMQ.$("quick3ChkTitle").checked,
@@ -60,6 +69,24 @@ FMQ.init = async () => {
       FMQ.$("nextBtn").disabled = false;
       FMQ.onNext();
     }, 220);
+  };
+  // Abspielgerät wählen
+  FMQ.$("deviceRefreshBtn").onclick = () => FMQ.refreshDevicePicker();
+  // "Spotify testen": Knopf auf dem Startbildschirm und im Debug-Bereich
+  // des Spiels. Jeder schreibt in sein eigenes Ausgabefeld.
+  [["spotifyDiagBtn", "spotifyDiagOut"], ["spotifyDiagBtnGame", "spotifyDiagOutGame"]].forEach(([btnId, outId]) => {
+    const btn = FMQ.$(btnId);
+    if (!btn) return;
+    btn.onclick = () => {
+      btn.disabled = true;
+      FMQ.runSpotifyDiagnose(outId)
+        .catch(e => { FMQ.$(outId).hidden = false; FMQ.$(outId).textContent += "\nAbbruch: " + e.message; })
+        .finally(() => { btn.disabled = false; });
+    };
+  });
+  FMQ.$("deviceSelect").onchange = () => {
+    FMQ.setPreferredDeviceId(FMQ.$("deviceSelect").value);
+    FMQ.$("deviceStatus").textContent = FMQ.$("deviceSelect").value ? "Gespeichert. Musik läuft ab jetzt dort." : "Automatisch: das gerade aktive Spotify-Gerät.";
   };
   FMQ.$("loginBtn").onclick = () => FMQ.loginSpotify().catch(() => FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!");
   if (FMQ.$("logoutBtn")) FMQ.$("logoutBtn").onclick = () => FMQ.logoutSpotify();
@@ -121,7 +148,17 @@ FMQ.init = async () => {
   if (FMQ.storage.token && !FMQ.app.playlists.length) {
     try { await FMQ.loadMyPlaylists(); } catch (e) { FMQ.$("playlistStatus").textContent = "Bitte neu verbinden!"; }
   }
+  // Geräteliste einmal beim Start füllen (falls verbunden).
+  if (FMQ.storage.token) FMQ.refreshDevicePicker().catch(() => {});
 };
+
+// Spotify verbietet seit April 2025 "localhost" als Redirect-URI,
+// erlaubt aber http://127.0.0.1. Wer die alte Adresse aus dem
+// Lesezeichen öffnet, wird still auf die erlaubte umgeleitet.
+// (Nicht in den Tests: dort heißt der Browser "jsdom".)
+if (window.location.hostname === "localhost" && !/jsdom/i.test(navigator.userAgent)) {
+  window.location.replace(window.location.href.replace("//localhost", "//127.0.0.1"));
+}
 
 // Genau ein Einstiegspunkt. Ein zweiter Aufruf würde alle Ereignisse
 // doppelt binden und die Spielerliste nach der Eingabe neu aufbauen.

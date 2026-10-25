@@ -12,12 +12,18 @@ var FMQ = window.FMQ;
    4. Was läuft gerade?
    5. Ein Song aus der geladenen Playlist: ist er abspielbar?
    6. Test A: den gerade pausierten Song per Spiel starten
-   7. Test B: den Playlist-Song per Spiel starten
+   7. Test B: den Playlist-Song per Spiel starten ("spiel diesen Song")
+   7c. Test C: denselben Song über die Playlist starten ("spiel diese
+       Playlist ab genau diesem Song", context_uri + offset). Das ist der
+       zweite offiziell dokumentierte Weg desselben Play-Befehls.
    8. Pause
    Vergleich A/B zeigt: Liegt es am Gerät/der Steuerung oder am Song? */
 
-FMQ.runSpotifyDiagnose = async () => {
-  const out = FMQ.$("spotifyDiagOut");
+// outId: wohin das Ergebnis geschrieben wird. Startbildschirm:
+// "spotifyDiagOut", im Spiel (Debug-Bereich): "spotifyDiagOutGame".
+// Im Spiel sind die Playlist-Songs sicher geladen, dort läuft Test B.
+FMQ.runSpotifyDiagnose = async (outId = "spotifyDiagOut") => {
+  const out = FMQ.$(outId);
   const lines = [];
   const say = (text) => { lines.push(text); if (out) { out.hidden = false; out.textContent = lines.join("\n"); } };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -72,9 +78,10 @@ FMQ.runSpotifyDiagnose = async () => {
   }
   if (FMQ.app.skippedUnplayable) say(`   (Beim Laden ${FMQ.app.skippedUnplayable} nicht abspielbare Titel aussortiert)`);
 
-  const tryPlay = async (label, uri) => {
+  // body: was an Spotify geht. Standard: { uris: [uri] } = "spiel diesen Song".
+  const tryPlay = async (label, uri, body = { uris: [uri] }) => {
     say(`${label}: starte ${uri} auf ${target.name} …`);
-    const r = await call("Play-Befehl", `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(target.id)}`, { method: "PUT", jsonBody: { uris: [uri] } });
+    const r = await call("Play-Befehl", `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(target.id)}`, { method: "PUT", jsonBody: body });
     if (r.ok) say("   Spotify hat den Befehl angenommen.");
     await sleep(4000);
     const st = await nowPlaying();
@@ -93,10 +100,26 @@ FMQ.runSpotifyDiagnose = async () => {
     say(`   → Test B ${okB ? "OK" : "FEHLGESCHLAGEN"}`);
   }
 
+  // 7c) Test C: derselbe Song, aber über seine Playlist gestartet.
+  //     context_uri = die Playlist, offset.uri = genau dieser Song darin.
+  let okC = null;
+  const owner = track ? (FMQ.app.players || []).find(p => (p.tracks || []).some(t => t.id === track.id)) : null;
+  if (track && owner?.playlistId) {
+    const contextUri = `spotify:playlist:${owner.playlistId}`;
+    say(`   (Playlist: ${owner.playlistName || owner.playlistId})`);
+    okC = await tryPlay("7c) Test C (über die Playlist)", track.uri, { context_uri: contextUri, offset: { uri: track.uri }, position_ms: 0 });
+    say(`   → Test C ${okC ? "OK" : "FEHLGESCHLAGEN"}`);
+  } else if (track) {
+    say("7c) Test C entfällt: Zu diesem Song ist keine Playlist bekannt.");
+  }
+
   // 8) Pause
   await call("Pause", `https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(target.id)}`, { method: "PUT" });
 
   say("");
+  // Test C eigene Aussage: Klappt C, B aber nicht, ist der Playlist-Weg die Lösung.
+  if (okC === true && okB === false) say("HINWEIS: Über die Playlist klappt es (Test C), als Einzelsong nicht (Test B). Das Spiel kann auf diesen Weg umgestellt werden.");
+  if (okC === false && okB === false) say("HINWEIS: Auch über die Playlist klappt es nicht (Test C). Abspielen per Fernsteuerung ist bei diesem Konto/Gerät derzeit blockiert.");
   say(okA && okB !== false ? "ERGEBNIS: Steuerung und Songs funktionieren."
     : !okA ? "ERGEBNIS: Spotify nimmt Befehle an, spielt auf diesem Gerät aber nicht ab. Liegt am Gerät/der App (Gerät wechseln oder App neu starten)."
     : "ERGEBNIS: Gerät funktioniert, aber der Playlist-Song nicht. Liegt am Song bzw. der Playlist.");

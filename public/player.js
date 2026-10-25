@@ -19,6 +19,14 @@
 
    4. Rejoin läuft über ein Token im localStorage statt über
       exakte Namensgleichheit.
+
+   5. Zwei Leitungsarten:
+      - Laptop-Server (npm start): Socket.IO wie bisher.
+      - Ohne Laptop: WebRTC direkt zum iPad (peerSocket.js).
+      Erkannt wird das automatisch: Liefert der Server die
+      Socket.IO-Bibliothek, gibt es einen Laptop-Server. Sonst
+      (z. B. auf GitHub Pages) läuft alles über WebRTC.
+      Mit ?net=peer in der Adresse lässt sich WebRTC erzwingen.
    ========================================================= */
 
 (() => {
@@ -35,7 +43,12 @@
     del(key) { try { localStorage.removeItem(key); } catch {} }
   };
 
-  const socket = io({ reconnectionDelay: 500, reconnectionDelayMax: 3000, timeout: 8000 });
+  // Leitungsart wählen (siehe Kopfkommentar, Punkt 5).
+  const netParam = new URLSearchParams(location.search).get("net");
+  const usePeer = netParam === "peer" || typeof window.io !== "function";
+  const socket = usePeer
+    ? window.FMQNet.createPeerSocket()
+    : io({ reconnectionDelay: 500, reconnectionDelayMax: 3000, timeout: 8000 });
 
   const state = {
     player: null,
@@ -95,6 +108,9 @@
     $("controlPanel").innerHTML = "";
     $("joinedName").textContent = "";
     $("promptPanel").innerHTML = "";
+    // Nach dem Verlassen muss beim nächsten Beitritt neu gezeichnet werden.
+    lastPromptKey = null;
+    lastControlKey = null;
     closeMenu();
     setStatus(message);
   };
@@ -458,10 +474,31 @@
   // -------------------------------------------------------
   // Prompt-Router
   // -------------------------------------------------------
-  const renderPrompt = () => {
+  // Raum-Updates kommen bei jeder Kleinigkeit (jemand antwortet,
+  // die Steuerung wechselt, ein Handy verbindet sich). Früher wurde
+  // dabei jedes Mal die ganze Frage neu aufgebaut: Auswahl weg,
+  // Scrollposition weg, und ein Tipp, der gerade unterwegs war,
+  // landete auf einem Knopf, den es nicht mehr gab. Das fühlte sich
+  // an wie "das Handy reagiert langsam". Jetzt wird nur neu
+  // gezeichnet, wenn sich etwas ändert, das man auch sieht.
+  let lastPromptKey = null;
+  const promptKey = () => JSON.stringify([
+    state.player?.id, state.player?.active !== false, state.hostOnline,
+    state.prompt?.id || null, state.answeredPromptId === state.prompt?.id,
+    state.prompt ? isRecipient(state.prompt) : null
+  ]);
+
+  const renderPrompt = ({ force = false } = {}) => {
     const panel = $("promptPanel");
-    const prompt = state.prompt;
     if (!panel) return;
+    const key = promptKey();
+    if (!force && key === lastPromptKey) return;
+    lastPromptKey = key;
+    renderPromptNow(panel);
+  };
+
+  const renderPromptNow = panel => {
+    const prompt = state.prompt;
     if (!state.player) { panel.innerHTML = ""; return; }
 
     if (!state.player.active) {
@@ -564,15 +601,24 @@
     $("activeToggle").checked = state.player.active !== false;
     showJoinedView();
     setConn("online", `Drin als ${state.player.name}`);
-    renderPrompt();
+    renderPrompt({ force: true });
     renderController();
   };
 
   const joinRoom = ({ name, roomCode, silent = false }) => {
     if (!silent) setConn("connecting", "Trete bei …");
+    // WebRTC: erst mit dem Raumcode weiß das Handy, welches iPad
+    // es anrufen soll. Bei Socket.IO gibt es setRoom nicht.
+    socket.setRoom?.(roomCode);
     socket.emit("player:join", { name, roomCode, playerToken: state.playerToken, active: $("activeToggle")?.checked !== false }, res => {
       if (!res?.ok) {
         if (res?.code === "WRONG_ROOM") store.del("fmq_room_code");
+        // Kurz weg oder iPad nicht erreichbar: eingeloggt bleiben und
+        // weiter versuchen, statt den Spieler zur Startmaske zu werfen.
+        if (silent && ["DISCONNECTED", "TIMEOUT", "NO_HOST"].includes(res?.code)) {
+          setConn("warn", res?.error || "Verbindung wird wieder aufgebaut …");
+          return;
+        }
         showJoinView(res?.error || "Beitritt hat nicht geklappt.");
         setConn("warn", res?.error || "Beitritt hat nicht geklappt.");
         return;
@@ -616,11 +662,18 @@
     });
   };
 
+  // Wie bei der Frage: Steuerknöpfe nur neu bauen, wenn sich Knöpfe
+  // oder die Markierung geändert haben. Sonst verschwindet der Knopf
+  // zwischen Fingerdruck und Loslassen.
+  let lastControlKey = null;
   const renderController = () => {
     const panel = $("controlPanel");
     if (!panel || !state.player) return;
     const canControl = state.controllerId && state.controllerId === state.player.id;
     const actions = canControl ? (state.controllerActions || []) : [];
+    const key = JSON.stringify([canControl, actions, state.controlSelections]);
+    if (key === lastControlKey) return;
+    lastControlKey = key;
     panel.hidden = !canControl || actions.length === 0;
     if (panel.hidden) { panel.innerHTML = ""; return; }
 
@@ -700,7 +753,7 @@
     setStatus("Name eingeben und beitreten.");
   });
 
-  socket.on("connect_error", () => setConn("offline", "Kein Kontakt zum Server. Gleiches WLAN?"));
+  socket.on("connect_error", err => setConn("offline", err?.fmqMessage || "Kein Kontakt zum Server. Gleiches WLAN?"));
   socket.on("disconnect", () => setConn("offline", "Verbindung weg. Ich versuche es weiter …"));
 
   socket.on("room:state", snapshot => {
@@ -729,7 +782,7 @@
     // Ohne das bliebe die Wartekarte stehen und niemand könnte antworten.
     state.hostOnline = true;
     haptic([10, 60, 10]);
-    renderPrompt();
+    renderPrompt({ force: true });
     renderController();
   });
 
@@ -772,5 +825,15 @@
   $("roomCodeInput").value = state.roomCode;
   const savedName = store.get("fmq_player_name");
   if (savedName) $("playerNameInput").value = savedName;
-  setConn("connecting", "Verbinde …");
+  if (usePeer && state.roomCode) {
+    // Code aus dem QR-Code: sofort anrufen. Der "connect"-Handler
+    // oben tritt dann automatisch wieder bei, falls das Handy den
+    // Raum schon kennt.
+    setConn("connecting", "Verbinde mit dem großen Bildschirm …");
+    socket.setRoom(state.roomCode);
+  } else if (usePeer) {
+    setConn("offline", "Raumcode eingeben");
+  } else {
+    setConn("connecting", "Verbinde …");
+  }
 })();
