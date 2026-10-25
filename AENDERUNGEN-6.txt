@@ -1,0 +1,29 @@
+Family Music Quiz · Update 6 (ersetzt Update 3, 4 und 5)
+========================================================
+
+Alles gegenüber deinem hochgeladenen Stand. Update 3, 4 und 5 NICHT
+mehr einzeln hochladen, hier ist alles drin.
+
+GEÄNDERT
+  index.html, public/player.html
+  js/main.js, js/spotify.js, js/turn.js, js/players.js,
+  js/remotePlayers.js, js/setup.js
+  js/modes/quick3.js, js/modes/bestFit.js,
+  js/modes/rankingList.js, js/modes/introFirst3.js
+  package.json
+  tests/boot.test.js, tests/structure.test.js, tests/single-device.test.js
+
+NEU
+  js/spotifyPlayback.js   Wiedergabe, Geräteauswahl
+  js/spotifyDiagnose.js   Knopf "Spotify testen"
+  tests/spotify-playback.test.js
+  tests/peer-setup.test.js
+
+Nach dem Hochladen:
+1. iPad: Startbildschirm muss "Version 2026-10-25-6" zeigen.
+2. "Abspielgerät" auf "Automatisch".
+3. Spotify verbinden, im Setup EINE Playlist wählen (damit Test B
+   einen Song hat), zurück zum Startbildschirm.
+4. Spotify-App öffnen, Song anspielen, pausieren, zurück zu Safari.
+5. "Spotify testen" tippen, ~15 Sekunden warten, Ergebnis
+   abfotografieren und schicken.

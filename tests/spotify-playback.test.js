@@ -34,7 +34,8 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
     failPlayWith: null,  // z. B. 403, um einen Fehler zu erzwingen
     startDelayMs: 0,     // so lange "puffert" das Gerät, bevor Ton kommt
     playing: null,       // { uri, startMs, soundAt } – was gerade läuft
-    pauses: []           // Zeitpunkte aller Pause-Befehle
+    pauses: [],          // Zeitpunkte aller Pause-Befehle
+    badUris: ["spotify:track:gesperrt"] // Spotify bricht bei diesen ab
   };
 
   try {
@@ -49,8 +50,10 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
         // Gerät nicht (mehr) in der Liste: Spotify antwortet mit einem Fehler,
         // absichtlich NICHT 404, sondern 502 / "Restriction violated" (403-ähnlich).
         if (!sim.devices.some(d => d.id === id)) return json(400, { error: { status: 400, message: "Device not available" } });
-        sim.played.push(id);
         const body = JSON.parse(route.request().postData() || "{}");
+        // Wie echtes Spotify bei gesperrtem Titel: Befehl "klappt", Wiedergabe endet.
+        if (sim.badUris.includes(body.uris?.[0])) { sim.playing = null; return route.fulfill({ status: 204, body: "" }); }
+        sim.played.push(id);
         sim.playing = { uri: body.uris?.[0], startMs: body.position_ms || 0, soundAt: Date.now() + sim.startDelayMs };
         return route.fulfill({ status: 204, body: "" });
       }
@@ -67,6 +70,11 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
         return json(200, { is_playing: !!sounding, progress_ms: sounding ? p.startMs + (Date.now() - p.soundAt) : (p?.startMs || 0), item: p ? { uri: p.uri, id: p.uri.split(":").pop() } : null });
       }
       if (url.pathname === "/v1/me") return json(200, { id: "bene" });
+      if (url.pathname.startsWith("/v1/tracks/")) return json(200, { is_playable: !url.pathname.includes("gesperrt"), restrictions: url.pathname.includes("gesperrt") ? { reason: "market" } : undefined });
+      if (/\/v1\/playlists\/.+\/items/.test(url.pathname)) return json(200, { total: 7, items: [
+        ...Array.from({ length: 6 }, (_, k) => ({ track: true, item: { type: "track", id: "ok" + k, uri: "spotify:track:ok" + k, name: "Gut " + k, duration_ms: 200000, is_playable: true, artists: [{ name: "B" }], album: { release_date: "2001" } } })),
+        { track: true, item: { type: "track", id: "gesperrt", uri: "spotify:track:gesperrt", name: "Gesperrt", duration_ms: 200000, is_playable: false, artists: [{ name: "B" }], album: { release_date: "2001" } } }
+      ] });
       if (url.pathname === "/v1/me/playlists") return json(200, { items: [], next: null });
       return json(200, {});
     });
@@ -152,6 +160,23 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
     await page.evaluate(() => window.FMQ.pausePlayback().catch(() => {}));
     await page.waitForTimeout(1500);
     check("Pause bei schon pausiert: keine verspätete Zweit-Pause", sim.pauses.length === 1, `${sim.pauses.length} Pause-Befehle`);
+
+    // 9) Nicht abspielbare Titel werden beim Laden aussortiert
+    const loaded = await page.evaluate(() => window.FMQ.loadAllTracksForPlaylist("pl").then(t => t.map(x => x.id)));
+    check("Gesperrter Titel wird beim Laden aussortiert", loaded.length === 6 && !loaded.includes("gesperrt"), loaded.join(","));
+
+    // 10) Knopf "Spotify testen": erkennt, dass es am Song liegt
+    sim.devices = [{ id: "ipad", name: "iPad", type: "Tablet", is_active: true }];
+    await page.evaluate(() => { window.FMQ.setPreferredDeviceId(""); window.FMQ.app.players = [{ id: "p", name: "B", tracks: [{ id: "gesperrt", uri: "spotify:track:gesperrt", name: "Gesperrt" }] }]; });
+    sim.playing = { uri: "spotify:track:ok1", startMs: 0, soundAt: Date.now() };
+    // Zurück auf den Startbildschirm, dort sitzt der Knopf.
+    await page.evaluate(() => { const F = window.FMQ; F.showScreen("screenSetup"); F.app.state.setupStep = 1; F.renderSetupWizard(); });
+    await page.click("#spotifyDiagBtn");
+    await page.waitForFunction(() => /ERGEBNIS/.test(document.getElementById("spotifyDiagOut").textContent), null, { timeout: 30000 });
+    const report = await page.$eval("#spotifyDiagOut", el => el.textContent);
+    check("Spotify-Test: Test A (bekannter Song) OK", /Test A OK/.test(report));
+    check("Spotify-Test: erkennt Problem beim Playlist-Song", /Test B FEHLGESCHLAGEN/.test(report) && /Liegt am Song/.test(report));
+    check("Spotify-Test: zeigt Abspielbarkeit", /abspielbar: NEIN/.test(report));
   } catch (e) {
     console.error("Abbruch:", e.message);
     results.push(false);

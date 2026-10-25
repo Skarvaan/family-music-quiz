@@ -72,6 +72,11 @@ FMQ.init = async () => {
   };
   // Abspielgerät wählen
   FMQ.$("deviceRefreshBtn").onclick = () => FMQ.refreshDevicePicker();
+  FMQ.$("spotifyDiagBtn").onclick = () => {
+    FMQ.$("spotifyDiagBtn").disabled = true;
+    FMQ.runSpotifyDiagnose().catch(e => { FMQ.$("spotifyDiagOut").hidden = false; FMQ.$("spotifyDiagOut").textContent += "\nAbbruch: " + e.message; })
+      .finally(() => { FMQ.$("spotifyDiagBtn").disabled = false; });
+  };
   FMQ.$("deviceSelect").onchange = () => {
     FMQ.setPreferredDeviceId(FMQ.$("deviceSelect").value);
     FMQ.$("deviceStatus").textContent = FMQ.$("deviceSelect").value ? "Gespeichert. Musik läuft ab jetzt dort." : "Automatisch: das gerade aktive Spotify-Gerät.";

@@ -41,7 +41,10 @@ FMQ.listSpotifyDevices = async () => {
 
 /** Wählt das Abspielgerät nach den Regeln oben. Liefert {id, name} oder null. */
 FMQ.pickPlaybackDevice = async () => {
-  const devices = await FMQ.listSpotifyDevices();
+  // Geräte mit is_restricted=true nehmen laut Spotify KEINE Befehle
+  // von außen an (z. B. manche Fernseher, Autos, Geräte im Sparmodus).
+  // Ein Befehl dorthin würde ins Leere gehen.
+  const devices = (await FMQ.listSpotifyDevices()).filter(d => !d.is_restricted);
   const preferred = FMQ.getPreferredDeviceId();
   const device = devices.find(d => d.id === preferred)
     || devices.find(d => d.is_active)

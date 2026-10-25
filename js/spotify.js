@@ -133,6 +133,15 @@ FMQ.ensureSpotifyAccessToken = async () => {
   return FMQ.storage.token;
 };
 
+// Protokoll der letzten Spotify-Aufrufe (für "Spotify testen" und die
+// Fehlersuche). Nur Methode, Pfad, Status und Fehlertext, keine Tokens.
+FMQ.spotifyLog = [];
+FMQ.logSpotifyCall = (method, url, status, info) => {
+  const path = String(url).replace("https://api.spotify.com/v1", "").split("&fields=")[0];
+  FMQ.spotifyLog.push(`${new Date().toLocaleTimeString()} ${method} ${path} → ${status}${info ? " · " + info : ""}`);
+  if (FMQ.spotifyLog.length > 40) FMQ.spotifyLog.shift();
+};
+
 FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000, _retry = false } = {}) => {
   await FMQ.ensureSpotifyAccessToken();
   const ctrl = new AbortController();
@@ -150,6 +159,7 @@ FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000,
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch {}
+    FMQ.logSpotifyCall(method, url, res.status, res.ok ? "" : (data?.error?.message || data?.error?.reason || ""));
     if (res.status === 401 && !_retry && FMQ.storage.refreshToken) {
       FMQ.storage.token = null;
       FMQ.storage.expiresAt = null;
@@ -227,12 +237,13 @@ FMQ.loadMyPlaylists = async () => {
 
 FMQ.loadAllTracksForPlaylist = async (playlistId) => {
   const tracks = [];
+  const skipped = []; // als nicht abspielbar gemeldete Titel
   let offset = 0;
   let total = Infinity;
 
   while (offset < total) {
     const data = await FMQ.apiFetch(
-      `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items?limit=100&offset=${offset}&market=from_token&fields=total,items(item(type,id,uri,name,duration_ms,artists(name),album(release_date)))`,
+      `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items?limit=100&offset=${offset}&market=from_token&fields=total,items(item(type,id,uri,name,duration_ms,is_playable,is_local,artists(name),album(release_date)))`,
       { timeoutMs: 15000 }
     ).catch(e => {
       // 403/404 heißt seit 2026 fast immer: fremde Playlist.
@@ -245,16 +256,25 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
     const items = data.items || [];
 
     for (const it of items) {
-      const t = it?.item;
+      // Seit 2026 steht der Song unter "item". "track" ist dort jetzt
+      // nur noch true/false. Ältere Antworten: Song unter "track".
+      const t = (it?.item && typeof it.item === "object") ? it.item
+        : (it?.track && typeof it.track === "object") ? it.track : null;
       const y = FMQ.yearFromReleaseDate(t?.album?.release_date);
-      if (!t || t.type !== "track" || !y) continue;
-      tracks.push({
+      if (!t || t.type !== "track" || !y || !t.uri) continue;
+      // Nicht abspielbare Titel aussortieren: in Deutschland gesperrt
+      // (is_playable=false) oder lokale Dateien vom eigenen Rechner.
+      // Schickt man so einen Titel an Spotify, bricht die Wiedergabe
+      // einfach ab, ohne Fehlermeldung.
+      const unplayable = t.is_local || t.is_playable === false;
+      (unplayable ? skipped : tracks).push({
         id: t.id,
         uri: t.uri,
         name: t.name,
         artists: (t.artists || []).map(a => a.name),
         year: y,
         durationMs: typeof t.duration_ms === "number" ? t.duration_ms : null,
+        isLocal: !!t.is_local, // lokale Dateien kann Spotify Connect nie abspielen
         normalizedTitle: FMQ.normalizeTitle(t.name),
         normalizedArtist: FMQ.normalizeArtist((t.artists || []).map(a => a.name))
       });
@@ -264,7 +284,12 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
     if (!items.length) break;
   }
 
-  return [...new Map(tracks.map(t => [t.id, t])).values()];
+  // Sicherheitsnetz: Meldet Spotify ALLE Titel als nicht abspielbar,
+  // ist eher die Angabe falsch als die Playlist. Dann lieber behalten
+  // (der Knopf "Spotify testen" zeigt, ob sie wirklich laufen).
+  const usable = tracks.length ? tracks : skipped.filter(t => !t.isLocal);
+  FMQ.app.skippedUnplayable = tracks.length ? skipped.length : 0;
+  return [...new Map(usable.map(t => [t.id, t])).values()];
 };
 
 FMQ.validateSpotifySession = async () => {
