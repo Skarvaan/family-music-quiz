@@ -88,15 +88,8 @@ FMQ.modes.quick3 = {
   },
   async playStored(track, startMs) {
     await FMQ.playTrackUri(track.uri, { positionMs: startMs });
-    clearTimeout(FMQ.app.state.playTimer);
-    FMQ.app.state.playTimer = null;
-    const clipSeconds = this.getClipSeconds();
-    if (clipSeconds !== "full") {
-      FMQ.app.state.playTimer = setTimeout(async () => {
-        try { await FMQ.pausePlayback(); } catch {}
-        FMQ.app.state.isPlaying = false;
-      }, clipSeconds * 1000);
-    }
+    // Stoppuhr erst ab echtem Spielbeginn (siehe spotifyPlayback.js)
+    FMQ.startClipTimer(track.uri, startMs, this.getClipSeconds());
     FMQ.app.state.isPlaying = true;
   },
   onReveal() {

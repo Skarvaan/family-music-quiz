@@ -156,10 +156,9 @@ FMQ.modes.bestFit = {
       const mode = FMQ.getBoundStartMode("bestFitStartModeSelect");
       const startMs = FMQ.getStoredStartMs(track, `bestFit:${track.id}`, mode);
       await FMQ.playTrackUri(track.uri, { positionMs: startMs });
-      clearTimeout(FMQ.app.state.playTimer);
-      FMQ.app.state.playTimer = null;
+      // Stoppuhr erst ab echtem Spielbeginn (siehe spotifyPlayback.js)
       const secondsRaw = FMQ.modes.bestFit.getClipSeconds();
-      if (secondsRaw !== "full") FMQ.app.state.playTimer = setTimeout(() => FMQ.pausePlayback().catch(() => {}), parseInt(secondsRaw, 10) * 1000);
+      FMQ.startClipTimer(track.uri, startMs, secondsRaw === "full" ? "full" : parseInt(secondsRaw, 10));
     };
     FMQ.$("playAFromStartBtn").onclick = () => play(trackA).catch(e => FMQ.setGameDebug(e.stack || e.message));
     FMQ.$("playBFromStartBtn").onclick = () => play(trackB).catch(e => FMQ.setGameDebug(e.stack || e.message));

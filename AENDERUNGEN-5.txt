@@ -1,0 +1,31 @@
+Family Music Quiz · Update 5 (ersetzt Update 3 und 4)
+=====================================================
+
+Gegenüber deinem hochgeladenen Stand. Update 3 und 4 NICHT mehr
+einzeln hochladen, hier ist alles drin.
+
+GEÄNDERT
+  index.html               Abspielgerät-Auswahl, Anzeige "Musik läuft auf",
+                           Fehlermeldungen, Versionsnummer, ?v= an allen Dateien
+  public/player.html       Versionsnummer, ?v= an allen Dateien
+  js/main.js               Geräteauswahl verdrahtet
+  js/spotify.js            Wiedergabe ausgelagert
+  js/turn.js               Stop entwertet wartende Stoppuhren
+  js/players.js            Playlist-Auswahl findet Spieler auch nach Handy-Beitritt
+  js/remotePlayers.js      Neue Handy-Spieler bekommen sofort eine Zeile
+  js/setup.js              dazu passend
+  js/modes/quick3.js       Ausschnitt-Stoppuhr erst ab echtem Spielbeginn
+  js/modes/bestFit.js      dito
+  js/modes/rankingList.js  dito
+  js/modes/introFirst3.js  dito
+  package.json             Testbefehle
+  tests/boot.test.js, tests/structure.test.js, tests/single-device.test.js
+
+NEU
+  js/spotifyPlayback.js
+  tests/spotify-playback.test.js
+  tests/peer-setup.test.js
+
+Nach dem Hochladen auf dem iPad prüfen: Unter den Knöpfen auf dem
+Startbildschirm muss "Version 2026-10-25-5" stehen. Steht dort etwas
+anderes oder nichts, Seite neu laden (notfalls privater Tab).

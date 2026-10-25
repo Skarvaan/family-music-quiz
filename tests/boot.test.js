@@ -22,7 +22,7 @@ w.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
 const fehler = [];
 w.onerror = m => fehler.push(String(m));
 
-const skripte = [...html.matchAll(/src="\/family-music-quiz\/([^"]+)"/g)].map(m => m[1]);
+const skripte = [...html.matchAll(/src="\/family-music-quiz\/([^"?]+)(?:\?[^"]*)?"/g)].map(m => m[1]); // ?v=… (Versionskennung) abschneiden
 check("Skripte im Markup gefunden", skripte.length > 0, skripte.length + " Dateien");
 for (const s of skripte) {
   try { w.eval(fs.readFileSync(path.join(wurzel, s), "utf8")); }

@@ -31,7 +31,10 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
   const sim = {
     devices: [{ id: "ipad", name: "iPad", type: "Tablet", is_active: true }],
     played: [],          // Geräte-IDs, auf denen "play" geklappt hat
-    failPlayWith: null   // z. B. 403, um einen Fehler zu erzwingen
+    failPlayWith: null,  // z. B. 403, um einen Fehler zu erzwingen
+    startDelayMs: 0,     // so lange "puffert" das Gerät, bevor Ton kommt
+    playing: null,       // { uri, startMs, soundAt } – was gerade läuft
+    pauses: []           // Zeitpunkte aller Pause-Befehle
   };
 
   try {
@@ -47,9 +50,22 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
         // absichtlich NICHT 404, sondern 502 / "Restriction violated" (403-ähnlich).
         if (!sim.devices.some(d => d.id === id)) return json(400, { error: { status: 400, message: "Device not available" } });
         sim.played.push(id);
+        const body = JSON.parse(route.request().postData() || "{}");
+        sim.playing = { uri: body.uris?.[0], startMs: body.position_ms || 0, soundAt: Date.now() + sim.startDelayMs };
         return route.fulfill({ status: 204, body: "" });
       }
-      if (url.pathname === "/v1/me/player/pause") return route.fulfill({ status: 204, body: "" });
+      if (url.pathname === "/v1/me/player/pause") {
+        sim.pauses.push(Date.now());
+        // Wie echtes Spotify: schon pausiert -> 403
+        if (!sim.playing) return json(403, { error: { status: 403, message: "Player command failed: Restriction violated" } });
+        sim.playing = null;
+        return route.fulfill({ status: 204, body: "" });
+      }
+      if (url.pathname === "/v1/me/player") {
+        const p = sim.playing;
+        const sounding = p && Date.now() >= p.soundAt;
+        return json(200, { is_playing: !!sounding, progress_ms: sounding ? p.startMs + (Date.now() - p.soundAt) : (p?.startMs || 0), item: p ? { uri: p.uri, id: p.uri.split(":").pop() } : null });
+      }
       if (url.pathname === "/v1/me") return json(200, { id: "bene" });
       if (url.pathname === "/v1/me/playlists") return json(200, { items: [], next: null });
       return json(200, {});
@@ -68,6 +84,18 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
     sim.devices = [{ id: "s22", name: "Galaxy S22", type: "Smartphone", is_active: true }];
     const err = await page.evaluate(() => window.FMQ.playTrackUri("spotify:track:b").then(() => null, e => e.message));
     check("Nach Gerätewechsel spielt das neue Gerät (ohne 2 Min. Hängen)", !err && sim.played.at(-1) === "s22", err || sim.played.join(","));
+
+    // 2b) Kernfehler aus Update 2/3: Spiel hat zuletzt auf dem Galaxy
+    //     gespielt, du startest Musik am iPad (iPad = aktiv). Ohne feste
+    //     Auswahl MUSS das iPad spielen. Vorher ging der Befehl ans
+    //     gemerkte Galaxy und das iPad "stoppte statt zu spielen".
+    sim.devices = [
+      { id: "s22", name: "Galaxy S22", type: "Smartphone", is_active: false },
+      { id: "ipad", name: "iPad", type: "Tablet", is_active: true }
+    ];
+    await page.evaluate(() => window.FMQ.playTrackUri("spotify:track:b2"));
+    check("Ohne feste Auswahl spielt das gerade aktive Gerät", sim.played.at(-1) === "ipad", sim.played.at(-1));
+    check("Anzeige, wo die Musik läuft", /iPad/.test(await page.$eval("#playbackDeviceStart", el => el.textContent)));
 
     // 3) Gewähltes Gerät hat Vorrang
     sim.devices = [
@@ -106,6 +134,24 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
     await page.click("#quick3PlayBtnInline");
     await page.waitForTimeout(800);
     check("Ein-Gerät-Modus: Abspielen startet echte Wiedergabe", sim.played.length === before + 1, sim.played.at(-1));
+
+    // 7) Langsames Gerät: Ton kommt erst 4 s nach dem Befehl, Ausschnitt 3 s.
+    //    Früher kam die Pause nach 3 s, also BEVOR etwas zu hören war.
+    await page.evaluate(() => window.FMQ.stopPlaybackNow());
+    sim.startDelayMs = 4000;
+    sim.pauses = [];
+    const t0 = Date.now();
+    await page.click("#quick3PlayBtnInline");
+    await page.waitForTimeout(9000);
+    const firstPause = sim.pauses[0] ? sim.pauses[0] - t0 : null;
+    check("Ausschnitt-Stoppuhr startet erst, wenn Ton läuft", firstPause !== null && firstPause >= 6500, firstPause === null ? "keine Pause" : `Pause nach ${firstPause} ms (Ton ab 4000 ms, Ausschnitt 3000 ms)`);
+    sim.startDelayMs = 0;
+
+    // 8) Pause auf schon pausiertem Gerät darf nicht nachträglich wiederholt werden
+    sim.pauses = [];
+    await page.evaluate(() => window.FMQ.pausePlayback().catch(() => {}));
+    await page.waitForTimeout(1500);
+    check("Pause bei schon pausiert: keine verspätete Zweit-Pause", sim.pauses.length === 1, `${sim.pauses.length} Pause-Befehle`);
   } catch (e) {
     console.error("Abbruch:", e.message);
     results.push(false);

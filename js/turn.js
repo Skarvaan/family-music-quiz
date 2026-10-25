@@ -19,9 +19,13 @@ FMQ.ensureActiveTurnIndex = () => {
 // =========================================================
 
 FMQ.stopPlaybackNow = async () => {
-  try { await FMQ.pausePlayback(); } catch {}
+  // Erst eventuell noch wartende Ausschnitt-Stoppuhren entwerten,
+  // dann pausieren. Sonst könnte eine alte Stoppuhr später einen
+  // neuen Song abwürgen.
+  FMQ.app.state.clipGen = (FMQ.app.state.clipGen || 0) + 1;
   clearTimeout(FMQ.app.state.playTimer);
   FMQ.app.state.playTimer = null;
+  try { await FMQ.pausePlayback(); } catch {}
   if (FMQ.app.state.speed?.timer) clearInterval(FMQ.app.state.speed.timer);
   const socialPlayback = FMQ.app.state.socialPlayback || {};
   Object.values(socialPlayback).forEach(pb => { if (pb) pb.startedAt = null; });

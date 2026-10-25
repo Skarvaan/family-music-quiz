@@ -188,7 +188,11 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
 
   FMQ.refreshPlaylistDropdowns();
   FMQ.$("playersConfig").querySelectorAll('select[data-role="playlist"]').forEach(sel => sel.addEventListener("change", async () => {
-    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
+    // Auch über die alte lokale ID finden (Spieler kann inzwischen per
+    // Handy beigetreten sein und eine neue ID bekommen haben).
+    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid || x.localId === sel.dataset.pid);
+    // Auswahl erledigt: Fokus lösen, damit wartende Neuaufbauten laufen dürfen.
+    FMQ.app.lastSelectTouchAt = 0;
     if (!p) return;
 
     const previousPlaylistId = p.playlistId || "";

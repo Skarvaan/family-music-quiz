@@ -48,12 +48,9 @@ FMQ.modes.rankingList = {
     const startMode = FMQ.getBoundStartMode("rankingStartModeSelect");
     const startMs = FMQ.getStoredStartMs(t, `ranking:${FMQ.currentPlayer().id}`, startMode);
     await FMQ.playTrackUri(t.uri, { positionMs: startMs });
-    clearTimeout(FMQ.app.state.playTimer);
-    FMQ.app.state.playTimer = null;
+    // Stoppuhr erst ab echtem Spielbeginn (siehe spotifyPlayback.js)
     const secondsRaw = FMQ.$("rankingLenSelect")?.value || "3";
-    if (secondsRaw !== "full") {
-      FMQ.app.state.playTimer = setTimeout(() => FMQ.pausePlayback().catch(() => {}), parseInt(secondsRaw, 10) * 1000);
-    }
+    FMQ.startClipTimer(t.uri, startMs, secondsRaw === "full" ? "full" : parseInt(secondsRaw, 10));
   },
   renderArea() {
     const me = FMQ.currentPlayer();
