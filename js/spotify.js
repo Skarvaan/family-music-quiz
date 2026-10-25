@@ -275,6 +275,10 @@ FMQ.loadAllTracksForPlaylist = async (playlistId) => {
         year: y,
         durationMs: typeof t.duration_ms === "number" ? t.duration_ms : null,
         isLocal: !!t.is_local, // lokale Dateien kann Spotify Connect nie abspielen
+        // Aus welcher Playlist der Song stammt. Wird zum Abspielen
+        // gebraucht: Spotify spielt bei Bene Songs nur "innerhalb ihrer
+        // Playlist" ab (Test C vom 25.10.), siehe spotifyPlayback.js.
+        playlistId,
         normalizedTitle: FMQ.normalizeTitle(t.name),
         normalizedArtist: FMQ.normalizeArtist((t.artists || []).map(a => a.name))
       });

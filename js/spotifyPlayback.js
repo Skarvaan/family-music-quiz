@@ -90,9 +90,95 @@ FMQ.showSpotifyAlert = (text) => {
   });
 };
 
+/*
+ * WIE GESPIELT WIRD (umgestellt am 25.10.2026 nach "Spotify testen"):
+ *
+ * Bei Benes Konto lehnt Spotify "spiel diesen einzelnen Song"
+ * ({ uris: [song] }) ab: Der Befehl wird angenommen, die Wiedergabe
+ * bricht aber sofort ab. "Spiel diese Playlist ab genau diesem Song"
+ * ({ context_uri: playlist, offset: { uri: song } }) funktioniert.
+ * Darum startet das Spiel jeden Song jetzt über seine Playlist.
+ * Ist zu einem Song keine Playlist bekannt, wird der alte Weg genutzt.
+ *
+ * Nebenwirkung: Über eine Playlist gestartet, spielt Spotify nach dem
+ * Songende einfach den NÄCHSTEN Playlist-Song weiter. Das würde Songs
+ * verraten. Die Ende-Sicherung (armEndGuard) hält deshalb kurz vor
+ * Songende an.
+ */
+
+/** Findet Playlist und Länge zu einem Song (aus den geladenen Spielern). */
+FMQ.findTrackContext = (uri) => {
+  const id = String(uri || "").split(":").pop();
+  const fromMap = FMQ.app.trackMap?.get?.(id);
+  let track = fromMap || null;
+  let playlistId = fromMap?.playlistId || null;
+  if (!playlistId) {
+    // Songs können über mehrere Wege kommen (z. B. vom Handy zurück).
+    // Notfalls in allen Spieler-Playlists suchen.
+    for (const p of FMQ.app.players || []) {
+      const hit = (p.tracks || []).find(t => t.id === id || t.uri === uri);
+      if (hit) { track = track || hit; playlistId = hit.playlistId || p.playlistId || null; if (playlistId) break; }
+    }
+  }
+  if (!playlistId && fromMap?.owners?.length) {
+    playlistId = (FMQ.app.players || []).find(p => fromMap.owners.includes(p.id))?.playlistId || null;
+  }
+  return { playlistId, durationMs: track?.durationMs || null };
+};
+
+/** Baut den Play-Befehl: über die Playlist, sonst als Einzelsong. */
+FMQ.buildPlayBody = (uri, positionMs) => {
+  const { playlistId } = FMQ.findTrackContext(uri);
+  const body = playlistId
+    ? { context_uri: `spotify:playlist:${playlistId}`, offset: { uri } }
+    : { uris: [uri] };
+  if (typeof positionMs === "number") body.position_ms = Math.max(0, Math.floor(positionMs));
+  return body;
+};
+
+/*
+ * Ende-Sicherung: hält an, kurz bevor der Song zu Ende ist, damit
+ * Spotify nicht in den nächsten Playlist-Song weiterläuft.
+ * Kurz vor dem geplanten Zeitpunkt wird bei Spotify nachgefragt, wo
+ * der Song wirklich steht (Startverzögerung!), und der Zeitpunkt
+ * notfalls nachgestellt. Jede neue Wiedergabe und jedes Stop entwertet
+ * eine alte Sicherung (endGuardGen).
+ */
+FMQ.armEndGuard = (uri, positionMs, durationMs) => {
+  clearTimeout(FMQ.endGuardTimer);
+  const gen = FMQ.endGuardGen = (FMQ.endGuardGen || 0) + 1;
+  if (!durationMs) return;
+  const wantId = String(uri).split(":").pop();
+  const MARGIN = 1200; // so viele ms vor Songende anhalten
+  const schedule = (ms) => {
+    FMQ.endGuardTimer = setTimeout(async () => {
+      if (FMQ.endGuardGen !== gen) return;
+      let st = null;
+      try { st = await FMQ.apiFetch("https://api.spotify.com/v1/me/player", { timeoutMs: 4000 }); } catch {}
+      if (FMQ.endGuardGen !== gen) return;
+      if (!st || !st.is_playing) return; // läuft nicht (mehr): nichts zu tun
+      const sameSong = st.item && (st.item.uri === uri || st.item.id === wantId);
+      if (!sameSong) {
+        // Schon in den nächsten Song gerutscht: sofort anhalten.
+        try { await FMQ.pausePlayback(); } catch {}
+        return;
+      }
+      const left = durationMs - (Number(st.progress_ms) || 0);
+      if (left > MARGIN + 600) { schedule(left - MARGIN); return; } // noch zu früh
+      try { await FMQ.pausePlayback(); } catch {}
+    }, Math.max(500, ms));
+  };
+  schedule(durationMs - (positionMs || 0) - MARGIN);
+};
+
+/** Stop/Neustart: Ende-Sicherung entwerten. */
+FMQ.disarmEndGuard = () => {
+  clearTimeout(FMQ.endGuardTimer);
+  FMQ.endGuardGen = (FMQ.endGuardGen || 0) + 1;
+};
+
 FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
-  const body = { uris: [uri] };
-  if (typeof positionMs === "number") body.position_ms = Math.max(0, positionMs);
+  const body = FMQ.buildPlayBody(uri, positionMs);
   const send = id => FMQ.apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(id)}`, { method: "PUT", jsonBody: body });
   try {
     let device = await FMQ.pickPlaybackDevice();
@@ -110,6 +196,9 @@ FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
     FMQ.lastPlaybackDevice = device;
     FMQ.showPlaybackDevice(device.name);
     FMQ.showSpotifyAlert("");
+    // Nur nötig, wenn über die Playlist gespielt wird (läuft sonst weiter).
+    if (body.context_uri) FMQ.armEndGuard(uri, body.position_ms || 0, FMQ.findTrackContext(uri).durationMs);
+    else FMQ.disarmEndGuard();
   } catch (e) {
     FMQ.showSpotifyAlert(FMQ.explainSpotifyError(e));
     throw e;
@@ -117,6 +206,7 @@ FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
 };
 
 FMQ.pausePlayback = async () => {
+  FMQ.disarmEndGuard();
   // Pause geht an das Gerät, auf dem das Spiel zuletzt gestartet hat.
   // Ist schon pausiert, antwortet Spotify mit 403 ("Restriction
   // violated"). Das ist harmlos und wird NICHT wiederholt: eine

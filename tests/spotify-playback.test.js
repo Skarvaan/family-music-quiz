@@ -52,9 +52,12 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
         if (!sim.devices.some(d => d.id === id)) return json(400, { error: { status: 400, message: "Device not available" } });
         const body = JSON.parse(route.request().postData() || "{}");
         // Wie echtes Spotify bei gesperrtem Titel: Befehl "klappt", Wiedergabe endet.
-        if (sim.badUris.includes(body.uris?.[0])) { sim.playing = null; return route.fulfill({ status: 204, body: "" }); }
+        sim.lastBody = body;
+        // Song steht entweder in uris (Einzelsong) oder in offset.uri (über Playlist)
+        const songUri = body.uris?.[0] || body.offset?.uri;
+        if (sim.badUris.includes(songUri)) { sim.playing = null; return route.fulfill({ status: 204, body: "" }); }
         sim.played.push(id);
-        sim.playing = { uri: body.uris?.[0], startMs: body.position_ms || 0, soundAt: Date.now() + sim.startDelayMs };
+        sim.playing = { uri: songUri, startMs: body.position_ms || 0, soundAt: Date.now() + sim.startDelayMs, context: body.context_uri || null };
         return route.fulfill({ status: 204, body: "" });
       }
       if (url.pathname === "/v1/me/player/pause") {
@@ -67,6 +70,12 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
       if (url.pathname === "/v1/me/player") {
         const p = sim.playing;
         const sounding = p && Date.now() >= p.soundAt;
+        // Wie echtes Spotify: über Playlist gestartet, läuft nach Songende
+        // der NÄCHSTE Playlist-Song weiter.
+        if (p && sounding && p.context && sim.trackLenMs && p.startMs + (Date.now() - p.soundAt) > sim.trackLenMs) {
+          sim.rolledIntoNext = true;
+          return json(200, { is_playing: true, progress_ms: 1000, item: { uri: "spotify:track:naechster", id: "naechster" } });
+        }
         return json(200, { is_playing: !!sounding, progress_ms: sounding ? p.startMs + (Date.now() - p.soundAt) : (p?.startMs || 0), item: p ? { uri: p.uri, id: p.uri.split(":").pop() } : null });
       }
       if (url.pathname === "/v1/me") return json(200, { id: "bene" });
@@ -160,6 +169,21 @@ const check = (label, ok, extra = "") => { results.push(!!ok); console.log(`${ok
     await page.evaluate(() => window.FMQ.pausePlayback().catch(() => {}));
     await page.waitForTimeout(1500);
     check("Pause bei schon pausiert: keine verspätete Zweit-Pause", sim.pauses.length === 1, `${sim.pauses.length} Pause-Befehle`);
+
+    // 8b) Umstellung 25.10.: Songs mit bekannter Playlist laufen über die Playlist
+    await page.evaluate(() => window.FMQ.stopPlaybackNow());
+    await page.evaluate(() => window.FMQ.playTrackUri("spotify:track:t00", { positionMs: 0 }));
+    check("Song wird über seine Playlist gestartet (wie Test C)", sim.lastBody?.context_uri === "spotify:playlist:pl0" && sim.lastBody?.offset?.uri === "spotify:track:t00", JSON.stringify(sim.lastBody));
+
+    // 8c) Ende-Sicherung: kurzer Song (6 s), ab Sekunde 2 -> muss vor Ende anhalten
+    await page.evaluate(() => { window.FMQ.app.trackMap.get("t01").durationMs = 6000; });
+    sim.trackLenMs = 6000; sim.rolledIntoNext = false; sim.pauses = [];
+    const tEnd = Date.now();
+    await page.evaluate(() => window.FMQ.playTrackUri("spotify:track:t01", { positionMs: 2000 }));
+    await page.waitForTimeout(6500);
+    const pauseAt = sim.pauses[0] ? sim.pauses[0] - tEnd : null;
+    check("Ende-Sicherung hält vor Songende an", pauseAt !== null && pauseAt < 4200 && !sim.rolledIntoNext, pauseAt === null ? "keine Pause" : `Pause nach ${pauseAt} ms (Song endet nach 4000 ms)`);
+    sim.trackLenMs = 0;
 
     // 9) Nicht abspielbare Titel werden beim Laden aussortiert
     const loaded = await page.evaluate(() => window.FMQ.loadAllTracksForPlaylist("pl").then(t => t.map(x => x.id)));
