@@ -124,6 +124,8 @@ FMQ.enableMultiDeviceMode = async () => {
   }
   // Fernseher-Bildschirm soll nicht in den Ruhezustand gehen.
   FMQ.keepScreenOn?.();
+  // Nach (Wieder-)Eröffnen kennt der Raum die Knöpfe evtl. nicht mehr.
+  FMQ.multiplayer.lastSentControlsKey = null;
   FMQ.multiplayer.socket.emit("host:createRoom", {}, snapshot => {
     // Bei Socket.IO kommt die Antwort erst, wenn die Leitung steht.
     // Beim iPad-Betrieb kommt sie sofort, die Anmeldung bei der

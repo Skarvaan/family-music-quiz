@@ -1,0 +1,22 @@
+Family Music Quiz · Update 2 (Reveal + Tempo)
+=============================================
+
+Baut auf dem ersten Update auf. Diese Dateien ersetzen:
+
+GEÄNDERT
+  js/modes/quick3.js     Reveal im Mehrgeräte-Modus zeigt den Song
+  js/roundFlow.js        Auflösung erscheint sofort, Checkboxen am iPad
+                         ausgeblendet, wenn das Handy den Check macht
+  js/main.js             "Weiter" im Auflösungsfenster (Mehrgeräte)
+  js/phoneControls.js    Steuerknöpfe nur senden, wenn sie sich ändern;
+                         "Weiter" der Auflösung auch am Handy
+  js/multiplayer.js      kleine Ergänzung dazu
+  js/spotify.js          Spotify-Gerät wird 2 Minuten gemerkt
+  public/player.js       Handy zeichnet nur noch bei echten Änderungen neu
+  styles.css             schwere Hintergrund-Rillen auf dem Handy aus
+  package.json           Testbefehl ergänzt
+
+NEU
+  tests/peer-quick3.test.js
+
+Nichts zu löschen, nichts im Spotify-Dashboard zu tun.

@@ -108,6 +108,9 @@
     $("controlPanel").innerHTML = "";
     $("joinedName").textContent = "";
     $("promptPanel").innerHTML = "";
+    // Nach dem Verlassen muss beim nächsten Beitritt neu gezeichnet werden.
+    lastPromptKey = null;
+    lastControlKey = null;
     closeMenu();
     setStatus(message);
   };
@@ -471,10 +474,31 @@
   // -------------------------------------------------------
   // Prompt-Router
   // -------------------------------------------------------
-  const renderPrompt = () => {
+  // Raum-Updates kommen bei jeder Kleinigkeit (jemand antwortet,
+  // die Steuerung wechselt, ein Handy verbindet sich). Früher wurde
+  // dabei jedes Mal die ganze Frage neu aufgebaut: Auswahl weg,
+  // Scrollposition weg, und ein Tipp, der gerade unterwegs war,
+  // landete auf einem Knopf, den es nicht mehr gab. Das fühlte sich
+  // an wie "das Handy reagiert langsam". Jetzt wird nur neu
+  // gezeichnet, wenn sich etwas ändert, das man auch sieht.
+  let lastPromptKey = null;
+  const promptKey = () => JSON.stringify([
+    state.player?.id, state.player?.active !== false, state.hostOnline,
+    state.prompt?.id || null, state.answeredPromptId === state.prompt?.id,
+    state.prompt ? isRecipient(state.prompt) : null
+  ]);
+
+  const renderPrompt = ({ force = false } = {}) => {
     const panel = $("promptPanel");
-    const prompt = state.prompt;
     if (!panel) return;
+    const key = promptKey();
+    if (!force && key === lastPromptKey) return;
+    lastPromptKey = key;
+    renderPromptNow(panel);
+  };
+
+  const renderPromptNow = panel => {
+    const prompt = state.prompt;
     if (!state.player) { panel.innerHTML = ""; return; }
 
     if (!state.player.active) {
@@ -577,7 +601,7 @@
     $("activeToggle").checked = state.player.active !== false;
     showJoinedView();
     setConn("online", `Drin als ${state.player.name}`);
-    renderPrompt();
+    renderPrompt({ force: true });
     renderController();
   };
 
@@ -638,11 +662,18 @@
     });
   };
 
+  // Wie bei der Frage: Steuerknöpfe nur neu bauen, wenn sich Knöpfe
+  // oder die Markierung geändert haben. Sonst verschwindet der Knopf
+  // zwischen Fingerdruck und Loslassen.
+  let lastControlKey = null;
   const renderController = () => {
     const panel = $("controlPanel");
     if (!panel || !state.player) return;
     const canControl = state.controllerId && state.controllerId === state.player.id;
     const actions = canControl ? (state.controllerActions || []) : [];
+    const key = JSON.stringify([canControl, actions, state.controlSelections]);
+    if (key === lastControlKey) return;
+    lastControlKey = key;
     panel.hidden = !canControl || actions.length === 0;
     if (panel.hidden) { panel.innerHTML = ""; return; }
 
@@ -751,7 +782,7 @@
     // Ohne das bliebe die Wartekarte stehen und niemand könnte antworten.
     state.hostOnline = true;
     haptic([10, 60, 10]);
-    renderPrompt();
+    renderPrompt({ force: true });
     renderController();
   });
 

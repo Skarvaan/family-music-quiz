@@ -170,24 +170,51 @@ FMQ.apiFetch = async (url, { method = "GET", jsonBody = null, timeoutMs = 12000,
 // =========================================================
 // PLAYER-DEVICE / PLAYBACK
 // =========================================================
-FMQ.getActiveDeviceId = async () => {
+// Früher fragte JEDER Play- und Stop-Befehl zuerst die Geräteliste ab.
+// Das sind zwei Spotify-Aufrufe nacheinander statt einem, also spürbar
+// mehr Wartezeit zwischen Tipp und Musik. Jetzt wird das Gerät zwei
+// Minuten gemerkt. Meldet Spotify "Gerät nicht gefunden", wird die
+// Liste einmal frisch geholt und der Befehl wiederholt.
+FMQ.spotifyDeviceCache = { id: null, at: 0 };
+const DEVICE_CACHE_MS = 2 * 60 * 1000;
+
+FMQ.getActiveDeviceId = async ({ fresh = false } = {}) => {
+  const cache = FMQ.spotifyDeviceCache;
+  if (!fresh && cache.id && Date.now() - cache.at < DEVICE_CACHE_MS) return cache.id;
   const data = await FMQ.apiFetch("https://api.spotify.com/v1/me/player/devices");
   const devices = data.devices || [];
-  return devices.find(d => d.is_active)?.id || devices[0]?.id || null;
+  const id = devices.find(d => d.is_active)?.id || devices[0]?.id || null;
+  FMQ.spotifyDeviceCache = { id, at: Date.now() };
+  return id;
+};
+
+/** Befehl an das gemerkte Gerät; ist es weg, einmal frisch suchen. */
+FMQ.withSpotifyDevice = async (run) => {
+  let deviceId = await FMQ.getActiveDeviceId();
+  if (!deviceId) return { noDevice: true };
+  try {
+    await run(deviceId);
+  } catch (e) {
+    // 404 = Gerät nicht mehr da (z. B. Spotify-App eingeschlafen)
+    if (!/\((404|502)\)/.test(e.message)) throw e;
+    deviceId = await FMQ.getActiveDeviceId({ fresh: true });
+    if (!deviceId) return { noDevice: true };
+    await run(deviceId);
+  }
+  return { ok: true };
 };
 
 FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
-  const deviceId = await FMQ.getActiveDeviceId();
-  if (!deviceId) throw new Error("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz irgendeinen Song, dann erneut.");
   const body = { uris: [uri] };
   if (typeof positionMs === "number") body.position_ms = Math.max(0, positionMs);
-  await FMQ.apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT", jsonBody: body });
+  const res = await FMQ.withSpotifyDevice(deviceId =>
+    FMQ.apiFetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT", jsonBody: body }));
+  if (res.noDevice) throw new Error("Kein Spotify-Gerät gefunden. Öffne Spotify (App/Webplayer) und starte kurz irgendeinen Song, dann erneut.");
 };
 
 FMQ.pausePlayback = async () => {
-  const deviceId = await FMQ.getActiveDeviceId();
-  if (!deviceId) return;
-  await FMQ.apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT" });
+  await FMQ.withSpotifyDevice(deviceId =>
+    FMQ.apiFetch(`https://api.spotify.com/v1/me/player/pause?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT" }));
 };
 
 // =========================================================

@@ -44,6 +44,15 @@ FMQ.init = async () => {
 
   FMQ.$("quick3HelpCloseBtn").onclick = () => FMQ.$("quick3HelpOverlay").classList.remove("show");
   FMQ.$("quick3ConfirmBtn").onclick = () => {
+    // Mehrgeräte: Punkte kamen schon vom Handy (oder bewusst keine).
+    // Hier nur weiterschalten.
+    if (FMQ.isMultiDevice?.() && FMQ.app.state.quick3.multiReveal) {
+      FMQ.app.state.selfCheckPending = false;
+      FMQ.$("quick3RevealOverlay").classList.remove("show");
+      FMQ.$("nextBtn").disabled = false;
+      FMQ.onNext();
+      return;
+    }
     const me = FMQ.currentPlayer();
     const result = FMQ.modes.quick3.submitAnswer(me.id, {
       title: FMQ.$("quick3ChkTitle").checked,
