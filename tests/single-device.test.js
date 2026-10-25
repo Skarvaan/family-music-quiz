@@ -19,7 +19,6 @@ function makeGame() {
     "js/scoring.js",
     "js/modeConfig.js",
     "js/spotify.js",
-    "js/spotifyPlayback.js",
     "js/multiplayer.js",
     "js/remotePlayers.js",
     "js/phoneControls.js",

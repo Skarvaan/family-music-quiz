@@ -1,17 +1,8 @@
 window.FMQ = window.FMQ || {};
 var FMQ = window.FMQ;
-// Hinweis: multiplayer.js verbindet den Host mit den Handys. Single-Device bleibt ohne Verbindung nutzbar.
+// Hinweis: multiplayer.js ist nur die lokale Socket.IO-Ergänzung. Single-Device bleibt ohne Socket nutzbar.
 
-/* Verbindung zu den Handys: Raum öffnen und schließen, Beitrittslinks.
-
-   Zwei Leitungsarten, nach außen gleich (on/emit mit Rückruf):
-   - "socket": Laptop-Server mit npm start, Socket.IO. Nur wenn
-     die Seite von diesem Server kommt (127.0.0.1 oder Port 3000).
-   - "peer":   ohne Laptop. Das Gerät mit dieser Seite (z. B. das
-     iPad) ist selbst der Server, die Handys verbinden sich per
-     WebRTC direkt damit. Siehe js/net/peerHost.js.
-   Mit ?net=peer in der Adresse lässt sich "peer" auch am Laptop
-   erzwingen, z. B. zum Ausprobieren. */
+/* Verbindung zum lokalen Server: Socket, Raum öffnen und schließen, Beitrittslinks. */
 
 FMQ.multiplayer = {
   enabled: false,
@@ -26,8 +17,7 @@ FMQ.multiplayer = {
   controllerId: null,
   controllerActions: [],
   supportedMode: null,
-  pendingScript: null,
-  transport: null // "socket" | "peer", wird beim ersten Öffnen festgelegt
+  pendingScript: null
 };
 
 FMQ.isLoopbackHost = (host = window.location.hostname) => ["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"].includes(String(host || "").toLowerCase());
@@ -35,11 +25,6 @@ FMQ.isLoopbackHost = (host = window.location.hostname) => ["localhost", "127.0.0
 FMQ.isLocalMultiServer = () => FMQ.isLoopbackHost() || window.location.port === "3000";
 
 FMQ.isMultiDevice = () => FMQ.multiplayer.enabled === true;
-
-/** Socket.IO nur, wenn die Seite wirklich vom Laptop-Server kommt. */
-FMQ.wantsSocketTransport = () => FMQ.isLocalMultiServer() && new URLSearchParams(window.location.search).get("net") !== "peer";
-
-FMQ.isPeerTransport = () => FMQ.multiplayer.transport === "peer";
 
 FMQ.normalizedPlayerName = (name) => String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
 
@@ -90,8 +75,6 @@ FMQ.playerUrlWithRoom = (baseUrl) => {
 FMQ.buildJoinUrl = () => FMQ.playerUrlWithRoom(window.location.origin);
 
 FMQ.getPhoneJoinUrl = () => {
-  // WebRTC: Handys öffnen die statische Handy-Seite neben index.html.
-  if (FMQ.isPeerTransport()) return FMQ.multiplayer.roomCode ? FMQ.peerJoinUrl(FMQ.multiplayer.roomCode) : "";
   const current = window.location.origin;
   if (!FMQ.isLoopbackHost()) return FMQ.playerUrlWithRoom(current);
   const urls = FMQ.multiplayer.hostUrls || [];
@@ -102,10 +85,12 @@ FMQ.getPhoneJoinUrl = () => {
 };
 
 FMQ.enableMultiDeviceMode = async () => {
-  // Leitungsart nur einmal festlegen. Ein Wechsel mitten im Abend
-  // würde alle Handys auf eine andere Adresse schicken.
-  const usePeer = FMQ.multiplayer.transport ? FMQ.isPeerTransport() : !FMQ.wantsSocketTransport();
-  if (!usePeer) await FMQ.loadSocketIoClient();
+  if (!FMQ.isLocalMultiServer()) {
+    FMQ.setDeviceMode("single");
+    FMQ.showMultiDeviceHint("Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen.");
+    return false;
+  }
+  await FMQ.loadSocketIoClient();
   FMQ.setDeviceMode("multi");
   if (FMQ.$("modeSelect")) FMQ.app.config.mode = FMQ.$("modeSelect").value || "quick3";
   FMQ.app.players = [];
@@ -118,19 +103,11 @@ FMQ.enableMultiDeviceMode = async () => {
   FMQ.renderSetupWizard?.();
 
   if (!FMQ.multiplayer.socket) {
-    FMQ.multiplayer.transport = usePeer ? "peer" : "socket";
-    FMQ.multiplayer.socket = usePeer ? FMQ.createPeerHostSocket() : window.io();
+    FMQ.multiplayer.socket = window.io();
     FMQ.bindMultiplayerSocket(FMQ.multiplayer.socket);
   }
-  // Fernseher-Bildschirm soll nicht in den Ruhezustand gehen.
-  FMQ.keepScreenOn?.();
-  // Nach (Wieder-)Eröffnen kennt der Raum die Knöpfe evtl. nicht mehr.
-  FMQ.multiplayer.lastSentControlsKey = null;
   FMQ.multiplayer.socket.emit("host:createRoom", {}, snapshot => {
-    // Bei Socket.IO kommt die Antwort erst, wenn die Leitung steht.
-    // Beim iPad-Betrieb kommt sie sofort, die Anmeldung bei der
-    // Vermittlung kann aber noch laufen. Darum den echten Status nehmen.
-    FMQ.multiplayer.connected = FMQ.multiplayer.socket.connected !== false;
+    FMQ.multiplayer.connected = true;
     FMQ.multiplayer.roomCode = snapshot.roomCode;
     FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];
     FMQ.multiplayer.joinUrl = FMQ.getPhoneJoinUrl();
@@ -140,9 +117,7 @@ FMQ.enableMultiDeviceMode = async () => {
     FMQ.syncRemotePlayers(FMQ.multiplayer.players);
     FMQ.renderDeviceModePanel?.();
     FMQ.renderMultiplayerPanel?.();
-    FMQ.showMultiDeviceHint(FMQ.isPeerTransport() && !FMQ.multiplayer.connected
-      ? `Raum ${FMQ.multiplayer.roomCode} wird geöffnet …`
-      : `Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
+    FMQ.showMultiDeviceHint(`Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
   });
   return true;
 };
@@ -150,7 +125,6 @@ FMQ.enableMultiDeviceMode = async () => {
 FMQ.bindMultiplayerSocket = (socket) => {
   socket.on("connect", () => {
     FMQ.multiplayer.connected = true;
-    if (FMQ.isPeerTransport() && FMQ.isMultiDevice()) FMQ.showMultiDeviceHint?.(`Mehrgeräte-Modus aktiv. Raumcode: ${FMQ.multiplayer.roomCode}`);
     if (FMQ.isMultiDevice()) socket.emit("host:createRoom", {}, snapshot => {
       FMQ.multiplayer.roomCode = snapshot.roomCode;
       FMQ.multiplayer.hostUrls = snapshot.hostUrls || [];

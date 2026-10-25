@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1026" />
   <meta name="description" content="Playlist-Partyspiel für Sofa, Küche und große Runden." />
   <title>Family Music Quiz</title>
-  <link rel="stylesheet" href="/family-music-quiz/styles.css?v=2026-10-25-6" />
+  <link rel="stylesheet" href="/family-music-quiz/styles.css" />
 </head>
 <body>
 <a class="skip-link" href="#modeArea">Direkt zum Spielbereich</a>
@@ -16,7 +16,7 @@
     <div class="setup-stage">
       <div class="setupStep start-screen active" data-setup-step="1">
         <div class="hero-panel">
-          <div class="eyebrow">Spotify Premium Host · Ein Gerät oder Handys als Controller</div>
+          <div class="eyebrow">Spotify Premium Host · Single oder Local Multi Device</div>
           <h1 class="hero-title">Family Music Quiz</h1>
           <p class="hero-subtitle">Das Playlist-Partyspiel für Sofa, Küche und große Runden.</p>
           <div id="deviceModePanel" class="deviceModePanel"></div>
@@ -28,23 +28,6 @@
             <span id="connStatus" class="pill" aria-live="polite"></span>
             <span id="playlistStatus" aria-live="polite"></span>
           </div>
-          <!-- Wo soll die Musik laufen? z. B. Galaxy S22 statt iPad -->
-          <div class="row row--center">
-            <label for="deviceSelect"><b>Abspielgerät</b></label>
-            <select id="deviceSelect"><option value="">Automatisch (aktives Gerät)</option></select>
-            <button id="deviceRefreshBtn" type="button" class="action-button secondary">Geräte suchen</button>
-            <button id="spotifyDiagBtn" type="button" class="action-button secondary">Spotify testen</button>
-          </div>
-          <!-- Ergebnis von "Spotify testen" (zum Abfotografieren/Kopieren) -->
-          <pre id="spotifyDiagOut" hidden></pre>
-          <div id="deviceStatus" class="muted" aria-live="polite"></div>
-          <div id="playbackDeviceStart" class="muted" aria-live="polite"></div>
-          <div id="spotifyAlertStart" class="pill bad" role="alert" hidden></div>
-          <!-- Versionskennung: Steht hier nicht die neueste Nummer, hat das
-               iPad noch alte Dateien im Speicher (Seite neu laden). Die
-               gleiche Nummer hängt als ?v= an allen Skripten, damit Safari
-               nie alte und neue Dateien mischt. Bei jedem Update erhöhen. -->
-          <div class="muted" data-fmq-version="Version 2026-10-25-6">Version 2026-10-25-6</div>
           <details class="debug-panel">
             <summary>Debug / Einstellungen</summary>
             <div class="debug-content">
@@ -214,10 +197,6 @@
         <button id="quitBtn" class="action-button secondary" aria-label="Spiel beenden">Beenden</button>
       </footer>
       <div class="turn-flow-hint muted" id="turnFlowHint"></div>
-      <!-- Wiedergabe-Fehler sichtbar statt nur im Debug-Feld -->
-      <div id="spotifyAlertGame" class="pill bad" role="alert" hidden></div>
-      <!-- Zeigt, wo die Musik tatsächlich läuft (z. B. iPad oder Galaxy) -->
-      <div id="playbackDeviceGame" class="muted" aria-live="polite"></div>
 
       <div id="revealBox" class="reveal-panel" style="display:none;">
         <div id="revealText"></div>
@@ -273,39 +252,30 @@
   </div>
 </div>
 
-<!-- Fremdbibliotheken, lokal mitgeliefert (siehe vendor/README.md) -->
-<script src="/family-music-quiz/vendor/peerjs.min.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/vendor/qrcode.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/core.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/players.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/scoring.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modeConfig.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/spotify.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/spotifyPlayback.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/spotifyDiagnose.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/net/roomEvents.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/net/roomHub.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/net/wire.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/net/peerHost.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/multiplayer.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/remotePlayers.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/phoneControls.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/multiplayerRound.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/lobby.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/data/songPrompts.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/shared.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/guessSong.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/quick3.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/rankingList.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/introPlaylistGuess.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/introFirst3.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/ratingGuess.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/bestFit.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/modes/songChallenge.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/setup.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/pausePanel.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/turn.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/roundFlow.js?v=2026-10-25-6" defer></script>
-<script src="/family-music-quiz/js/main.js?v=2026-10-25-6" defer></script>
+<script src="/family-music-quiz/js/core.js" defer></script>
+<script src="/family-music-quiz/js/players.js" defer></script>
+<script src="/family-music-quiz/js/scoring.js" defer></script>
+<script src="/family-music-quiz/js/modeConfig.js" defer></script>
+<script src="/family-music-quiz/js/spotify.js" defer></script>
+<script src="/family-music-quiz/js/multiplayer.js" defer></script>
+<script src="/family-music-quiz/js/remotePlayers.js" defer></script>
+<script src="/family-music-quiz/js/phoneControls.js" defer></script>
+<script src="/family-music-quiz/js/multiplayerRound.js" defer></script>
+<script src="/family-music-quiz/js/lobby.js" defer></script>
+<script src="/family-music-quiz/data/songPrompts.js" defer></script>
+<script src="/family-music-quiz/js/modes/shared.js" defer></script>
+<script src="/family-music-quiz/js/modes/guessSong.js" defer></script>
+<script src="/family-music-quiz/js/modes/quick3.js" defer></script>
+<script src="/family-music-quiz/js/modes/rankingList.js" defer></script>
+<script src="/family-music-quiz/js/modes/introPlaylistGuess.js" defer></script>
+<script src="/family-music-quiz/js/modes/introFirst3.js" defer></script>
+<script src="/family-music-quiz/js/modes/ratingGuess.js" defer></script>
+<script src="/family-music-quiz/js/modes/bestFit.js" defer></script>
+<script src="/family-music-quiz/js/modes/songChallenge.js" defer></script>
+<script src="/family-music-quiz/js/setup.js" defer></script>
+<script src="/family-music-quiz/js/pausePanel.js" defer></script>
+<script src="/family-music-quiz/js/turn.js" defer></script>
+<script src="/family-music-quiz/js/roundFlow.js" defer></script>
+<script src="/family-music-quiz/js/main.js" defer></script>
 </body>
 </html>

@@ -56,9 +56,6 @@ FMQ.ensureRemotePlayer = (remotePlayer) => {
     FMQ.app.players.push(player);
   } else {
     const oldId = player.id;
-    // Alte (lokale) ID merken: Formularfelder, die noch mit ihr
-    // beschriftet sind, finden den Spieler so trotzdem.
-    if (oldId !== remotePlayer.id && !player.localId) player.localId = oldId;
     player.id = remotePlayer.id;
     player.remoteId = remotePlayer.id;
     player.name = remotePlayer.name || player.name;
@@ -69,33 +66,10 @@ FMQ.ensureRemotePlayer = (remotePlayer) => {
   return player;
 };
 
-// Wann wurde zuletzt eine Auswahlliste angetippt? Auf dem iPad bleibt
-// eine <select> nach dem Auswählen im Fokus, bis man woanders hintippt.
-// Früher galt das Formular dadurch dauerhaft als "wird gerade bedient",
-// und neu beigetretene Handy-Spieler bekamen keine Playlist-Zeile, bis
-// man die Spieleranzahl änderte.
-FMQ.app.lastSelectTouchAt = 0;
-document.addEventListener("focusin", e => { if (e.target?.tagName === "SELECT") FMQ.app.lastSelectTouchAt = Date.now(); });
-
 FMQ.isSetupControlActive = () => {
   const active = document.activeElement;
-  if (!active || !active.closest?.("#playersConfig,#multiplayerSetupPanel,#modeConfigArea,#setupNav")) return false;
-  // Textfelder (Namen tippen): wirklich aktiv, nicht stören.
-  if (active.tagName === "INPUT" && /^(text|search|number)$/i.test(active.type || "text")) return true;
-  // Auswahllisten nur kurz nach dem Antippen schützen (Auswahlfenster offen).
-  if (active.tagName === "SELECT") return Date.now() - FMQ.app.lastSelectTouchAt < 4000;
-  return false;
-};
-
-/** Verschobener Neuaufbau, falls gerade jemand ein Feld bedient. */
-FMQ.schedulePlayersRebuild = () => {
-  clearTimeout(FMQ.app.playersRebuildTimer);
-  FMQ.app.playersRebuildTimer = setTimeout(() => {
-    if ((FMQ.app.state.setupStep || 1) !== 4) return;
-    if (FMQ.isSetupControlActive()) { FMQ.schedulePlayersRebuild(); return; }
-    FMQ.buildPlayersConfig?.({ preserveCount: true });
-    FMQ.checkReadyToStart?.();
-  }, 1000);
+  if (!active) return false;
+  return !!active.closest?.("#playersConfig,#multiplayerSetupPanel,#modeConfigArea,#setupNav");
 };
 
 FMQ.syncRemotePlayers = (remotePlayers = []) => {
@@ -113,9 +87,7 @@ FMQ.syncRemotePlayers = (remotePlayers = []) => {
   // Rebuilding the prep form at that moment re-renders setup and can swallow those clicks.
   // Only rebuild the playlist/player form once the setup is actually on the prep step.
   if ((FMQ.app.state.setupStep || 1) === 4) {
-    // Fehlt für einen Spieler die Formularzeile, muss neu gebaut werden.
-    // Gerade aktives Feld? Dann gleich nochmal versuchen statt nie.
-    if (FMQ.isSetupControlActive?.()) { FMQ.schedulePlayersRebuild(); return; }
+    if (FMQ.isSetupControlActive?.()) return;
     FMQ.buildPlayersConfig?.({ preserveCount: true });
     FMQ.checkReadyToStart?.();
   }

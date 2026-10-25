@@ -21,10 +21,7 @@ FMQ.checkFinishAfterNext = () => {
 
 FMQ.onReveal = async () => {
   if (!FMQ.app.state.currentTrack) return;
-  // Musik stoppen, aber NICHT darauf warten. Der Spotify-Aufruf
-  // dauert je nach Netz bis zu einer Sekunde; die Auflösung soll
-  // sofort erscheinen.
-  FMQ.stopPlaybackNow().catch(() => {});
+  await FMQ.stopPlaybackNow();
   FMQ.$("playToggleBtn").disabled = true;
 
   const t = FMQ.app.state.currentTrack;
@@ -58,15 +55,7 @@ FMQ.onReveal = async () => {
     FMQ.$("quick3ChkTitle").checked = false;
     FMQ.$("quick3ChkArtist").checked = false;
     FMQ.$("quick3ChkYear").checked = false;
-    // Mehrgeräte: Häkchen setzt die Person am eigenen Handy. Am iPad
-    // nur Lösung + Status zeigen, Checkboxen ausblenden.
-    const remote = !!res.remoteSelfCheck;
-    const checkList = FMQ.$("quick3RevealOverlay").querySelector(".selfCheckList");
-    if (checkList) checkList.style.display = remote ? "none" : "";
-    FMQ.$("quick3PtsStatus").textContent = remote ? `${res.waitingFor} trägt am Handy ein, was richtig war …` : "";
-    // "Weiter" ist auch ohne Handy-Antwort erlaubt (z. B. Akku leer),
-    // dann gibt es eben 0 Punkte. So bleibt niemand hängen.
-    FMQ.$("quick3ConfirmBtn").textContent = remote ? "Weiter (ohne zu warten)" : "Punkte eintragen und weiter";
+    FMQ.$("quick3PtsStatus").textContent = "";
     FMQ.$("quick3ConfirmBtn").disabled = false;
     FMQ.$("quick3RevealOverlay").classList.add("show");
     if (FMQ.$("quick3PlayBtnInline")) FMQ.$("quick3PlayBtnInline").disabled = true;

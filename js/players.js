@@ -63,17 +63,10 @@ FMQ.refreshPlaylistDropdowns = () => {
     const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
     const cur = p?.playlistId || "";
     sel.innerHTML = ['<option value="">(Playlist wählen…)</option>', ...FMQ.app.playlists.map(pl => {
-      // fmqTotal setzt loadMyPlaylists (items.total seit 2026, vorher tracks.total).
-      const total = pl.fmqTotal ?? pl.items?.total ?? pl.tracks?.total;
-      const cnt = typeof total === "number" ? total : "?";
+      const cnt = typeof pl.tracks?.total === "number" ? pl.tracks.total : "?";
       const maxLen = 38;
-      const name = pl.name || "(ohne Namen)";
-      const shortName = name.length > maxLen ? `${name.slice(0, maxLen - 1)}…` : name;
-      // Fremde Playlists kann Spotify seit 2026 nicht mehr auslesen.
-      // Sichtbar lassen, damit niemand sie sucht, aber nicht wählbar.
-      const locked = pl.fmqReadable === false;
-      const label = locked ? `🔒 ${shortName} (fremd, gesperrt)` : `${shortName} (${cnt})`;
-      return `<option value="${FMQ.escapeHtml(pl.id)}" ${pl.id === cur ? "selected" : ""} ${locked ? "disabled" : ""} title="${FMQ.escapeHtml(name)}">${FMQ.escapeHtml(label)}</option>`;
+      const shortName = pl.name.length > maxLen ? `${pl.name.slice(0, maxLen - 1)}…` : pl.name;
+      return `<option value="${FMQ.escapeHtml(pl.id)}" ${pl.id === cur ? "selected" : ""} title="${FMQ.escapeHtml(pl.name)}">${FMQ.escapeHtml(shortName)} (${cnt})</option>`;
     })].join("");
   });
 };
@@ -188,11 +181,7 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
 
   FMQ.refreshPlaylistDropdowns();
   FMQ.$("playersConfig").querySelectorAll('select[data-role="playlist"]').forEach(sel => sel.addEventListener("change", async () => {
-    // Auch über die alte lokale ID finden (Spieler kann inzwischen per
-    // Handy beigetreten sein und eine neue ID bekommen haben).
-    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid || x.localId === sel.dataset.pid);
-    // Auswahl erledigt: Fokus lösen, damit wartende Neuaufbauten laufen dürfen.
-    FMQ.app.lastSelectTouchAt = 0;
+    const p = FMQ.app.players.find(x => x.id === sel.dataset.pid);
     if (!p) return;
 
     const previousPlaylistId = p.playlistId || "";

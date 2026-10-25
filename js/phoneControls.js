@@ -14,13 +14,7 @@ FMQ.setMultiplayerControllerActions = (actions = []) => {
         ? action.options.filter(option => option && option.id && option.label).slice(0, 4).map(option => ({ id: String(option.id), label: String(option.label) }))
         : []
     }));
-  // refreshPhoneControls läuft nach fast jedem Klick. Meist sind die
-  // Knöpfe danach dieselben. Jede Sendung löst aber ein Raum-Update an
-  // ALLE Handys aus. Darum nur senden, wenn sich wirklich etwas ändert.
-  const key = JSON.stringify(normalized);
   FMQ.multiplayer.controllerActions = normalized;
-  if (key === FMQ.multiplayer.lastSentControlsKey) return;
-  FMQ.multiplayer.lastSentControlsKey = key;
   if (FMQ.isMultiDevice() && FMQ.multiplayer.socket) {
     FMQ.multiplayer.socket.emit("host:setControllerActions", { actions: normalized });
   }
@@ -29,7 +23,7 @@ FMQ.setMultiplayerControllerActions = (actions = []) => {
 FMQ.collectVisibleHostControls = (root = document) => {
   if (!FMQ.isMultiDevice?.()) return [];
   const preferredIds = [
-    "quick3PlayBtnInline", "quick3StopBtnInline", "revealBtnInline", "quick3ConfirmBtn", "ratingPlayResumeBtn", "ratingStopBtn", "ratingListenNextBtn", "ratingToMainBtn", "ratingRevealBtn",
+    "quick3PlayBtnInline", "quick3StopBtnInline", "revealBtnInline", "ratingPlayResumeBtn", "ratingStopBtn", "ratingListenNextBtn", "ratingToMainBtn", "ratingRevealBtn",
     "playAFromStartBtn", "playBFromStartBtn", "bestFitStopBtn", "bestFitContinueBtn", "bestFitNewSongsBtn", "bfToMainBtn", "bfRevealBtn",
     "introGuessPlayBtn", "introGuessStopBtn", "introGuessRevealBtn", "introGuessNextBtn",
     "challengePlayBtn", "challengeStopBtn", "challengeNextBtn", "duelPlayABtn", "duelPlayBBtn", "duelStopBtn", "duelResolveCurrentBtn", "duelNextPromptBtn",
@@ -71,10 +65,7 @@ FMQ.collectVisibleHostControls = (root = document) => {
     const label = (el.textContent || "Weiter").replace(/\s+/g, " ").trim();
     if (label) actions.push({ id, label });
   }
-  // Liegt die Auflösung als Overlay über allem, hat sie ihren eigenen
-  // Weiter-Knopf. Der normale "Weiter" darunter wäre doppelt.
-  const overlayOpen = FMQ.$("quick3RevealOverlay")?.classList.contains("show");
-  return actions.filter(a => !(overlayOpen && a.id === "nextBtn")).slice(0, 18);
+  return actions.slice(0, 18);
 };
 
 FMQ.refreshPhoneControls = () => {
@@ -86,8 +77,6 @@ FMQ.refreshPhoneControls = () => {
 };
 
 FMQ.setMultiplayerController = (playerId) => {
-  // Neuer Controller: Knöpfe auf jeden Fall frisch schicken.
-  FMQ.multiplayer.lastSentControlsKey = null;
   const nextControllerId = FMQ.toRemotePlayerId(playerId);
   const changed = (FMQ.multiplayer.controllerId || null) !== (nextControllerId || null);
   FMQ.multiplayer.controllerId = nextControllerId || null;

@@ -1,50 +1,11 @@
 # Family Music Quiz
 
-Playlist-Partyspiel für Sofa, Küche und große Runden. Ein Gerät ist der große
-Bildschirm (iPad am Fernseher oder Laptop), alle anderen spielen am eigenen
-Handy mit.
+Playlist-Partyspiel für Sofa, Küche und große Runden. Der Host läuft auf einem
+Rechner mit Spotify Premium, alle anderen spielen am eigenen Handy mit.
 
 ---
 
-## Variante A · Ohne Laptop: iPad + Fernseher (empfohlen)
-
-Das iPad ist selbst der Server. Die Handys verbinden sich per WebRTC direkt mit
-dem iPad. Die Seiten kommen von GitHub Pages, es muss nichts installiert werden.
-
-1. Auf dem iPad in **Safari** öffnen: `https://skarvaan.github.io/family-music-quiz/`
-2. iPad mit dem Fernseher verbinden: USB-C/Lightning-HDMI-Adapter oder AirPlay
-   (Apple TV oder AirPlay-fähiger Fernseher). Mit Kabel kommt auch der Ton über
-   den Fernseher.
-3. Spotify verbinden, **Modus: Eigene Geräte** tippen.
-4. Handys scannen den QR-Code. Fertig.
-
-**Was alle brauchen:** Internet. Am stabilsten im selben WLAN. Unterwegs reicht
-ein Handy-Hotspot, in den sich iPad und alle Handys einwählen.
-
-**Wo spielt die Musik?** Das Spiel steuert Spotify per Spotify Connect. Vor dem
-Spielstart in der Spotify-App kurz einen Song anspielen, damit das Gerät als
-„aktiv“ gilt. Am zuverlässigsten ist ein Gerät, das immer wach ist: Fernseher mit
-Spotify-App, Chromecast, Echo oder Sonos. Die Spotify-App auf demselben iPad
-geht auch, iOS schickt sie aber nach längeren Pausen schlafen. Dann einmal
-kurz in die Spotify-App wechseln.
-
-**Tipps fürs iPad**
-- Die Seite hält den Bildschirm selbst wach. Klappt das nicht: Einstellungen →
-  Anzeige & Helligkeit → Automatische Sperre → Nie.
-- Geführter Zugriff (Einstellungen → Bedienungshilfen) hält Safari im
-  Vordergrund, falls Kinder am iPad sind.
-- Ein Reload des iPad-Tabs ist kein Drama: Der Raumcode bleibt gleich, die
-  Handys docken von selbst wieder an. Den Spielstand vergisst ein Reload
-  allerdings.
-
-**Wie es technisch funktioniert:** Das iPad meldet sich beim kostenlosen
-PeerJS-Vermittlungsserver unter einem Namen an, der aus dem Raumcode entsteht.
-Die Handys fragen dort nach diesem Namen. Danach reden iPad und Handys direkt
-miteinander; der Vermittlungsserver sieht keine Spielinhalte. Steht keine
-Direktverbindung (strenges Firmen- oder Mobilfunknetz), springen die
-kostenlosen TURN-Server von PeerJS als Umleitung ein.
-
-## Variante B · Mit Laptop-Server (geht auch ohne Internet im WLAN)
+## Starten
 
 ```bash
 npm install
@@ -54,20 +15,20 @@ npm start
 Danach im Terminal die Adressen ablesen:
 
 ```
-Host-Bildschirm:  http://127.0.0.1:3000
+Host-Bildschirm:  http://localhost:3000
 Raumcode:         abc123
 
 Für Handys und iPads im selben WLAN:
   http://192.168.x.x:3000/player   ← diese zuerst probieren
 ```
 
-Auf dem Laptop `http://127.0.0.1:3000` öffnen (nicht `localhost`, siehe
-Spotify unten), Spotify verbinden, **Modus: Eigene Geräte** tippen.
+Auf dem Rechner `http://localhost:3000` öffnen, Spotify verbinden, auf
+**Modus: Eigene Geräte** tippen. Die Handys scannen den QR-Code oder tippen die
+Adresse ein.
 
 Anderer Port: `PORT=3001 npm start`
-Variante A am Laptop ausprobieren: `http://127.0.0.1:3000/?net=peer`
 
-### Wenn ein Handy nicht reinkommt (Variante B)
+### Wenn ein Handy nicht reinkommt
 
 1. Gleiches WLAN? Gastnetz und Haupt-WLAN zählen als zwei verschiedene Netze.
 2. Bleibt die Seite weiß, blockiert fast immer die Firewall des Rechners.
@@ -76,32 +37,7 @@ Variante A am Laptop ausprobieren: `http://127.0.0.1:3000/?net=peer`
 3. Hat der Rechner VPN, Docker oder virtuelle Maschinen, gibt es mehrere
    Netzwerkadressen. In der Lobby unter „Klappt der QR-Code nicht?" stehen alle
    Alternativen zum Abtippen.
-4. `http://127.0.0.1:3000/health` zeigt, ob der Server überhaupt antwortet.
-
-**Wichtig:** Das iPad kann bei Variante B nicht der Host-Bildschirm sein, nur
-ein Mitspieler. Spotify lehnt den Login über eine WLAN-Adresse wie
-`http://192.168…` ab. Für iPad als großen Bildschirm → Variante A.
-
----
-
-## Spotify: was sich 2025/2026 geändert hat
-
-- **Redirect-URI:** Seit April 2025 verbietet Spotify `localhost`. Erlaubt sind
-  nur `https://…` und `http://127.0.0.1:PORT`. Im Spotify Developer Dashboard
-  daher eintragen:
-  - `https://skarvaan.github.io/family-music-quiz/`
-  - `http://127.0.0.1:3000/`
-  Wer die alte `localhost`-Adresse öffnet, wird automatisch umgeleitet.
-- **Nur eigene oder gemeinsame Playlists:** Seit März 2026 liefert Spotify die
-  Songs einer Playlist nur noch, wenn der eingeloggte Host sie besitzt oder an
-  ihr mitarbeitet. Playlists anderer Leute, denen man nur folgt, sowie
-  Spotify-eigene Listen (Mixe, Charts) sind gesperrt. Im Auswahlmenü stehen sie
-  mit 🔒. Lösung: Jede Person legt eine **gemeinsame Playlist** an und lädt den
-  Host als Mitwirkenden ein, oder der Host kopiert die Playlist in seinen
-  Account.
-- **Premium:** Der Besitzer der Spotify-App im Developer Dashboard braucht
-  Premium. Die App erlaubt im Development Mode höchstens 5 Spotify-Nutzer; da
-  sich nur der Host einloggt, reicht das.
+4. `http://localhost:3000/health` zeigt, ob der Server überhaupt antwortet.
 
 ---
 
@@ -242,13 +178,7 @@ npm run test:styles      # Klassenabdeckung, Kontraste, Barrierefreiheit
 npm run test:prompts     # Prompt-Bibliothek und Ziehung
 npm run test:single      # Ein-Gerät-Modus, alle sechs Spielmodi
 npm run test:server      # Raumverwaltung, Reconnect, Rejoin
-npm run test:peer        # iPad-Betrieb echt im Browser (braucht Playwright)
 ```
-
-`test:peer` startet einen lokalen Vermittlungsserver und spielt in Chromium
-einen Host und zwei Handys durch: Beitritt, Frage und Antwort, große Fragen mit
-300 Songs, Funkloch am Handy, Reload des Host-Tabs, falscher Raumcode und der
-Versuch eines Handys, sich zum Host zu machen.
 
 Die Tests brauchen kein Spotify. Die Wiedergabe wird attrappiert, geprüft wird
 die Spiellogik: Zugwechsel, Punktevergabe, Rundenzählung, Songs ohne
@@ -263,7 +193,7 @@ Jetzt hat jede Datei eine Aufgabe und keine ist größer als etwa 370 Zeilen.
 Der Strukturtest hält das dauerhaft nach.
 
 ```
-server.js                  lokaler Laptop-Server (Variante B), QR-Codes
+server.js                  lokaler Server, Raumverwaltung, QR-Codes
 index.html                 Hostbildschirm
 styles.css                 gemeinsames Stylesheet, in 15 Abschnitte gegliedert
 callback.html              Spotify-OAuth-Rückleitung
@@ -276,11 +206,7 @@ js/scoring.js              Songziehung, Punkte, Punktetabelle
 js/modeConfig.js           Einstellungen je Spielmodus
 js/spotify.js              Auth, Token, Spotify-API und Wiedergabe
 
-js/net/roomEvents.js       Raum-Ereignisse (Beitritt, Frage, Antwort …)
-js/net/roomHub.js          Raumzustand, läuft im Node-Server UND im iPad-Browser
-js/net/wire.js             Leitungsformat für WebRTC, Stückelung großer Nachrichten
-js/net/peerHost.js         iPad als Server: PeerJS-Anmeldung, Handy-Leitungen
-js/multiplayer.js          wählt Laptop-Server oder iPad-Betrieb, Raum öffnen/schließen
+js/multiplayer.js          Socket-Verbindung, Raum öffnen und schließen
 js/remotePlayers.js        Handy-Spieler mit Spielerplätzen zusammenführen
 js/phoneControls.js        Fernsteuerung vom Handy
 js/multiplayerRound.js     Fragen stellen, Antworten sammeln
@@ -297,8 +223,6 @@ js/main.js                 Einstiegspunkt, verbindet alles
 
 public/player.html         Handy-Ansicht
 public/player.js           Handy-Logik
-public/peerSocket.js       Handy-Leitung zum iPad, Reconnect, Totmannschalter
-vendor/                    PeerJS und QR-Generator, lokal mitgeliefert
 tests/                     Regressionstests, laufen ohne Spotify
 ```
 
@@ -308,7 +232,7 @@ es gibt also keinen Bundler und keinen Build-Schritt.
 
 ## Spotify einrichten
 
-Im Spotify Developer Dashboard müssen die Redirect-URIs aus dem Abschnitt
-„Spotify: was sich 2025/2026 geändert hat“ eingetragen sein. Die tatsächlich
-verwendete Adresse steht auf dem Startbildschirm unter „Debug / Einstellungen“.
-Der Host braucht Spotify Premium, die Mitspielenden nicht.
+Im Spotify Developer Dashboard muss die Redirect-URI eingetragen sein, die auf
+dem Startbildschirm unter „Debug / Einstellungen" angezeigt wird. In der Regel
+`http://localhost:3000/`. Der Host braucht Spotify Premium, die Mitspielenden
+nicht.

@@ -8,63 +8,34 @@ FMQ.showMultiDeviceHint = (message) => {
   if (el) el.textContent = message;
 };
 
-/**
- * QR-Code im Browser erzeugen (vendor/qrcode.js). Funktioniert ohne
- * Server, also auch auf dem iPad. Ergebnis wird zwischengespeichert,
- * weil die Lobby oft neu gezeichnet wird.
- */
-let qrCache = { text: "", url: "" };
-FMQ.qrDataUrl = (text) => {
-  if (!text || typeof window.qrcode !== "function") return "";
-  if (qrCache.text === text) return qrCache.url;
-  try {
-    const qr = window.qrcode(0, "M"); // 0 = Größe automatisch, M = mittlere Fehlerkorrektur
-    qr.addData(text);
-    qr.make();
-    const svg = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
-    qrCache = { text, url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg) };
-    return qrCache.url;
-  } catch {
-    return "";
-  }
-};
-
 FMQ.renderDeviceModePanel = () => {
   const panel = FMQ.$("deviceModePanel");
   if (!panel) return;
-  const local = FMQ.wantsSocketTransport();
+  const local = FMQ.isLocalMultiServer();
   const active = FMQ.isMultiDevice();
-  const peer = FMQ.isPeerTransport() || (!FMQ.multiplayer.transport && !local);
   const room = FMQ.multiplayer.roomCode || "…";
   const phoneUrl = active ? FMQ.getPhoneJoinUrl() : "";
-  // Erst im Browser versuchen, sonst (alter Weg) vom Laptop-Server holen.
-  const qrUrl = active && phoneUrl ? (FMQ.qrDataUrl(phoneUrl) || (local ? `/qr.svg?url=${encodeURIComponent(phoneUrl)}` : "")) : "";
+  const qrUrl = active && phoneUrl ? `/qr.svg?url=${encodeURIComponent(phoneUrl)}` : "";
   const joinedPlayers = (FMQ.app.players || []).filter(p => p.remoteConnected);
   const totalPlayers = (FMQ.app.players || []).length;
   // Der Server liefert die Adressen sortiert. Wir zeigen die beste im
   // QR-Code und die übrigen als Ausweichliste, falls der Rechner mehrere
   // Netzwerkadapter hat (VPN, Docker, virtuelle Maschinen).
-  const altUrls = active && !peer
+  const altUrls = active
     ? (FMQ.multiplayer.hostUrls || []).filter(url => FMQ.playerUrlWithRoom(url) !== phoneUrl)
     : [];
-  const idleText = local
-    ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich."
-    : "Handys verbinden sich direkt mit diesem Gerät. Kein Laptop nötig, nur Internet.";
-  const networkText = peer
-    ? "Alle Geräte brauchen Internet. Am stabilsten im selben WLAN, mobile Daten klappen meistens auch."
-    : "Alle Geräte müssen im selben WLAN sein. Gastnetz und Haupt-WLAN zählen als zwei Netze.";
   const html = `
     <div class="deviceModeCards">
       <button id="singleDeviceModeBtn" type="button" class="menu-card compact ${!active ? "active" : ""}" aria-pressed="${!active}"><span class="card-title">Modus: Ein Gerät</span><span class="card-subtitle">Jeder ist nacheinander dran.</span></button>
       <button id="multiDeviceModeBtn" type="button" class="menu-card compact ${active ? "active" : ""}" aria-pressed="${active}"><span class="card-title">Modus: Eigene Geräte</span><span class="card-subtitle">Jeder ist am eigenen Gerät gleichzeitig dran.</span></button>
     </div>
     ${active ? `<div class="row row--center"><button id="closeMultiSessionBtn" type="button" class="action-button secondary">Sitzung schließen</button></div>` : ""}
-    <div id="multiDeviceStatus" class="muted multiDeviceStatus">${active ? `Mehrgeräte-Modus aktiv · Raum ${FMQ.escapeHtml(room)}` : idleText}</div>
+    <div id="multiDeviceStatus" class="muted multiDeviceStatus">${active ? `Mehrgeräte-Modus aktiv · Raum ${FMQ.escapeHtml(room)}` : local ? "Lokaler Server erkannt. Mehrgeräte-Modus ist möglich." : "Für Mehrgeräte-Modus bitte lokalen Server starten: npm start und dann die lokale Adresse öffnen."}</div>
     ${active ? `
       <section class="multiLobbyCard">
         <div class="section-title-row">
           <div><div class="eyebrow">Warteraum</div><h2>Raum ${FMQ.escapeHtml(room)}</h2></div>
-          <span class="pill ${FMQ.multiplayer.connected ? "ok" : "bad"}">${FMQ.multiplayer.connected ? "online" : peer ? "verbindet …" : "offline"}</span>
+          <span class="pill ${FMQ.multiplayer.connected ? "ok" : "bad"}">${FMQ.multiplayer.connected ? "online" : "offline"}</span>
         </div>
         <div class="multiLobbyGrid">
           <div class="qrBox">${qrUrl ? `<img alt="QR-Code zum Beitreten" src="${qrUrl}">` : ""}</div>
@@ -73,7 +44,7 @@ FMQ.renderDeviceModePanel = () => {
             <div class="joinLink">${FMQ.escapeHtml(phoneUrl)}</div>
             <div class="row"><button type="button" id="copyJoinLinkBtn" class="action-button secondary">Link kopieren</button></div>
             <div class="muted">Raumcode: <b>${FMQ.escapeHtml(room)}</b> · Groß- und Kleinschreibung egal.</div>
-            <div class="muted">${networkText}</div>
+            <div class="muted">Alle Geräte müssen im selben WLAN sein. Gastnetz und Haupt-WLAN zählen als zwei Netze.</div>
             <div class="joinLiveCount" aria-live="polite"><b>${joinedPlayers.length}</b> Gerät${joinedPlayers.length === 1 ? "" : "e"} verbunden${totalPlayers ? ` · ${totalPlayers} Spieler angelegt` : ""}</div>
             ${altUrls.length ? `<details class="joinAlternatives"><summary>Klappt der QR-Code nicht?</summary>
               <div class="muted">Diese Adressen auf dem Handy von Hand eingeben, eine davon passt fast immer:</div>
@@ -133,7 +104,7 @@ FMQ.renderMultiplayerPanel = () => {
         <span class="pill ${FMQ.multiplayer.connected ? "ok" : "bad"}">${FMQ.multiplayer.connected ? "verbunden" : "offline"}</span>
       </div>
       <div class="muted">Handys öffnen: <b>${FMQ.escapeHtml(joinUrl)}</b></div>
-      <div class="muted">Fliegt ein Handy raus, einfach die Seite wieder öffnen. Es landet automatisch beim selben Spieler.</div>
+      <div class="muted">Wichtig: Jeder nutzt denselben Namen beim Rejoin. Gleicher Name = gleicher Spieler; Tippfehler erzeugen neue Spieler.</div>
       <label class="multiControllerSelect"><b>Handy-Steuerung</b><select data-role="controller-select"><option value="">Host steuert</option>${players.map(p => `<option value="${FMQ.escapeHtml(p.remoteId || p.id)}" ${(FMQ.multiplayer.controllerId === (p.remoteId || p.id)) ? "selected" : ""}>${FMQ.escapeHtml(p.name)}</option>`).join("")}</select></label>
       <div class="multiRoster">
         ${players.map(p => {

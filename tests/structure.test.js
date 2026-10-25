@@ -43,7 +43,7 @@ check(`Keine JS-Datei über ${grenze} Zeilen`, zuGross.length === 0, zuGross.joi
 
 // --- Skripteinbindung passt zu den Dateien ---
 const html = lies("index.html");
-const eingebunden = [...html.matchAll(/src="\/family-music-quiz\/(js\/[^"?]+)(?:\?[^"]*)?"/g)].map(m => m[1]);
+const eingebunden = [...html.matchAll(/src="\/family-music-quiz\/(js\/[^"]+)"/g)].map(m => m[1]);
 const fehlend = eingebunden.filter(p => !fs.existsSync(path.join(wurzel, p)));
 check("Alle eingebundenen Skripte existieren", fehlend.length === 0, fehlend.join(", "));
 
