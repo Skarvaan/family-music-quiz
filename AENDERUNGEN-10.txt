@@ -1,0 +1,24 @@
+Family Music Quiz · Update 10 (Fehlerliste vom 27.10.)
+======================================================
+
+Gegenüber Version 2026-10-25-9. Diese Dateien ersetzen:
+
+  index.html, public/player.html   Versionsnummer 2026-10-27-10
+  js/setup.js           (1) Spieler-Formular passt sich an, wenn ein Handy
+                            schon in der Lobby beigetreten ist
+  js/players.js         (1) Hinweistext
+  js/spotifyPlayback.js (2) "Song läuft"-Erkennung robust, keine falsche
+                            Warnung; (3) Abspiel-Zustand fürs Handy
+  js/phoneControls.js   (3) Knopfarten + "läuft gerade" ans Handy
+  js/net/roomEvents.js  (3) reicht Knopfart und Zustand durch
+  public/player.js      (3) Farben je Knopfart; (6) lange Titel
+  styles.css            (3) Farbe Abspielen; (6)(7) Songauswahl, Abschicken-Leiste
+  js/modes/quick3.js    (4)(5) Selbst-Check am iPad sichtbar, automatisch weiter
+  js/roundFlow.js       (4)(5) dazu
+  js/main.js            (5) Notfall-Häkchen am iPad
+  package.json          Testbefehl
+
+NEU
+  tests/peer-party.test.js   iPad + 3 Handys, Song erraten + Playlist-Raten
+
+Nach dem Hochladen: Startbildschirm muss "Version 2026-10-27-10" zeigen.

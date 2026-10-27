@@ -157,7 +157,7 @@ FMQ.armEndGuard = (uri, positionMs, durationMs) => {
       try { st = await FMQ.apiFetch("https://api.spotify.com/v1/me/player", { timeoutMs: 4000 }); } catch {}
       if (FMQ.endGuardGen !== gen) return;
       if (!st || !st.is_playing) return; // läuft nicht (mehr): nichts zu tun
-      const sameSong = st.item && (st.item.uri === uri || st.item.id === wantId);
+      const sameSong = FMQ.isOurPlayback(st, uri);
       if (!sameSong) {
         // Schon in den nächsten Song gerutscht: sofort anhalten.
         try { await FMQ.pausePlayback(); } catch {}
@@ -175,6 +175,17 @@ FMQ.armEndGuard = (uri, positionMs, durationMs) => {
 FMQ.disarmEndGuard = () => {
   clearTimeout(FMQ.endGuardTimer);
   FMQ.endGuardGen = (FMQ.endGuardGen || 0) + 1;
+};
+
+/**
+ * Zentraler Schalter "Musik läuft / läuft nicht". Steuert die
+ * Markierung des Abspielen-Knopfs auf dem Handy. Früher blieb der
+ * zuletzt getippte Knopf grün, auch wenn längst nichts mehr lief.
+ */
+FMQ.setPlayingState = (on) => {
+  FMQ.app.state.isPlaying = !!on;
+  if (!on) FMQ.app.state.playingControlId = null;
+  FMQ.refreshPhoneControls?.();
 };
 
 FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
@@ -196,6 +207,9 @@ FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
     FMQ.lastPlaybackDevice = device;
     FMQ.showPlaybackDevice(device.name);
     FMQ.showSpotifyAlert("");
+    FMQ.app.state.playingControlId = FMQ.app.state.pendingPlayControlId || null;
+    FMQ.app.state.pendingPlayControlId = null;
+    FMQ.setPlayingState(true);
     // Nur nötig, wenn über die Playlist gespielt wird (läuft sonst weiter).
     if (body.context_uri) FMQ.armEndGuard(uri, body.position_ms || 0, FMQ.findTrackContext(uri).durationMs);
     else FMQ.disarmEndGuard();
@@ -207,6 +221,7 @@ FMQ.playTrackUri = async (uri, { positionMs = null } = {}) => {
 
 FMQ.pausePlayback = async () => {
   FMQ.disarmEndGuard();
+  FMQ.setPlayingState(false);
   // Pause geht an das Gerät, auf dem das Spiel zuletzt gestartet hat.
   // Ist schon pausiert, antwortet Spotify mit 403 ("Restriction
   // violated"). Das ist harmlos und wird NICHT wiederholt: eine
@@ -270,21 +285,47 @@ const fmqTrackIdFromUri = uri => String(uri || "").split(":").pop();
  * Liefert { progressMs, at } oder null, wenn es nach timeoutMs nicht klappt.
  * isStale(): true, wenn inzwischen etwas anderes gestartet/gestoppt wurde.
  */
-FMQ.waitForPlaybackStart = async (uri, { timeoutMs = 9000, isStale = () => false } = {}) => {
+/**
+ * Ist das, was Spotify meldet, "unser" Song?
+ * Fehler vorher (27.10.): Verglichen wurde nur die Song-Kennung. Über
+ * eine Playlist gestartet, meldet Spotify manchmal eine ANDERE Kennung
+ * für denselben Titel (Spotify tauscht Titel je nach Land gegen eine
+ * andere Ausgabe aus). Dann wartete die Stoppuhr 9 s vergeblich, der
+ * Ausschnitt wurde 12-19 s lang, und es kam die falsche Warnung
+ * "Spotify meldet nicht, dass der Song läuft".
+ * Jetzt zählt: gleiche Kennung ODER gleicher (bereinigter) Titel.
+ */
+FMQ.isOurPlayback = (st, uri) => {
+  const item = st && st.item;
+  if (!item) return false;
   const wantId = fmqTrackIdFromUri(uri);
+  if (item.uri === uri || item.id === wantId) return true;
+  const t = FMQ.app.trackMap?.get?.(wantId)
+    || (FMQ.app.players || []).flatMap(p => p.tracks || []).find(x => x.id === wantId);
+  if (!t) return false;
+  return FMQ.normalizeTitle(item.name) === (t.normalizedTitle || FMQ.normalizeTitle(t.name));
+};
+
+/**
+ * Wartet, bis Spotify meldet, dass uri läuft.
+ * Liefert { progressMs, at } sobald es läuft, sonst nach timeoutMs
+ * { timedOut: true, anythingPlaying } (läuft überhaupt etwas?).
+ */
+FMQ.waitForPlaybackStart = async (uri, { timeoutMs = 15000, isStale = () => false } = {}) => {
   const until = Date.now() + timeoutMs;
+  let anythingPlaying = false;
   while (Date.now() < until) {
     if (isStale()) return null;
     try {
       const st = await FMQ.apiFetch("https://api.spotify.com/v1/me/player", { timeoutMs: 4000 });
-      const item = st && st.item;
-      if (st && st.is_playing && item && (item.uri === uri || item.id === wantId)) {
+      if (st && st.is_playing) anythingPlaying = true;
+      if (st && st.is_playing && FMQ.isOurPlayback(st, uri)) {
         return { progressMs: Number(st.progress_ms) || 0, at: Date.now() };
       }
     } catch { /* einzelne Abfrage fehlgeschlagen: weiter versuchen */ }
     await fmqSleep(300);
   }
-  return null;
+  return { timedOut: true, anythingPlaying };
 };
 
 /**
@@ -308,14 +349,15 @@ FMQ.startClipTimer = (uri, startMs, seconds, onPaused) => {
 
   (async () => {
     const started = await FMQ.waitForPlaybackStart(uri, { isStale: () => state.clipGen !== gen });
-    if (state.clipGen !== gen) return;
+    if (!started || state.clipGen !== gen) return;
     let remaining = clipMs;
-    if (started) {
+    if (!started.timedOut) {
       // Schon gespielte Zeit abziehen (Abfrage-Verzögerung eingerechnet).
       const playedMs = Math.max(0, started.progressMs - (startMs || 0)) + (Date.now() - started.at);
-      remaining = Math.max(500, clipMs - playedMs);
-    } else {
-      FMQ.showSpotifyAlert?.("Spotify meldet nicht, dass der Song läuft. Läuft am Abspielgerät etwas? Sonst Gerät unter „Abspielgerät“ prüfen.");
+      remaining = Math.max(300, clipMs - playedMs);
+    } else if (!started.anythingPlaying) {
+      // Nur warnen, wenn wirklich GAR NICHTS läuft.
+      FMQ.showSpotifyAlert?.("Der Song startet nicht. Läuft die Spotify-App auf dem Abspielgerät? Sonst unter „Abspielgerät“ prüfen.");
     }
     state.playTimer = setTimeout(async () => {
       if (state.clipGen !== gen) return;

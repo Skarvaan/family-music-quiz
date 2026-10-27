@@ -3,6 +3,16 @@ var FMQ = window.FMQ;
 
 /* Fernsteuerung: welche Knöpfe des Hosts auf einem Handy erscheinen. */
 
+/** Art eines Host-Knopfs anhand seiner ID (für Farbe und Markierung am Handy). */
+FMQ.controlKind = (id) => {
+  const s = String(id || "");
+  if (/^(quick3PlayBtnInline|ratingPlayResumeBtn|playAFromStartBtn|playBFromStartBtn|introGuessPlayBtn|challengePlayBtn|duelPlayABtn|duelPlayBBtn|rankingPlayBtn)$/.test(s) || /^first3/.test(s)) return "play";
+  if (/Stop/i.test(s)) return "stop";
+  if (/Reveal|Resolve/i.test(s)) return "reveal";
+  if (/next|Next|Continue|Done|ToMain|quick3ConfirmBtn/.test(s)) return "next";
+  return "other";
+};
+
 FMQ.setMultiplayerControllerActions = (actions = []) => {
   const normalized = actions
     .filter(action => action && action.id && action.label)
@@ -10,6 +20,9 @@ FMQ.setMultiplayerControllerActions = (actions = []) => {
     .map(action => ({
       id: String(action.id),
       label: String(action.label),
+      kind: FMQ.controlKind(action.id),
+      // Abspielen ist nur markiert, solange die Musik dazu wirklich läuft.
+      active: FMQ.controlKind(action.id) === "play" && FMQ.app.state.isPlaying === true && FMQ.app.state.playingControlId === String(action.id),
       options: Array.isArray(action.options)
         ? action.options.filter(option => option && option.id && option.label).slice(0, 4).map(option => ({ id: String(option.id), label: String(option.label) }))
         : []
@@ -119,6 +132,8 @@ FMQ.handleRemoteControlAction = (action) => {
     return;
   }
   const el = action ? FMQ.$(action) : null;
+  // Merken, welcher Abspiel-Knopf gedrückt wurde (für die Markierung).
+  if (FMQ.controlKind(action) === "play") FMQ.app.state.pendingPlayControlId = String(action);
   if (el && el.offsetParent !== null && !el.disabled) {
     el.click();
     setTimeout(() => FMQ.refreshPhoneControls?.(), 0);

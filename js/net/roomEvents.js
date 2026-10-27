@@ -118,6 +118,10 @@
           ? payload.actions.filter(a => a && a.id && a.label).slice(0, 18).map(a => ({
             id: String(a.id),
             label: String(a.label),
+            // Art des Knopfs (bestimmt die Farbe am Handy) und ob er
+            // gerade "aktiv" ist (z. B. Abspielen, solange Musik läuft).
+            kind: ["play", "stop", "reveal", "next"].includes(a.kind) ? a.kind : "other",
+            active: a.active === true,
             options: Array.isArray(a.options)
               ? a.options.filter(o => o && o.id && o.label).slice(0, 4).map(o => ({ id: String(o.id), label: String(o.label) }))
               : []

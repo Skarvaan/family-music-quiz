@@ -8,6 +8,11 @@ FMQ.modes.quick3 = {
   label: "Songausschnitt raten",
   supportsAllGuess: false,
   submitAnswer(playerId, answer) {
+    // Pro Zug nur EINMAL Punkte: Kreuzt jemand am iPad an und kurz
+    // danach kommt doch noch die Handy-Antwort, zählt nur die erste.
+    if (Object.prototype.hasOwnProperty.call(FMQ.app.state.quick3.answers, playerId)) {
+      return { points: FMQ.app.state.quick3.lastPoints ?? 0, duplicate: true };
+    }
     FMQ.app.state.quick3.answers[playerId] = answer;
     const result = FMQ.modes.guessSong.submitAnswer(playerId, answer);
     // Für die Anzeige in der Auflösung merken (Mehrgeräte-Modus).
@@ -68,12 +73,27 @@ FMQ.modes.quick3 = {
         FMQ.app.state.quick3.advanceAfterSelfCheck = true;
         FMQ.app.state.selfCheckPending = false;
         const pts = FMQ.app.state.quick3.lastPoints ?? 0;
+        // Was am Handy angekreuzt wurde, auch am iPad zeigen.
+        const ans = FMQ.app.state.quick3.answers[me?.id] || {};
+        if (FMQ.$("quick3ChkTitle")) FMQ.$("quick3ChkTitle").checked = !!ans.title;
+        if (FMQ.$("quick3ChkArtist")) FMQ.$("quick3ChkArtist").checked = !!ans.artist;
+        if (FMQ.$("quick3ChkYear")) FMQ.$("quick3ChkYear").checked = !!ans.year;
         const status = FMQ.$("quick3PtsStatus");
-        if (status) status.innerHTML = `<span class="ok">${FMQ.escapeHtml(me?.name || "")}: +${pts} Punkt${pts === 1 ? "" : "e"}</span>`;
+        if (status) status.innerHTML = `<span class="ok">${FMQ.escapeHtml(me?.name || "")}: +${pts} Punkt${pts === 1 ? "" : "e"} · gleich geht's weiter …</span>`;
         if (FMQ.$("quick3ConfirmBtn")) { FMQ.$("quick3ConfirmBtn").disabled = false; FMQ.$("quick3ConfirmBtn").textContent = "Weiter"; }
         FMQ.$("nextBtn").disabled = false;
         FMQ.renderScoreTable();
         FMQ.refreshPhoneControls?.();
+        // Automatisch weiter nach 2,5 s (Punkte kurz sichtbar lassen).
+        // Früher musste danach noch jemand "Weiter" tippen.
+        const trackId = FMQ.app.state.currentTrack?.id;
+        clearTimeout(FMQ.app.state.quick3.autoNextTimer);
+        FMQ.app.state.quick3.autoNextTimer = setTimeout(() => {
+          const stillHere = FMQ.app.state.currentTrack?.id === trackId && FMQ.$("quick3RevealOverlay")?.classList.contains("show");
+          if (!stillHere) return; // schon von Hand weitergeschaltet
+          FMQ.$("quick3RevealOverlay").classList.remove("show");
+          FMQ.onNext().catch(e => FMQ.setGameDebug(e.stack || e.message));
+        }, 2500);
       }
     }
   },

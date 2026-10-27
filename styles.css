@@ -294,6 +294,9 @@ button.primary{
   color:#fff;
 }
 .action-button.secondary{ background:var(--ink-2); }
+/* Abspielen (Handy-Steuerung): violett, damit es sich klar von Reveal (gold)
+   und Weiter (rot) unterscheidet. */
+.action-button.play{ background:linear-gradient(160deg, var(--violet), #7C3AED); border-color:rgba(255,255,255,.25); color:#fff; }
 .action-button.reveal{ background:linear-gradient(160deg, var(--gold), #E0912B); color:#2B1A05; border-color:rgba(0,0,0,.2); }
 .action-button.spotify{ background:linear-gradient(160deg,#1DB954,#0E8A3C); border-color:rgba(255,255,255,.25); color:#fff; }
 
@@ -1132,6 +1135,11 @@ body.joined .player-head{ display:none; }
 .songSearchInput{ font-size:17px; }
 .songSelectList{
   display:grid;
+  /* Zeilen so hoch wie ihr Inhalt. Ohne das quetscht das Grid die
+     Knöpfe in der begrenzten Listenhöhe zusammen, und lange Titel
+     laufen über den Knopfrand in den nächsten Song. */
+  grid-auto-rows:max-content;
+  align-content:start;
   gap:8px;
   max-height:46svh;
   overflow-y:auto;
@@ -1147,7 +1155,40 @@ body.joined .player-head{ display:none; }
   font-size:16px;
 }
 .songPickBtn span{ font-size:14px; font-weight:600; color:var(--muted); }
-.songSubmitBar{ display:grid; gap:10px; }
+/* Lange Titel/Interpreten: umbrechen statt über den Rand laufen.
+   min-width:0 ist nötig, sonst wird ein Grid-Element nie schmaler als
+   sein längstes Wort. fitLong/fitXLong setzt player.js je nach Länge. */
+.songPickBtn,
+.songPickBtn b,
+.songPickBtn span,
+.choiceBtn span,
+.duelVoteCard h3{ min-width:0; overflow-wrap:anywhere; line-height:1.25; }
+.songPickBtn .fitLong{ font-size:.9em; }
+.songPickBtn .fitXLong{ font-size:.8em; }
+.songRevealTitle,.songRevealArtist,.joinLink{ overflow-wrap:anywhere; }
+/* Abschicken-Leiste klebt unten am Bildschirm. Vorher lag der Knopf
+   unter der langen Songliste und war erst nach Scrollen zu sehen. */
+.songSubmitBar{
+  position:sticky;
+  bottom:calc(env(safe-area-inset-bottom) + 8px);
+  z-index:5;
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border:1px solid var(--line-strong);
+  border-radius:var(--r);
+  background:rgba(16,8,30,.94);
+  box-shadow:0 -8px 24px rgba(6,2,16,.55);
+}
+/* "Gewählt: …" in der Leiste höchstens zwei Zeilen, damit die Leiste
+   bei langen Titeln nicht die halbe Liste verdeckt. */
+.songSubmitBar .muted{
+  font-size:14px;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
 .duelPromptTabs{ display:flex; flex-wrap:wrap; gap:8px; }
 .songPromptTab{ min-height:48px; padding:10px 16px; font-size:15px; }
 .phonePromptText{ font-weight:700; }

@@ -147,7 +147,7 @@ FMQ.buildPlayersConfig = ({ preserveCount = false } = {}) => {
   }
 
   if (!n && FMQ.isMultiDevice?.()) {
-    wrap.innerHTML = `<div class="muted multiEmptyPlayers">Noch keine Handy-Spieler verbunden. Handys öffnen /player, geben den Raumcode ein und nutzen bei Rejoin exakt denselben Namen.</div>`;
+    wrap.innerHTML = `<div class="muted multiEmptyPlayers">Noch keine Handy-Spieler verbunden. Handys scannen den QR-Code auf dem Startbildschirm.</div>`;
   }
 
   FMQ.$("playersConfig").innerHTML = "";

@@ -58,15 +58,16 @@ FMQ.onReveal = async () => {
     FMQ.$("quick3ChkTitle").checked = false;
     FMQ.$("quick3ChkArtist").checked = false;
     FMQ.$("quick3ChkYear").checked = false;
-    // Mehrgeräte: Häkchen setzt die Person am eigenen Handy. Am iPad
-    // nur Lösung + Status zeigen, Checkboxen ausblenden.
+    // Mehrgeräte: Die Person kreuzt am eigenen Handy an. Die Häkchen
+    // stehen trotzdem auch am iPad: Kommt die Handy-Antwort, werden sie
+    // dort angezeigt. Klappt das Handy nicht, kann man hier ankreuzen
+    // und "Punkte eintragen und weiter" tippen (Notfall).
     const remote = !!res.remoteSelfCheck;
+    clearTimeout(FMQ.app.state.quick3.autoNextTimer);
     const checkList = FMQ.$("quick3RevealOverlay").querySelector(".selfCheckList");
-    if (checkList) checkList.style.display = remote ? "none" : "";
-    FMQ.$("quick3PtsStatus").textContent = remote ? `${res.waitingFor} trägt am Handy ein, was richtig war …` : "";
-    // "Weiter" ist auch ohne Handy-Antwort erlaubt (z. B. Akku leer),
-    // dann gibt es eben 0 Punkte. So bleibt niemand hängen.
-    FMQ.$("quick3ConfirmBtn").textContent = remote ? "Weiter (ohne zu warten)" : "Punkte eintragen und weiter";
+    if (checkList) checkList.style.display = "";
+    FMQ.$("quick3PtsStatus").textContent = remote ? `${res.waitingFor} kreuzt am Handy an … (oder hier am iPad)` : "";
+    FMQ.$("quick3ConfirmBtn").textContent = "Punkte eintragen und weiter";
     FMQ.$("quick3ConfirmBtn").disabled = false;
     FMQ.$("quick3RevealOverlay").classList.add("show");
     if (FMQ.$("quick3PlayBtnInline")) FMQ.$("quick3PlayBtnInline").disabled = true;

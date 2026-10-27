@@ -150,12 +150,22 @@
 
   const findTrack = (tracks, trackId) => tracks.find(t => t.id === trackId) || null;
 
-  const trackButtonHtml = (track, selectedId) => `
+  // Lange Titel/Interpreten: nicht abschneiden, sondern umbrechen und
+  // NUR den zu langen Teil etwas kleiner setzen (Titel und Interpret
+  // werden getrennt bewertet).
+  const fitClass = text => {
+    const n = String(text || "").length;
+    return n > 48 ? "fitXLong" : n > 30 ? "fitLong" : "";
+  };
+  const trackButtonHtml = (track, selectedId) => {
+    const sub = `${track.artistName || ""}${track.year ? ` · ${track.year}` : ""}`;
+    return `
     <button type="button" class="songPickBtn ${track.id === selectedId ? "selected" : ""}"
             data-track-id="${escapeHtml(track.id)}" aria-pressed="${track.id === selectedId}">
-      <b>${escapeHtml(track.name)}</b>
-      <span>${escapeHtml(track.artistName || "")}${track.year ? ` · ${escapeHtml(track.year)}` : ""}</span>
+      <b class="${fitClass(track.name)}">${escapeHtml(track.name)}</b>
+      <span class="${fitClass(sub)}">${escapeHtml(sub)}</span>
     </button>`;
+  };
 
   const visibleTracks = (tracks, query = "") => {
     const q = query.trim().toLowerCase();
@@ -646,7 +656,8 @@
       state.controlSelections[id] = rest.join(":");
       return;
     }
-    state.controlSelections.__lastButton = action;
+    // Normale Knöpfe werden NICHT mehr als "zuletzt gedrückt" gemerkt.
+    // Ob Abspielen markiert ist, entscheidet das iPad (läuft Musik?).
   };
 
   const sendControlAction = action => {
@@ -689,8 +700,12 @@
             return `<button type="button" class="action-button secondary ${selected ? "selected" : ""}" data-control="${escapeHtml(opt.id)}" aria-pressed="${!!selected}">${escapeHtml(opt.label)}</button>`;
           }).join("")}</div></div>`;
       }
-      const selected = state.controlSelections.__lastButton === action.id;
-      return `<button type="button" class="action-button primary ${selected ? "selected" : ""}" data-control="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`;
+      // Farbe nach Art des Knopfs: Abspielen violett, Stopp neutral,
+      // Reveal gold, Weiter rot. Markiert (Rahmen + Haken) ist nur ein
+      // Abspielen-Knopf, solange die Musik dazu läuft. Früher blieb
+      // einfach der zuletzt getippte Knopf grün markiert.
+      const kindClass = { play: "play", stop: "secondary", reveal: "reveal", next: "primary" }[action.kind] || "primary";
+      return `<button type="button" class="action-button ${kindClass} ${action.active ? "selected" : ""}" data-control="${escapeHtml(action.id)}" aria-pressed="${!!action.active}">${escapeHtml(action.label)}</button>`;
     }).join("");
 
     panel.querySelectorAll("[data-control]").forEach(btn => onTap(btn, () => sendControlAction(btn.getAttribute("data-control"))));

@@ -134,8 +134,32 @@ FMQ.setupCanProceed = () => {
   return true;
 };
 
+/**
+ * Passt das Spieler-Formular (Schritt 4) noch zur Spielerliste?
+ * Fehler vorher: Trat ein Handy schon in der Lobby bei (Schritt 1),
+ * wurde das Formular beim Wechsel zu Schritt 4 nicht neu gebaut.
+ * Dort stand "Noch keine Handy-Spieler verbunden", die Playlist war
+ * nicht wählbar, bis man die Spieleranzahl kurz änderte.
+ */
+FMQ.ensurePlayersFormInSync = () => {
+  const box = FMQ.$("playersConfig");
+  if (!box || !FMQ.buildPlayersConfig) return;
+  const formIds = [...box.querySelectorAll('input[data-role="name"]')].map(el => el.dataset.pid);
+  const modelIds = (FMQ.app.players || []).map(p => p.id);
+  const inSync = formIds.length === modelIds.length && modelIds.every((id, i) => {
+    const p = FMQ.app.players[i];
+    return formIds[i] === id || formIds[i] === p.localId;
+  });
+  if (!inSync && !FMQ.isSetupControlActive?.()) FMQ.buildPlayersConfig({ preserveCount: true });
+};
+
 FMQ.renderSetupWizard = () => {
   const step = FMQ.app.state.setupStep || 1;
+  // Beim Anzeigen von Schritt 4 immer abgleichen (s. o.).
+  if (step === 4 && !FMQ.app.syncingPlayersForm) {
+    FMQ.app.syncingPlayersForm = true;
+    try { FMQ.ensurePlayersFormInSync(); } finally { FMQ.app.syncingPlayersForm = false; }
+  }
   document.querySelectorAll(".setupStep").forEach(el => {
     el.classList.toggle("active", parseInt(el.getAttribute("data-setup-step"), 10) === step);
   });
